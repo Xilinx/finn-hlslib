@@ -42,31 +42,31 @@ node {
         stage('Run tests SWG') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2019.2_0916_2/installs/lin64/Vitis/2019.2/settings64.sh; cd tb; vivado_hls -f test_swg.tcl')
+            sh('source /proj/xbuilds/2019.1_released/installs/lin64/Vivado/2019.1/settings64.sh; cd tb; vivado_hls -f test_swg.tcl')
     }
     }, secondBranch: {
         stage('Run tests POOL') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2019.2_0916_2/installs/lin64/Vitis/2019.2/settings64.sh; cd tb; vivado_hls -f test_pool.tcl')
+            sh('source /proj/xbuilds/2019.1_released/installs/lin64/Vivado/2019.1/settings64.sh; cd tb; vivado_hls -f test_pool.tcl')
     }
     }, thirdBranch: {
         stage('Run tests DWC') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2019.2_0916_2/installs/lin64/Vitis/2019.2/settings64.sh; cd tb; vivado_hls -f test_dwc.tcl')
+            sh('source /proj/xbuilds/2019.1_released/installs/lin64/Vivado/2019.1/settings64.sh; cd tb; vivado_hls -f test_dwc.tcl')
     }
     }, fourthBranch: {
         stage('Run tests ADD') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2019.2_0916_2/installs/lin64/Vitis/2019.2/settings64.sh; cd tb; vivado_hls -f test_add.tcl')
+            sh('source /proj/xbuilds/2019.1_released/installs/lin64/Vivado/2019.1/settings64.sh; cd tb; vivado_hls -f test_add.tcl')
     }
     }, fifthBranch: {
         stage('Run tests DUP_STREAM') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2019.2_0916_2/installs/lin64/Vitis/2019.2/settings64.sh; cd tb; vivado_hls -f test_dup_stream.tcl')
+            sh('source /proj/xbuilds/2019.1_released/installs/lin64/Vivado/2019.1/settings64.sh; cd tb; vivado_hls -f test_dup_stream.tcl')
     }
     }, sixthBranch: {
         stage('Set-up virtual env') {
@@ -80,7 +80,7 @@ node {
         stage('Run tests CONV') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2019.2_0916_2/installs/lin64/Vitis/2019.2/settings64.sh; cd tb; vivado_hls -f test_conv3.tcl')
+            sh('source /proj/xbuilds/2019.1_released/installs/lin64/Vivado/2019.1/settings64.sh; cd tb; vivado_hls -f test_conv3.tcl')
         }
     }
 }
