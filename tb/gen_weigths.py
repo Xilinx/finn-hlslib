@@ -40,22 +40,23 @@ kernel_dim = 3
 stride = 1
 input_precision = 4
 ifm_channels = 1
-ofm_channels = 2
-ifm_dimension = 3
-ofm_dimension = 1
+ofm_channels = 1
+ifm_dimension = 8
+ofm_dimension = 6
 
 activation_precision = 16
 expand = 1
 simd = 1
 pe = 1
 w_precision = 1
-
+mmv=2
 
 tile = ifm_channels *kernel_dim*kernel_dim * ofm_channels // (simd*pe)
 
 outFileConfig.write("#define KERNEL_DIM %d \n" % kernel_dim)
 outFileConfig.write("#define SIMD1 %d \n" % simd)
 outFileConfig.write("#define PE1 %d \n" % pe)
+outFileConfig.write("#define MMV1 %d \n" % mmv)
 outFileConfig.write("#define WIDTH %d \n" % w_precision)
 
 outFileConfig.write("#define IFM_Channels1 %d \n" % ifm_channels)

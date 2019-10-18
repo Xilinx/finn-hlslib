@@ -32,10 +32,10 @@
 
 /******************************************************************************
  *
- *  Authors: Giulio Gambardella <giuliog\xilinx.com>
- *           Thomas B. Preusser <thomas.preusser\utexas.edu>
+ *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *           Thomas B. Preusser <thomas.preusser@utexas.edu>
  *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
- *           Christoph Doehring <cdoehrin\xilinx.com>
+ *           Christoph Doehring <cdoehrin@xilinx.com>
  *
  *  \file dma.h
  *
