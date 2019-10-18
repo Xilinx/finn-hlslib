@@ -28,38 +28,11 @@
 .. ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ====================================
-Introduction
-====================================
-FINN is an experimental framework from Xilinx Research Labs to explore deep neural network inference on FPGAs. It specifically targets quantized neural networks, with emphasis on generating dataflow-style architectures customized for each network. It is not intended to be a generic DNN accelerator like xDNN, but rather a tool for exploring the design space of DNN inference accelerators on FPGAs. 
-
-====================================
-FINN-HLS content
+mmv.hpp
 ====================================
 
-The FINN-HLS repository contains the C++ description of multiple layers for the implementation of quantized neural networks using dataflow architecture. 
-The library serves as a hardware backend for the FINN project, and it integrates in Xilinx Vivado HLS tool.
+The mmv.hpp file collects the description of the class used for Matrix-Multi-Vector compute
 
 
-.. toctree::
-   :maxdepth: 2
+.. doxygenfile:: mmv.hpp
 
-
-   
-  library/activations 
-  library/weights 
-  library/matrixvector 
-  library/dma
-  library/maxpool 
-  library/fclayer 
-  library/convlayer 
-  library/swg
-  library/streamtools 
-  library/mac
-  library/mmv
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

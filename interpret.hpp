@@ -196,16 +196,18 @@ class Slice {
     Container(TV const &val) : m_val(val) {
 #pragma HLS inline
     }
-
    public:
-    T operator[](unsigned const  idx) const {
-#pragma HLS inline 
-      ap_uint<STRIDE> const  r = m_val((idx+1)*STRIDE-1, idx*STRIDE); 
-      return  Caster<T>::cast(ap_int<STRIDE>(r));
-    }
-    auto operator[](unsigned const  idx) -> decltype(m_val(STRIDE, 0)) {
+    auto access(unsigned const  mmv) -> decltype(m_val) {
+#pragma HLS inline
+    return  m_val;;
+  }
+    auto operator()(unsigned const idx, unsigned const mmv) const -> decltype(m_val(STRIDE, 0)) {
 #pragma HLS inline
       return  m_val((idx+1)*STRIDE-1, idx*STRIDE);
+    }
+    auto operator[](unsigned mmv) const -> decltype(m_val) {
+#pragma HLS inline
+      return  m_val;
     }
     operator TV const&() const {
 #pragma HLS inline
@@ -223,6 +225,61 @@ class Slice {
   Container<TV> operator()() const {
 #pragma HLS inline
     return  Container<TV>();
+  }
+  template<typename TV>
+  Container<TV> operator() (TV const &val, unsigned mmv) const {
+#pragma HLS inline
+    return  Container<TV>(val);
+  }
+};
+
+// This class is done for Slicing an MMV container (vector of ap_uint
+template<typename T, unsigned MMV, unsigned STRIDE=T::width>
+class Slice_mmv {
+ public:
+  static unsigned const  width = STRIDE;
+ private:
+  template<typename TV>
+  class Container {
+    TV  m_val;
+
+   public:
+    Container() {
+#pragma HLS inline
+    }
+    Container(TV const &val, unsigned mmv) : m_val(val){
+#pragma HLS inline
+    }
+   public:
+    operator TV const&() const {
+#pragma HLS inline
+      return  m_val;
+    };
+    auto operator()(unsigned const idx, unsigned const mmv) const -> decltype(m_val.data[mmv](STRIDE, 0)) {
+#pragma HLS inline
+      return  m_val.data[mmv]((idx+1)*STRIDE-1, idx*STRIDE);
+    };
+    auto operator[](unsigned const mmv) const -> decltype(m_val.data[mmv]) {
+#pragma HLS inline
+      return  m_val.data[mmv];
+    }
+  };
+
+ public:
+  template<typename TV>
+  Container<TV> operator()(TV const &val) const {
+#pragma HLS inline
+    return  Container<TV>(val);
+  }
+  template<typename TV>
+  Container<TV> operator()() const {
+#pragma HLS inline
+    return  Container<TV>();
+  }
+  template<typename TV>
+  Container<TV> operator()(TV const &val, unsigned mmv)  {
+#pragma HLS inline
+    return  Container<TV>(val,mmv);
   }
 };
 

@@ -33,59 +33,27 @@
  *
  *  Authors: Giulio Gambardella <giuliog@xilinx.com>
  *
- *  \file conv.hpp
+ *  \file conv_top.cpp
  *
- *  C++ Implementation of a convolution, used for testbench
+ *  HLS Top function with a single convolutional layer for unit testing
  *
  *****************************************************************************/
-#ifndef CONV_TB_H
-#define CONV_TB_H
+#include <hls_stream.h>
+using namespace hls;
+#include "ap_int.h"
+#include "bnn-library.h"
 
-template<int MAX_IMAGE,
-	int IFMDim, 
-	int OFMDim, 
-	int IFMCh, 
-	int OFMCh, 
-	typename TI, 
-	typename TO, 
-	typename TW>
-	void conv_1x1(TI const img[MAX_IMAGE][IFMDim][IFMDim][IFMCh], TW const weights[OFMCh][IFMCh], TO out[MAX_IMAGE][OFMDim][OFMDim][OFMCh]){
-		constexpr int stride= (OFMDim==1)? IFMDim:(IFMDim - 1)/(OFMDim - 1);
-		for(int n=0;n<MAX_IMAGE;n++)
-			for(int x=0;x<OFMDim;x++)
-				for(int y=0;y<OFMDim;y++)
-					for(int h=0;h<OFMCh;h++){
-						TO tmp = 0;
-						for(int w=0;w<IFMCh;w++)
-							tmp+=img[n][x*stride][y*stride][w] * weights[h][w];
-						out[n][x][y][h] = tmp;
+#include "activations.hpp"
+#include "weights.hpp"
+#include "activations.hpp"
+#include "interpret.hpp"
+#include "mvau.hpp"
+#include "conv.hpp"
+#include "memdata.h"
+#include "config.h"
 
-					}
-	}
+void Testbench_convmmv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream<ap_uint<OFM_Channels1*ACTIVATION_PRECISION> > & out, unsigned int numReps){
+#pragma HLS DATAFLOW
+		ConvLayer_Batch_MMV<KERNEL_DIM, IFM_Channels1, IFMDim1, OFM_Channels1, OFMDim1, STRIDE, SIMD1, PE1, MMV1, Slice_mmv<ap_uint<INPUT_PRECISION>, MMV1 >, Slice_mmv<ap_int<16>, MMV1 >, Identity >(in, out, PARAM::weights, PassThroughActivation<ap_uint<16>>(), numReps, ap_resource_dsp());
 
-template<int MAX_IMAGE,
-	int IFMDim,
-	int OFMDim,
-	int IFMCh,
-	int OFMCh,
-	int kernel,
-	int stride,
-	typename TI,
-	typename TO,
-	typename TW>
-	void conv(TI const img[MAX_IMAGE][IFMDim*IFMDim][IFMCh], TW const weights[OFMCh][kernel][kernel][IFMCh], TO out[MAX_IMAGE][OFMDim][OFMDim][OFMCh]){
-		for(int n=0;n<MAX_IMAGE;n++)
-			for(int x=0;x<OFMDim;x++)
-				for(int y=0;y<OFMDim;y++)
-					for(int h=0;h<OFMCh;h++){
-						TO tmp = 0;
-						for (int ky=0;ky<kernel;ky++)
-							for (int kx=0;kx<kernel;kx++)
-								for(int w=0;w<IFMCh;w++){
-									tmp+=img[n][(y*stride+ky)*IFMDim+x*stride+kx][w] * weights[h][kx][ky][w];
-								}
-						out[n][x][y][h] = tmp;
-					}
-	}
-
-#endif
+}

@@ -1,3 +1,43 @@
+/******************************************************************************
+ *  Copyright (c) 2019, Xilinx, Inc.
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *
+ *  1.  Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *
+ *  2.  Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *
+ *  3.  Neither the name of the copyright holder nor the names of its
+ *      contributors may be used to endorse or promote products derived from
+ *      this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ *  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ *  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ *  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ *  OR BUSINESS INTERRUPTION). HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ ******************************************************************************/
+/******************************************************************************
+ *
+ *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *
+ *  \file conv3mmv_tb.cpp
+ *
+ *  Testbench for the convolution HLS block
+ *
+ *****************************************************************************/
 #include <iostream>
 #include <cmath>
 #include <ctime>
@@ -19,16 +59,11 @@
 using namespace hls;
 using namespace std;
 
-#define MAX_IMAGES 2
-// Convolution Layer compute unit
-void ConvLayer(stream<ap_uint<IFM_Channels1 * INPUT_PRECISION> > &in, stream<ap_uint<OFM_Channels1 * ACTIVATION_PRECISION> > &out, stream<ap_uint<SIMD1 * PE1 * WIDTH> > &paramStreamIn, int const numReps);
-// Weight stream generator
-void GenWeightStream(stream<ap_uint<SIMD1 * PE1 * WIDTH> > &paramStreamOut, int const numReps);
+#define MAX_IMAGES 1
+void Testbench_convmmv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream<ap_uint<OFM_Channels1*ACTIVATION_PRECISION> > & out, unsigned int numReps);
 
 int main()
 {
-
-
 	static	ap_uint<INPUT_PRECISION> IMAGE[MAX_IMAGES][IFMDim1*IFMDim1][IFM_Channels1];
 	static	ap_int<ACTIVATION_PRECISION> TEST[MAX_IMAGES][OFMDim1][OFMDim1][OFM_Channels1];
 	stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > input_stream("input_stream");
@@ -58,15 +93,12 @@ int main()
 	unsigned int kx=0;
 	unsigned int ky=0;
 	unsigned int chan_count=0;
+	unsigned int out_chan_count=0;
 	for (unsigned int oy = 0; oy < TY; oy++) {
 		for (unsigned int ox = 0; ox <TX; ox++) {
 			for(int pe=0;pe <PE1;pe++){
 				for(int simd=0;simd<SIMD1;simd++){
-					std::cout << " Value: "  << PARAM::weights.weights(oy*TX + ox)[pe][simd] <<std::endl;
-					std::cout << "W1[" << pe + oy * PE1 << "][" << kx << "][" << ky << "][" << simd + chan_count *SIMD1 << "]"<< std::endl;
-					//W1[ pe + oy * PE1 ][kx][ky][simd + chan_count *SIMD1] = PARAM::weights.weights(oy*TX + ox)[pe][simd];
-					W1[ pe + oy * PE1 ][kx][ky][chan_count] = PARAM::weights.weights(oy*TX + ox)[pe][simd];
-					//std::cout << " Value: " << W1[ pe + oy * PE1 ][kx][ky][simd + ox *SIMD1] << " " << PARAM::weights.weights(oy*TX + ox)[pe][simd] <<std::endl;
+					W1[out_chan_count][kx][ky][chan_count] = PARAM::weights.weights(oy*TX + ox)[pe][simd];
 					kx++;
 					if (kx==KERNEL_DIM){
 						kx=0;
@@ -76,6 +108,10 @@ int main()
 					    	chan_count++;
 						    if (chan_count==IFM_Channels1){
 						    	chan_count=0;
+						    	out_chan_count++;
+							    if (out_chan_count==OFM_Channels1){
+							    	out_chan_count=0;
+							    }
 						    }
 					    }
 					}
@@ -83,31 +119,8 @@ int main()
 			}
 		}
 	}
-	/*
-	for (unsigned int ofmc = 0; ofmc < OFM_Channels1; ofmc++) {
-		for (unsigned int kx = 0; kx < KERNEL_DIM; kx++) {
-			for (unsigned int ky = 0; ky < KERNEL_DIM; ky++) {
-				for (unsigned int ifmc = 0; ifmc < IFM_Channels1; ifmc++) {
-					unsigned int simd_pointer = (ifmc+kx+ky)%SIMD1;
-					unsigned int pe_pointer = ofmc%PE1;
-					unsigned int tile_pointer = ((ifmc+kx*KERNEL_DIM+ky)/SIMD1)%TILE1;
-					std::cout << "SIMD: " << simd_pointer << " PE: " << pe_pointer << " TILE: " << tile_pointer;
-					std::cout << " IFMC: " << ifmc << " OFMC: " << ofmc << " KX: " << kx  << " KY: " << ky <<std::endl;
-					W1[ifmc][kx][ky][ofmc] = PARAM::weights.weights(simd_pointer)[pe_pointer][tile_pointer];
-					std::cout << " Value: " << W1[ifmc][kx][ky][ofmc] << " " << PARAM::weights.weights(simd_pointer)[pe_pointer][tile_pointer] <<std::endl;
-				}
-			}
-		}
-	}
-*/
-	stream<ap_uint<SIMD1 * PE1 * WIDTH>> paramStream("DoCompute.ParamStrm");
-#pragma HLS STREAM variable=paramStream depth=1
-
 	conv<MAX_IMAGES,IFMDim1,OFMDim1,IFM_Channels1,OFM_Channels1, KERNEL_DIM, 1, ap_uint<INPUT_PRECISION> >(IMAGE, W1, TEST);
-	//ConvLayer_Batch<KERNEL_DIM, IFM_Channels1, IFMDim1, OFM_Channels1, OFMDim1, SIMD1, PE1, Slice<ap_uint<INPUT_PRECISION> >, Slice<ap_int<16> >, Identity >(input_stream, output_stream, PARAM::weights, PassThroughActivation<ap_uint<16>>(), MAX_IMAGES, ap_resource_dsp());
-	GenWeightStream(paramStream, MAX_IMAGES * OFMDim1 * OFMDim1);
-	ConvLayer(input_stream, output_stream, paramStream, MAX_IMAGES);
-
+	Testbench_convmmv(input_stream, output_stream, MAX_IMAGES);
 	int err_counter = 0, err_perimage=0;
 	ap_int<ACTIVATION_PRECISION> out_chan;
 	for (unsigned int n_image = 0; n_image < MAX_IMAGES; n_image++) {
@@ -121,7 +134,7 @@ int main()
 
 						if (EXP != out_chan){
 							std::cout << "ERROR: Expected["<<oy <<"]["<<ox<<"]["<<channel<<"]=" << EXP << " actual " <<  out_chan << std::endl;
-							//return 1;
+							return 1;
 							err_counter ++;
 							err_perimage++;
 							//if(err_counter>10)
@@ -147,3 +160,5 @@ int main()
 	}
 
 }
+
+

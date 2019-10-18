@@ -32,10 +32,10 @@
 
 /*****************************************************************************
  *
- *  Authors: Giulio Gambardella <giuliog\xilinx.com>
- *           Thomas B. Preusser <thomas.preusser\utexas.edu>
+ *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *           Thomas B. Preusser <thomas.preusser@utexas.edu>
  *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
- *           Christoph Doehring <cdoehrin\xilinx.com>
+ *           Christoph Doehring <cdoehrin@xilinx.com>
  *
  *  \file mac.hpp
  *
@@ -143,6 +143,33 @@ auto mul(TC const &c, TD const &d, ap_resource_dsp const&) -> decltype(c*d) {
   return  res;
 }
 
+/**
+ * \brief      MAC with selectable implementation resource, used by Matrix_Vector_Activate_Batch
+ *
+ * \tparam     N     Number of MAC to be performed (equals to SIMD in mvau)
+ * \tparam     T     Accumulator datatype
+ * \tparam     TC    First operand datatype (weights)
+ * \tparam     TD    Second operand datatype (input)
+ * \tparam     R     Datatype for the resource used for FPGA implementation of the MAC  - safely deducible from the paramaters
+ * 
+ * \param      a     Initialization value of the accumulation
+ * \param      c     First operand (array of weights)
+ * \param      d     Second operand (array of input activation)
+ * \param      r     Resource type for the hardware implementation of the MAC block
+ * \param      mmv   MMV value to address accumulator and activation
+ *
+ * \return     Result of the MAC operation
+ */
+template<unsigned N, typename T, typename TC, typename TD, typename R>
+T mac(T const &a, TC const &c, TD const &d, R const &r, unsigned mmv) {
+#pragma HLS inline
+  T  res = a;
+  for(unsigned  i = 0; i < N; i++) {
+#pragma HLS unroll
+    res += mul(c[i], d(i,mmv), r);
+  }
+  return  res;
+}
 
 /**
  * \brief      MAC with selectable implementation resource, used by Matrix_Vector_Activate_Batch
