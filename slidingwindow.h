@@ -81,13 +81,8 @@ void ConvolutionInputGenerator(
 		stream<ap_uint<SIMD*Input_precision> > & in,
 		stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps = 1) {
-	
-  if(IFMChannels % SIMD != 0) {
-    std::cout << "Error: IFM channels has to be a multiple of SIMD" << endl;
-  }
-  if(ConvKernelDim % Stride != 0) {
-	std::cout << "Error: Kernel size has to be multiple of Stride" << endl;
-  }
+  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+  CASSERT_DATAFLOW(ConvKernelDim % Stride == 0);
   const unsigned int multiplying_factor = IFMChannels/SIMD;
   const unsigned int number_blocks = ConvKernelDim/Stride + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks][Stride * IFMDim * multiplying_factor];
@@ -213,12 +208,10 @@ void ConvolutionInputGenerator_MMV(
 		stream<ap_uint<SIMD*Input_precision> > & in,
 		stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
 		const unsigned int numReps = 1) {
-	if(MMV > OFMDim || OFMDim % MMV != 0) {
-		cout << "Error: MMV-SWU assumptions violated, won't work properly" << endl;
-	}
-	if(IFMChannels % SIMD != 0) {
-		cout << "Error: IFM channels has to be a multiple of SIMD" << endl;
-	}
+  	CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+  	CASSERT_DATAFLOW(OFMDim % MMV == 0);
+	CASSERT_DATAFLOW(ConvKernelDim % Stride == 0);
+	CASSERT_DATAFLOW(MMV <= OFMDim);
 	constexpr unsigned int multiplying_factor = IFMChannels/SIMD;
 	constexpr unsigned int number_blocks = ConvKernelDim/Stride + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[MMV][number_blocks][Stride * IFMDim * multiplying_factor];
