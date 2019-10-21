@@ -44,8 +44,6 @@
  *
  *****************************************************************************/
 
-#define AP_INT_MAX_W 4096 
-
 #include <hls_stream.h>
 #include "ap_int.h"
 #include <iostream>
