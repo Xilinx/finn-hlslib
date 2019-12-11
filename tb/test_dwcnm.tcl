@@ -32,8 +32,9 @@
 ###############################################################################
  #
  #  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ #           Mario Ruiz         <mruiznog@xilinx.com>
  #
- # \file test_dwc.tcl
+ # \file test_dwcnm.tcl
  #
  # Tcl script for HLS csim, synthesis and cosim of the datawidth converter block
  #

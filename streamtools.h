@@ -338,12 +338,11 @@ void StreamingDataWidthConverterNoMultiple(
     CASSERT_DATAFLOW((InWidth % 2) == 0);
     CASSERT_DATAFLOW((OutWidth % 2) == 0);
     CASSERT_DATAFLOW(InWidth != OutWidth);
+    static unsigned int      offset = 0; 
 
     if (InWidth > OutWidth){
-      
-      static unsigned int      offset = 0; 
+     
       static ap_uint<OutWidth> remainder = 0;
-      
       ap_uint<InWidth>  valueIn = in.read();
       
       if(offset !=0) {
@@ -364,7 +363,25 @@ void StreamingDataWidthConverterNoMultiple(
         offset = offset + OutWidth - InWidth;
     }
     else {
-
+      /*OutWidth > InWidth*/
+      static ap_uint<InWidth> remainder = 0;
+      ap_uint<OutWidth> value = 0;
+      if (offset !=0) {
+        value(offset-1,0) = remainder(InWidth-1,InWidth-offset);
+      }
+      for (; offset <= (OutWidth-InWidth); offset+=InWidth){
+        ap_uint<InWidth>   aux = in.read();
+        value(offset+InWidth-1,offset) = aux;
+      }
+      if (offset != OutWidth){
+        ap_uint<InWidth>   aux = in.read();
+        value(OutWidth-1,offset) = aux(OutWidth-offset-1,0);
+        remainder                   = aux;
+        offset = offset + InWidth - OutWidth;
+      }
+      else
+        offset = 0;
+      out.write(value);
     }
 
 }
