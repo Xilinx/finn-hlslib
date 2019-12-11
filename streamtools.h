@@ -337,20 +337,18 @@ void StreamingDataWidthConverterNoMultiple(
     hls::stream<ap_uint<OutWidth> > & out) {
     CASSERT_DATAFLOW((InWidth % 2) == 0);
     CASSERT_DATAFLOW((OutWidth % 2) == 0);
+    CASSERT_DATAFLOW(InWidth != OutWidth);
 
     if (InWidth > OutWidth){
       
-      enum states {READ_INPUT, PRODUCE_OUTPUT};
-      static states sdwc_state = READ_INPUT;
-      static ap_uint<InWidth> combinedWord = 0;
       static unsigned int      offset = 0; 
-      static ap_uint<OutWidth> remaining = 0;
+      static ap_uint<OutWidth> remainder = 0;
       
       ap_uint<InWidth>  valueIn = in.read();
       
       if(offset !=0) {
         ap_uint<OutWidth>   valueOut = 0;
-        valueOut = (valueIn(offset-1,0),remaining(OutWidth-offset-1,0));
+        valueOut = (valueIn(offset-1,0),remainder(OutWidth-offset-1,0));
         valueIn = valueIn(InWidth-1,offset); // leave the next part prepared 
         out.write(valueOut);
       }
@@ -359,11 +357,14 @@ void StreamingDataWidthConverterNoMultiple(
         valueIn = valueIn(InWidth-1,OutWidth); // leave the next part prepared 
         out.write(valueOut);
       }
-      remaining = valueIn;
+      remainder = valueIn;
       if (offset == InWidth)
         offset = 0;
       else
         offset = offset + OutWidth - InWidth;
+    }
+    else {
+
     }
 
 }

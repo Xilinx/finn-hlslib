@@ -49,14 +49,8 @@
 #include "ap_int.h"
 #include "bnn-library.h"
 
-#include "dwcnm_config.h"
-
-#include "activations.hpp"
-#include "interpret.hpp"
-
 using namespace hls;
 using namespace std;
-
 
 void Testbench_dwcnm(stream<ap_uint<INPUT_WIDTH> > & in, stream<ap_uint<OUT_WIDTH> > & out);
 
@@ -65,26 +59,27 @@ int main() {
 	stream<ap_uint<OUT_WIDTH> > output_stream("output_stream");
 	ap_uint<OUT_WIDTH> expected[IMAGE_SIZE/OUT_WIDTH];
 	unsigned int count_out  =0;
-	unsigned int count_in   =0;
 	unsigned int count_word =0;
 	unsigned int offset     =0;
-	ap_uint<OUT_WIDTH>   remaining = 0;
+	ap_uint<OUT_WIDTH>     remainder = 0;
 	
 	if (INPUT_WIDTH > OUT_WIDTH) {
 		for (unsigned int counter = 0; counter < IMAGE_SIZE/INPUT_WIDTH; counter++) {
 			ap_uint<INPUT_WIDTH> value = 0;
 			ap_uint<OUT_WIDTH>   aux = 0;
 			if (offset !=0) {
-				value(offset-1,0) = remaining(OUT_WIDTH-1,OUT_WIDTH-offset);
+				value(offset-1,0) = remainder(OUT_WIDTH-1,OUT_WIDTH-offset);
 			}
 			for (; offset <= (INPUT_WIDTH-OUT_WIDTH); offset+=OUT_WIDTH){
+				expected[count_word] = count_word;
 				aux = (ap_uint<OUT_WIDTH>) count_word++;
 				value(offset+OUT_WIDTH-1,offset) = aux;
 			}
 			if (offset !=INPUT_WIDTH){
+				expected[count_word] = count_word;
 				aux = (ap_uint<OUT_WIDTH>) count_word++;
 				value(INPUT_WIDTH-1,offset) = aux(INPUT_WIDTH-offset-1,0);
-				remaining                   = aux;
+				remainder                   = aux;
 				offset = offset + OUT_WIDTH - INPUT_WIDTH;
 			}
 			else
@@ -92,17 +87,21 @@ int main() {
 			input_stream.write(value);
 		}
 	}
-	
+
 	while (!input_stream.empty()) {
 		Testbench_dwcnm(input_stream, output_stream);
 	}
 	
-	for (unsigned int counter=0 ; counter <  IMAGE_SIZE/OUT_WIDTH; counter++){
+	while (!output_stream.empty()){
 		ap_uint<OUT_WIDTH> value = output_stream.read();
-		if(value!= counter) {
-			cout << "ERROR with counter " << std::dec << counter << std::dec << " expected " << counter << " value " << value << std::dec <<  endl;
-			return(1);
+		if(value!= expected[count_out]) {
+			std::cerr << "ERROR with output No. " << std::dec << count_out << " expected " << expected[count_out] << " got " << value << std::dec <<  endl;
+			return(-1);
 		}
+		count_out++;
+	}
+	if (count_out != IMAGE_SIZE/OUT_WIDTH) {
+		std::cerr << "ERROR with output words there were " << std::dec << count_out << " there should be " <<  IMAGE_SIZE/OUT_WIDTH << std::endl;
 	}
 	std::cout<< "Test passed successfully " << std::endl;
 	return 0;

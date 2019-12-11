@@ -43,7 +43,6 @@
 using namespace hls;
 #include "ap_int.h"
 #include "bnn-library.h"
-#include "dwcnm_config.h"
 
 void Testbench_dwcnm(stream<ap_uint<INPUT_WIDTH> > & in, stream<ap_uint<OUT_WIDTH> > & out){
 	StreamingDataWidthConverterNoMultiple<INPUT_WIDTH, OUT_WIDTH>(in, out);
