@@ -315,6 +315,61 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 }
 
 /**
+ * \brief   Stream Data Width Converter No Multiple - 
+ *          Converts the width of the input stream in the output stream for no multiple dimensions
+ *
+ * Used to downscale a stream, without any loss of data in the procedure. 
+ * For downscaling (InWidth > OutWidth), InWidth has to be a multiple of OutWidth.
+ *
+ * \tparam     InWidth      Width, in number of bits, of the input stream
+ * \tparam     OutWidth     Width, in number of bits, of the output stream 
+ *
+ * \param      in           Input stream
+ * \param      out          Output stream
+ *
+ */
+template<
+    unsigned int InWidth,    
+    unsigned int OutWidth
+>
+void StreamingDataWidthConverterNoMultiple(
+    hls::stream<ap_uint<InWidth> > & in,
+    hls::stream<ap_uint<OutWidth> > & out) {
+    CASSERT_DATAFLOW((InWidth % 2) == 0);
+    CASSERT_DATAFLOW((OutWidth % 2) == 0);
+
+    if (InWidth > OutWidth){
+      
+      enum states {READ_INPUT, PRODUCE_OUTPUT};
+      static states sdwc_state = READ_INPUT;
+      static ap_uint<InWidth> combinedWord = 0;
+      static unsigned int      offset = 0; 
+      static ap_uint<OutWidth> remaining = 0;
+      
+      ap_uint<InWidth>  valueIn = in.read();
+      
+      if(offset !=0) {
+        ap_uint<OutWidth>   valueOut = 0;
+        valueOut = (valueIn(offset-1,0),remaining(OutWidth-offset-1,0));
+        valueIn = valueIn(InWidth-1,offset); // leave the next part prepared 
+        out.write(valueOut);
+      }
+      for (; offset <= (InWidth-OutWidth) ; offset+=OutWidth){
+        ap_uint<OutWidth>   valueOut = valueIn(OutWidth-1,0);
+        valueIn = valueIn(InWidth-1,OutWidth); // leave the next part prepared 
+        out.write(valueOut);
+      }
+      remaining = valueIn;
+      if (offset == InWidth)
+        offset = 0;
+      else
+        offset = offset + OutWidth - InWidth;
+    }
+
+}
+
+
+/**
  * \brief   Stream Duplicator - Reads in a stream and writes the data into two identical streams
  *
  * Used to generate the inputs to the bypass and convolutional branches in Resnet-50
