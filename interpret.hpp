@@ -37,7 +37,7 @@
  *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
  *           Christoph Doehring <cdoehrin@xilinx.com>
  *
- *  @file interpret.hpp
+ *  \file interpret.hpp
  *
  *  This project has received funding from the European Union's Framework
  *  Programme for Research and Innovation Horizon 2020 (2014-2020) under
@@ -146,6 +146,10 @@ class Recast {
 #pragma HLS inline
       return  m_val[idx];
     }
+    T operator()(unsigned const idx, unsigned const mmv) const {
+#pragma HLS inline
+      return  T(m_val[idx]);
+    }
     operator TV const&() const {
 #pragma HLS inline
       return  m_val;
@@ -155,6 +159,11 @@ class Recast {
  public:
   template<typename TV>
   Container<TV> operator()(TV const &val) const {
+#pragma HLS inline
+    return  Container<TV>(val);
+  }
+  template<typename TV>
+  Container<TV> operator()(TV const &val, unsigned const mmv) const {
 #pragma HLS inline
     return  Container<TV>(val);
   }
@@ -197,13 +206,14 @@ class Slice {
 #pragma HLS inline
     }
    public:
-    auto access(unsigned const  mmv) -> decltype(m_val) {
-#pragma HLS inline
-    return  m_val;;
-  }
-    auto operator()(unsigned const idx, unsigned const mmv) const -> decltype(m_val(STRIDE, 0)) {
+    auto operator()(unsigned const idx, unsigned const mmv, const bool flag) const -> decltype(m_val(STRIDE, 0)) {
 #pragma HLS inline
       return  m_val((idx+1)*STRIDE-1, idx*STRIDE);
+    }
+    T operator()(unsigned const idx, unsigned const mmv) const {
+#pragma HLS inline
+      ap_uint<STRIDE> const  r = m_val((idx+1)*STRIDE-1, idx*STRIDE);
+      return  Caster<T>::cast(ap_int<STRIDE>(r));
     }
     auto operator[](unsigned mmv) const -> decltype(m_val) {
 #pragma HLS inline
@@ -233,11 +243,13 @@ class Slice {
   }
 };
 
-// This class is done for Slicing an MMV container (vector of ap_uint
+
+// This class is done for Slicing an MMV container (vector of ap_uint)
 template<typename T, unsigned MMV, unsigned STRIDE=T::width>
 class Slice_mmv {
  public:
   static unsigned const  width = STRIDE;
+  
  private:
   template<typename TV>
   class Container {
@@ -250,15 +262,23 @@ class Slice_mmv {
     Container(TV const &val, unsigned mmv) : m_val(val){
 #pragma HLS inline
     }
+    Container(TV const &val) : m_val(val){
+#pragma HLS inline
+    }
    public:
     operator TV const&() const {
 #pragma HLS inline
       return  m_val;
     };
-    auto operator()(unsigned const idx, unsigned const mmv) const -> decltype(m_val.data[mmv](STRIDE, 0)) {
+    auto operator()(unsigned const idx, unsigned const mmv, const bool flag) const -> decltype(m_val.data[mmv](STRIDE, 0)) {
 #pragma HLS inline
       return  m_val.data[mmv]((idx+1)*STRIDE-1, idx*STRIDE);
     };
+    T operator()(unsigned const idx, unsigned const mmv) const {
+#pragma HLS inline
+      ap_uint<STRIDE> const  r = m_val.data[mmv]((idx+1)*STRIDE-1, idx*STRIDE);
+      return  Caster<T>::cast(ap_int<STRIDE>(r));
+    }
     auto operator[](unsigned const mmv) const -> decltype(m_val.data[mmv]) {
 #pragma HLS inline
       return  m_val.data[mmv];
@@ -279,7 +299,7 @@ class Slice_mmv {
   template<typename TV>
   Container<TV> operator()(TV const &val, unsigned mmv)  {
 #pragma HLS inline
-    return  Container<TV>(val,mmv);
+    return  Container<TV>(val);
   }
 };
 
