@@ -32,10 +32,10 @@
  
 /*****************************************************************************
  *
- *  Authors: Giulio Gambardella <giuliog\xilinx.com>
- *           Thomas B. Preusser <thomas.preusser\utexas.edu>
+ *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *           Thomas B. Preusser <thomas.preusser@utexas.edu>
  *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
- *           Christoph Doehring <cdoehrin\xilinx.com>
+ *           Christoph Doehring <cdoehrin@xilinx.com>
  *
  *  \file fclayer.h
  *
@@ -104,7 +104,7 @@ void StreamingFCLayer_Batch(hls::stream<ap_uint<InStreamW>>  &in,
   WidthAdjustedInputStream <InStreamW, SIMD*TSrcI::width, InpPerImage>  wa_in (in,  reps);
   WidthAdjustedOutputStream<PE*TDstI::width,  OutStreamW, OutPerImage>  wa_out(out, reps);
 
-  Matrix_Vector_Activate_Batch<MatrixW, MatrixH, SIMD, PE, TSrcI, TDstI, TWeightI>
+  Matrix_Vector_Activate_Batch<MatrixW, MatrixH, SIMD, PE, 1, TSrcI, TDstI, TWeightI>
     (static_cast<hls::stream<ap_uint<SIMD*TSrcI::width>>&>(wa_in),
      static_cast<hls::stream<ap_uint<PE*TDstI::width>>&>  (wa_out),
      weights, activation, reps, r);

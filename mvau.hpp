@@ -127,8 +127,6 @@ void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
       inElem = in.read();
       // store in appropriate buffer for reuse
       inputBuf[sf] = inElem;
-//#pragma HLS ARRAY_PARTITION variable=inputBuf[sf].data complete dim=1
-// TODO: Fix this and including in contructor of inputBuf
     }
     else {
       // reuse buffered input
@@ -165,12 +163,11 @@ void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
 #pragma HLS UNROLL
         for (unsigned mmv = 0; mmv < MMV; mmv++){
 #pragma HLS UNROLL
-          outElem(pe,mmv) = activation.activate(nf, pe, accu[mmv][pe]);
+          outElem(pe,mmv,1) = activation.activate(nf, pe, accu[mmv][pe]);
         }
       }
 
       out.write(outElem);
-
       // next folded neuron or image
       sf = 0;
       if(++nf == NF) {
