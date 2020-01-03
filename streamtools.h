@@ -315,6 +315,79 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 }
 
 /**
+ * \brief   Stream Data Width Converter No Multiple - 
+ *          Converts the width of the input stream in the output stream for no multiple dimensions
+ *
+ * Used to downscale a stream, without any loss of data in the procedure. 
+ * For downscaling (InWidth > OutWidth), InWidth has to be a multiple of OutWidth.
+ *
+ * \tparam     InWidth      Width, in number of bits, of the input stream
+ * \tparam     OutWidth     Width, in number of bits, of the output stream 
+ *
+ * \param      in           Input stream
+ * \param      out          Output stream
+ *
+ */
+template<
+    unsigned int InWidth,    
+    unsigned int OutWidth
+>
+void StreamingDataWidthConverterNoMultiple(
+    hls::stream<ap_uint<InWidth> > & in,
+    hls::stream<ap_uint<OutWidth> > & out) {
+    CASSERT_DATAFLOW((InWidth % 2) == 0);
+    CASSERT_DATAFLOW((OutWidth % 2) == 0);
+    CASSERT_DATAFLOW(InWidth != OutWidth);
+    static unsigned int      offset = 0; 
+
+    if (InWidth > OutWidth){
+     
+      static ap_uint<OutWidth> remainder = 0;
+      ap_uint<InWidth>  valueIn = in.read();
+      
+      if(offset !=0) {
+        ap_uint<OutWidth>   valueOut = 0;
+        valueOut = (valueIn(offset-1,0),remainder(OutWidth-offset-1,0));
+        valueIn = valueIn(InWidth-1,offset); // leave the next part prepared 
+        out.write(valueOut);
+      }
+      for (; offset <= (InWidth-OutWidth) ; offset+=OutWidth){
+        ap_uint<OutWidth>   valueOut = valueIn(OutWidth-1,0);
+        valueIn = valueIn(InWidth-1,OutWidth); // leave the next part prepared 
+        out.write(valueOut);
+      }
+      remainder = valueIn;
+      if (offset == InWidth)
+        offset = 0;
+      else
+        offset = offset + OutWidth - InWidth;
+    }
+    else {
+      /*OutWidth > InWidth*/
+      static ap_uint<InWidth> remainder = 0;
+      ap_uint<OutWidth> value = 0;
+      if (offset !=0) {
+        value(offset-1,0) = remainder(InWidth-1,InWidth-offset);
+      }
+      for (; offset <= (OutWidth-InWidth); offset+=InWidth){
+        ap_uint<InWidth>   aux = in.read();
+        value(offset+InWidth-1,offset) = aux;
+      }
+      if (offset != OutWidth){
+        ap_uint<InWidth>   aux = in.read();
+        value(OutWidth-1,offset) = aux(OutWidth-offset-1,0);
+        remainder                   = aux;
+        offset = offset + InWidth - OutWidth;
+      }
+      else
+        offset = 0;
+      out.write(value);
+    }
+
+}
+
+
+/**
  * \brief   Stream Duplicator - Reads in a stream and writes the data into two identical streams
  *
  * Used to generate the inputs to the bypass and convolutional branches in Resnet-50
