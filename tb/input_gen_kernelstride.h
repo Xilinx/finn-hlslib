@@ -30,10 +30,10 @@
  *
  ******************************************************************************/
 #define SIMD 1
-#define KERNEL_DIM 2
+#define KERNEL_DIM 3
 #define IFM_Channels 2
-#define IFMDim 6
-#define OFMDim 3
+#define IFMDim 5
+#define OFMDim 2
 #define STRIDE 2
 #define INPUT_PRECISION 8
 #define MMV 1
