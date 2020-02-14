@@ -92,13 +92,13 @@ node {
         stage('Run tests DWCNM') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2019.1_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_dwcnm.tcl')
+            sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_dwcnm.tcl')
     }
     }, eigthBranch: {
         stage('Run tests SWG_KS') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2019.1_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_swg_kernelstride.tcl')
+            sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_swg_kernelstride.tcl')
     }
     }
 }
