@@ -74,7 +74,7 @@ node {
             echo "${env.FINN_HLS_ROOT}"
             sh('virtualenv venv; source venv/bin/activate;pip3.7 install -r requirements.txt')
         }
-        stage('Generate weigths fro conv test') {
+        stage('Generate weigths for conv test') {
             sh('source venv/bin/activate; cd tb; python3.7 gen_weigths.py;')
         }
         stage('Run tests CONV3') {
@@ -100,5 +100,19 @@ node {
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_swg_kernelstride.tcl')
     }
-    }
+    }, ninthBranch: {
+        stage('Set-up virtual env') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('virtualenv venv; source venv/bin/activate;pip3.7 install -r requirements.txt')
+        }
+        stage('Generate weigths for depthwise separable conv test') {
+            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_dws.py;')
+        }
+        stage('Run tests DWSCONV') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_conv_dws.tcl')
+        }
+	}
 }

@@ -33,82 +33,32 @@
  *
  *  Authors: Giulio Gambardella <giuliog@xilinx.com>
  *
- *  \file conv.hpp
+ *  \file conv_top.cpp
  *
- *  C++ Implementation of a convolution, used for testbench
+ *  HLS Top function with a single convolutional layer for unit testing
  *
  *****************************************************************************/
-#ifndef CONV_TB_H
-#define CONV_TB_H
+#include <hls_stream.h>
+using namespace hls;
+#define AP_INT_MAX_W 4096
+#include "ap_int.h"
+#include "bnn-library.h"
 
-template<int MAX_IMAGE,
-	int IFMDim, 
-	int OFMDim, 
-	int IFMCh, 
-	int OFMCh, 
-	typename TI, 
-	typename TO, 
-	typename TW>
-	void conv_1x1(TI const img[MAX_IMAGE][IFMDim][IFMDim][IFMCh], TW const weights[OFMCh][IFMCh], TO out[MAX_IMAGE][OFMDim][OFMDim][OFMCh]){
-		constexpr int stride= (OFMDim==1)? IFMDim:(IFMDim - 1)/(OFMDim - 1);
-		for(int n=0;n<MAX_IMAGE;n++)
-			for(int x=0;x<OFMDim;x++)
-				for(int y=0;y<OFMDim;y++)
-					for(int h=0;h<OFMCh;h++){
-						TO tmp = 0;
-						for(int w=0;w<IFMCh;w++)
-							tmp+=img[n][x*stride][y*stride][w] * weights[h][w];
-						out[n][x][y][h] = tmp;
+#include "activations.hpp"
+#include "weights.hpp"
+#include "activations.hpp"
+#include "interpret.hpp"
+#include "mvau.hpp"
+#include "conv.hpp"
+#include "memdata-conv-dws.h"
+#include "config-conv-dws.h"
 
-					}
-	}
+void Testbench_conv_dws(stream<ap_uint<FM_Channels1*INPUT_PRECISION> > & in, stream<ap_uint<FM_Channels1*ACTIVATION_PRECISION> > & out, unsigned int numReps){
+#pragma HLS DATAFLOW
+	hls::stream<ap_uint<FM_Channels1*ap_uint<INPUT_PRECISION>::width> > resized_stream("resized_stream");
+	hls::stream<ap_uint<FM_Channels1*ap_uint<INPUT_PRECISION>::width> > swg_out("swg_out");
+	SameResize_Batch<IFMDim1, KERNEL_DIM, STRIDE, FM_Channels1, ap_uint<INPUT_PRECISION> >(in, resized_stream, numReps);
+	ConvolutionInputGenerator<KERNEL_DIM, FM_Channels1, ap_uint<INPUT_PRECISION>::width, IFMDim1+2, OFMDim1, FM_Channels1,1>(resized_stream, swg_out, numReps);
+	Vector_Vector_Activate_Batch<FM_Channels1, KERNEL_DIM, FM_Channels1, PE1, MMV1, Slice<ap_uint<INPUT_PRECISION> >, Slice<ap_int<16> >, Identity>(swg_out, out, PARAM::weights, PassThroughActivation<ap_int<16>>(), numReps*OFMDim1*OFMDim1, ap_resource_dsp());
 
-template<int MAX_IMAGE,
-	int IFMDim,
-	int OFMDim,
-	int IFMCh,
-	int OFMCh,
-	int kernel,
-	int stride,
-	typename TI,
-	typename TO,
-	typename TW>
-	void conv(TI const img[MAX_IMAGE][IFMDim*IFMDim][IFMCh], TW const weights[OFMCh][kernel][kernel][IFMCh], TO out[MAX_IMAGE][OFMDim][OFMDim][OFMCh]){
-		for(int n=0;n<MAX_IMAGE;n++)
-			for(int x=0;x<OFMDim;x++)
-				for(int y=0;y<OFMDim;y++)
-					for(int h=0;h<OFMCh;h++){
-						TO tmp = 0;
-						for (int ky=0;ky<kernel;ky++)
-							for (int kx=0;kx<kernel;kx++)
-								for(int w=0;w<IFMCh;w++){
-									tmp+=img[n][(y*stride+ky)*IFMDim+x*stride+kx][w] * weights[h][kx][ky][w];
-								}
-						out[n][x][y][h] = tmp;
-					}
-	}
-
-template<int MAX_IMAGE,
-	int IFMDim,
-	int OFMDim,
-	int FMCh,
-	int kernel,
-	int stride,
-	typename TI,
-	typename TO,
-	typename TW>
-	void dwsconv(TI const img[MAX_IMAGE][IFMDim][IFMDim][FMCh], TW const weights[FMCh][kernel][kernel], TO out[MAX_IMAGE][OFMDim][OFMDim][FMCh]){
-		for(int n=0;n<MAX_IMAGE;n++)
-			for(int y=0;y<OFMDim;y++)
-				for(int x=0;x<OFMDim;x++)
-					for(int h=0;h<FMCh;h++){
-						TO tmp = 0;
-						for (int ky=0;ky<kernel;ky++)
-							for (int kx=0;kx<kernel;kx++){
-								tmp+=img[n][y+kx][x+ky][h] * weights[h][kx][ky];
-							}
-						out[n][x][y][h] = tmp;
-					}
-	}
-
-#endif
+}

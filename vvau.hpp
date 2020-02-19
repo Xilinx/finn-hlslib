@@ -33,23 +33,16 @@
 /*******************************************************************************
  *
  *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *           Thomas B. Preusser <thomas.preusser@utexas.edu>
- *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
- *           Christoph Doehring <cdoehrin@xilinx.com>
  *
- *  \file mvau.hpp
+ *  \file vvau.hpp
  *
  *  This file lists a templated funtion used to implement  
- *  Matrix-Vector-Activation Unit
- *
- *  This project has received funding from the European Union's Framework
- *  Programme for Research and Innovation Horizon 2020 (2014-2020) under
- *  the Marie Skłodowska-Curie Grant Agreement No. 751339.
+ *  Vector-Vector-Activation Unit (used for depthwise separable convolutions)
  *
  *******************************************************************************/
 
-#ifndef MVAU_HPP
-#define MVAU_HPP
+#ifndef VVAU_HPP
+#define VVAU_HPP
 
 #include "hls_stream.h"
 
@@ -57,14 +50,14 @@
 #include "interpret.hpp"
 
 /**
- * \brief Matrix vector activate function
+ * \brief Vector vector activate function
  *
- * The function performs the multiplication between a weigth matrix and the input activation vector,
+ * The function performs the multiplication between a weigth vector and the input activation vector,
  * accumulating the results and then applying an activation function on the accumulated result.
- *
+ * It is used to implement depth-wise separable convolution
  * 
- * \tparam MatrixW    Width of the input matrix
- * \tparam MatrixH    Heigth of the input matrix
+ * \tparam Channels   Number of channels
+ * \tparam Kernel	    Kernel dimension (assumed square)
  * \tparam SIMD       Number of input columns computed in parallel
  * \tparam PE         Number of output rows computed in parallel
  * \tparam MMV        Number of output pixels computed in parallel
@@ -85,11 +78,11 @@
  * \param r           Resource type for the hardware implementation of the MAC block
  */
 template<
-  unsigned MatrixW, unsigned MatrixH, unsigned SIMD, unsigned PE, unsigned MMV, 
+  unsigned Channels, unsigned Kernel, unsigned SIMD, unsigned PE, unsigned MMV, 
   typename TSrcI = Identity, typename TDstI = Identity, typename TWeightI = Identity,
   typename TI, typename TO, typename TW, typename TA, typename R
 >
-void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
+void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
 				  hls::stream<TO> &out,
 				  TW  const &weights,
 				  TA  const &activation,
@@ -98,11 +91,11 @@ void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
 
   // how many different rows each neuron will compute
   // alternatively: number of vertical matrix chunks
-  unsigned const  NF = MatrixH / PE;
+  unsigned const  NF = Channels / PE;
 
   // how many synapse groups each row is split into
   // alternatively: number of horizontal matrix chunks
-  unsigned const  SF = MatrixW / SIMD;
+  unsigned const  SF = (Channels*Kernel*Kernel) / SIMD;
 
   // input vector buffers
   TI  inputBuf[SF];
@@ -115,7 +108,6 @@ void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
   unsigned  nf   = 0;
   unsigned  sf   = 0;
   unsigned  tile = 0; // invariant: tile = nf*SF + sf
-
   // everything merged into a common iteration space (one "big" loop instead
   // of smaller nested loops) to get the pipelinening the way we want
   unsigned const TOTAL_FOLD = NF * SF;
@@ -150,7 +142,7 @@ void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
       auto const  wgt = TWeightI()(w[pe]);
       for (unsigned mmv = 0; mmv < MMV; mmv++){
         auto const  act = TSrcI()(inElem, mmv);
-        accu[mmv][pe] = mac<SIMD>(accu[mmv][pe], wgt, act, r, mmv);
+		accu[mmv][pe] += mul(wgt[0], act(pe,mmv), r);
       }
     }
 

@@ -61,3 +61,4 @@ using namespace std;
 #include "maxpool.h"
 #include "fclayer.h"
 #include "convlayer.h"
+#include "vvau.hpp"
