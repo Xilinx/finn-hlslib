@@ -38,7 +38,7 @@
  # Tcl script for HLS csim, synthesis and cosim of the convolutional layer
  #
 ###############################################################################
-open_project hls-syn-conv
+open_project hls-syn-conv-stream
 add_files conv_stream_top.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
 add_files -tb conv3_tb.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
 set_top Testbench_conv

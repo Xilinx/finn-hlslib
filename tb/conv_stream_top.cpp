@@ -47,7 +47,7 @@ using namespace hls;
 #include "weights.hpp"
 #include "activations.hpp"
 #include "interpret.hpp"
-#include "dma.hpp"
+#include "dma.h"
 #include "mvau.hpp"
 #include "conv.hpp"
 #include "memdata.h"
@@ -55,24 +55,24 @@ using namespace hls;
 
 void Testbench_conv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream<ap_uint<OFM_Channels1*ACTIVATION_PRECISION> > & out, unsigned int numReps){
 #pragma HLS DATAFLOW
-	
-	unsigned const MatrixW = KERNEL_DIM * KERNEL_DIM * IFM_Channels1;
-	unsigned const MatrixH = OFM_Channels1;
-	unsigned const InpPerImage = IFMDim1*IFMDim1*TSrcI::width;
 
-	hls::stream<ap_uint<SIMD1*INPUT_PRECISION> > convInp;
-	hls::stream<ap_uint<SIMD1*PE1> > paramStreamOut;
+    unsigned const MatrixW = KERNEL_DIM * KERNEL_DIM * IFM_Channels1;
+    unsigned const MatrixH = OFM_Channels1;
+    unsigned const InpPerImage = IFMDim1*IFMDim1;
 
-    GenParamStream<TILE1, SIMD1, PE1, 1, BinaryWeights>(PARAM::weights, hls::stream<ap_uint<SIMD1*PE1>> &paramStreamOut, numReps * OFMDim1 * OFMDim1)
+    hls::stream<ap_uint<SIMD1*INPUT_PRECISION> > convInp;
+    hls::stream<ap_uint<SIMD1*PE1> > paramStreamOut;
 
-	WidthAdjustedInputStream <IFM_Channels1*INPUT_PRECISION, SIMD1*INPUT_PRECISION, InpPerImage>  wa_in (in,  numReps);
-    WidthAdjustedOutputStream <PE1*ACTIVATION_PRECISION, OFM_Channels1*ACTIVATION_PRECISION, OFMDim1 * OFMDim1 * (OFMChannels1 / PE1)>  mvOut (out,  numReps);
-    	
-    ConvolutionInputGenerator<KERNEL_DIM, IFMChannels1, TSrcI::width, IFMDim1, OFMDim1, SIMD1, 1>(wa_in, convInp, numReps);
-	
+    GenParamStream<TILE1, SIMD1, PE1, 1>(PARAM::weights, paramStreamOut, numReps * OFMDim1 * OFMDim1);
+
+    WidthAdjustedInputStream <IFM_Channels1*INPUT_PRECISION, SIMD1*INPUT_PRECISION, InpPerImage>  wa_in (in,  numReps);
+    WidthAdjustedOutputStream <PE1*ACTIVATION_PRECISION, OFM_Channels1*ACTIVATION_PRECISION, OFMDim1 * OFMDim1 * (OFM_Channels1 / PE1)>  mvOut (out,  numReps);
+
+    ConvolutionInputGenerator<KERNEL_DIM, IFM_Channels1, INPUT_PRECISION, IFMDim1, OFMDim1, SIMD1, 1>(wa_in, convInp, numReps);
+
     Matrix_Vector_Activate_Stream_Batch<MatrixW, MatrixH, SIMD1, PE1, 1, Slice<ap_uint<INPUT_PRECISION> >, Slice<ap_int<ACTIVATION_PRECISION> >, Identity>
-	(	static_cast<hls::stream<ap_uint<SIMD1*INPUT_PRECISION>>&>(convInp),
-		static_cast<hls::stream<ap_uint<PE1*ACTIVATION_PRECISION>>&>  (mvOut),
-		paramStreamOut, PassThroughActivation<ap_uint<16>>(), numReps* OFMDim1 * OFMDim1, ap_resource_lut()		);
+    (    static_cast<hls::stream<ap_uint<SIMD1*INPUT_PRECISION>>&>(convInp),
+         static_cast<hls::stream<ap_uint<PE1*ACTIVATION_PRECISION>>&>  (mvOut),
+         paramStreamOut, PassThroughActivation<ap_uint<16>>(), numReps* OFMDim1 * OFMDim1, ap_resource_lut()    );
 
 }
