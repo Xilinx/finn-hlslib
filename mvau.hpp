@@ -210,7 +210,7 @@ template<
   typename TSrcI = Identity, typename TDstI = Identity, typename TWeightI = Identity,
   typename TI, typename TO, typename TA, typename R
 >
-void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
+void Matrix_Vector_Activate_Stream_Batch(hls::stream<TI> &in,
 				  hls::stream<TO> &out,
           hls::stream<ap_uint<SIMD*PE*WP>> &weight,
 				  TA  const &activation,
