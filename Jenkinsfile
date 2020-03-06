@@ -85,6 +85,11 @@ node {
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_conv3.tcl')
         }
+        stage('Run tests CONV3_STREAM') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_conv_stream.tcl')
+        }
         stage('Run tests CONVMMV') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
@@ -94,7 +99,7 @@ node {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_conv_dws.tcl')
-        }    
+        }
     }, seventhBranch: {
         stage('Run tests DWCNM') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
