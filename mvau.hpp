@@ -182,7 +182,7 @@ void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
  * \brief Matrix vector activate function with streaming weights
  *
  * The function performs the multiplication between a weigth matrix, presnted as an input stream, and the input activation vector,
- * accumulating the results and then applying an activation function on the accumulated result.
+ * accumulating the results and then applying an activation function on the accumulated result. Does not support MMV.
  *
  * 
  * \tparam MatrixW    Width of the input matrix
@@ -229,7 +229,7 @@ void Matrix_Vector_Activate_Stream_Batch(hls::stream<TI> &in,
   TI  inputBuf[SF];
 #pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
 
-  decltype(activation.init(0,0))  accu[PE];
+  decltype(activation.init(0,0))  accu[1][PE];
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
 
   unsigned  nf   = 0;
@@ -270,16 +270,16 @@ void Matrix_Vector_Activate_Stream_Batch(hls::stream<TI> &in,
     if(sf == 0) {
       for(unsigned pe = 0; pe < PE; pe++) {
 #pragma HLS UNROLL
-	    accu[pe] = activation.init(nf, pe);
+	    accu[0][pe] = activation.init(nf, pe);
       }
     }
 
     // compute matrix-vector product for each processing element
     for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS UNROLL
-      auto const  act = TSrcI()(inElem);
+      auto const  act = TSrcI()(inElem, 0);
       auto const  w = TWeightI()(wgt[pe]);
-      accu[pe] = mac<SIMD>(accu[pe], w, act, r);
+      accu[0][pe] = mac<SIMD>(accu[0][pe], w, act, r, 0);
     }
 
     // keep track of which folded synapse/neuron we are processing
@@ -289,7 +289,7 @@ void Matrix_Vector_Activate_Stream_Batch(hls::stream<TI> &in,
       auto  outElem = TDstI().template operator()<TO>();
       for (unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS UNROLL
-	    outElem[pe] = activation.activate(nf, pe, accu[pe]);
+	    outElem(pe,0,1) = activation.activate(nf, pe, accu[0][pe]);
           }
 
       out.write(outElem);
