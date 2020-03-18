@@ -61,9 +61,9 @@ void Testbench_conv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream
     unsigned const InpPerImage = IFMDim1*IFMDim1;
 
     hls::stream<ap_uint<SIMD1*INPUT_PRECISION> > convInp;
-    hls::stream<ap_uint<SIMD1*PE1*2> > paramStreamOut;
+    hls::stream<ap_uint<SIMD1*PE1*WIDTH> > paramStreamOut;
 
-    GenParamStream<TILE1, SIMD1, PE1, 2>(PARAM::weights, paramStreamOut, numReps * OFMDim1 * OFMDim1);
+    GenParamStream<TILE1, SIMD1, PE1, WIDTH>(PARAM::weights, paramStreamOut, numReps * OFMDim1 * OFMDim1);
 
     WidthAdjustedInputStream <IFM_Channels1*INPUT_PRECISION, SIMD1*INPUT_PRECISION, InpPerImage>  wa_in (in,  numReps);
     WidthAdjustedOutputStream <PE1*ACTIVATION_PRECISION, OFM_Channels1*ACTIVATION_PRECISION, OFMDim1 * OFMDim1 * (OFM_Channels1 / PE1)>  mvOut (out,  numReps);
