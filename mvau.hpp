@@ -213,7 +213,7 @@ template<
 >
 void Matrix_Vector_Activate_Stream_Batch(hls::stream<TI> &in,
 				  hls::stream<TO> &out,
-          hls::stream<ap_uint<SIMD*PE*WP>> &weight,
+          hls::stream<ap_uint<SIMD*PE*TW::width>> &weight,
 				  TA  const &activation,
 				  int const  reps,
 				  R const &r) {
@@ -258,12 +258,12 @@ void Matrix_Vector_Activate_Stream_Batch(hls::stream<TI> &in,
     }
 
     // read from the parameter stream
-    ap_uint<SIMD * PE * WP> W_packed = weight.read();
+    ap_uint<SIMD * PE * TW::width> W_packed = weight.read();
     // mask the last (SIMD-wide) bits of the streamed word
     for (unsigned pe = 0; pe < PE; pe++) {
       // W[pe] = streamed_word & 2^SIMD - 1 (little endian)
-      w[PE - pe - 1] = (TW)W_packed & (((ap_uint<WP * SIMD + 1>)1 << (WP * SIMD)) - 1);
-      W_packed >>= WP * SIMD;
+      w[PE - pe - 1] = (TW)W_packed & (((ap_uint<TW::width * SIMD + 1>)1 << (TW::width * SIMD)) - 1);
+      W_packed >>= TW::width * SIMD;
     }
 
     // Threshold Initialisation
