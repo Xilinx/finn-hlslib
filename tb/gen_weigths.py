@@ -41,15 +41,15 @@ stride = 1
 input_precision = 8
 ifm_channels = 2
 ofm_channels = 1
-ifm_dimension = 5
-ofm_dimension = 3
+ifm_dimension = 8
+ofm_dimension = 6
 
 activation_precision = 16
 expand = 1
 simd = 2
 pe = 1
 w_precision = 2
-mmv=1
+mmv=2
 
 tile = ifm_channels *kernel_dim*kernel_dim * ofm_channels // (simd*pe)
 
