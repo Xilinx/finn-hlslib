@@ -73,6 +73,6 @@ void Testbench_conv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream
     Matrix_Vector_Activate_Stream_Batch<MatrixW, MatrixH, SIMD1, PE1, Slice<ap_uint<INPUT_PRECISION> >, Slice<ap_int<ACTIVATION_PRECISION> >, Slice<ap_int<WIDTH> >, ap_int<WIDTH> >
     (    static_cast<hls::stream<ap_uint<SIMD1*INPUT_PRECISION>>&>(convInp),
          static_cast<hls::stream<ap_uint<PE1*ACTIVATION_PRECISION>>&>  (mvOut),
-         paramStreamOut, PassThroughActivation<ap_uint<16>>(), numReps* OFMDim1 * OFMDim1, ap_resource_lut()    );
+         paramStreamOut, PassThroughActivation<ap_uint<16>>(), numReps* OFMDim1 * OFMDim1, ap_resource_dsp()    );
 
 }

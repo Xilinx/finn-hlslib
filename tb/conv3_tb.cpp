@@ -98,18 +98,16 @@ int main()
 		for (unsigned int ox = 0; ox <TX; ox++) {
 			for(int pe=0;pe <PE1;pe++){
 				for(int simd=0;simd<SIMD1;simd++){
-					std::cout << " Value: "  << PARAM::weights.weights(oy*TX + ox)[pe][simd] <<std::endl;
-					std::cout << "W1[" << out_chan_count << "][" << kx << "][" << ky << "][" << chan_count << "]"<< std::endl;
 					W1[out_chan_count][kx][ky][chan_count] = PARAM::weights.weights(oy*TX + ox)[pe][simd];
-					kx++;
-					if (kx==KERNEL_DIM){
-						kx=0;
-					    ky++;
-					    if (ky==KERNEL_DIM){
-					    	ky=0;
-					    	chan_count++;
-						    if (chan_count==IFM_Channels1){
-						    	chan_count=0;
+			    	chan_count++;
+				    if (chan_count==IFM_Channels1){
+				    	chan_count=0;
+						kx++;
+						if (kx==KERNEL_DIM){
+							kx=0;
+							ky++;
+							if (ky==KERNEL_DIM){
+								ky=0;
 						    	out_chan_count++;
 							    if (out_chan_count==OFM_Channels1){
 							    	out_chan_count=0;
