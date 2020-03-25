@@ -150,35 +150,24 @@ class FixedPointWeights {
 };
 
 
-template<unsigned SIMD, unsigned PE, unsigned WIDTH >
+template<unsigned SIMD, typename WT, unsigned PE  >
 class Weights_Tile { 
  public:
-  ap_uint<SIMD*WIDTH>  m_weights[PE];
+  ap_uint<SIMD*WT::width>  m_weights[PE];
 
-  std::array<ap_int<WIDTH>,SIMD> operator[](unsigned const  pe) const {
+  std::array<WT,SIMD> operator[](unsigned const  pe) const {
     #pragma HLS inline
-    std::array<ap_int<WIDTH>,SIMD> temp;
-    // std::array<WT,SIMD> temp;
+    std::array<WT,SIMD> temp;
     for(unsigned int i=0; i<SIMD; i++) {
       #pragma HLS unroll
-      ap_int<WIDTH> value;
-      value = m_weights[pe]((i+1)*WIDTH-1, i*WIDTH);
-      //WT value = *reinterpret_cast<WT*>(&local_temp);
+      ap_int<WT::width> local_temp;
+      local_temp = m_weights[pe]((i+1)*WT::width-1, i*WT::width);
+      WT value = *reinterpret_cast<WT*>(&local_temp);
       temp[i] = value;
     }
     return  temp;
   }
 };
 
-template<unsigned SIMD, unsigned PE>
-class Weights_Tile< SIMD,  PE, 1> {
- public:
-  ap_uint<SIMD>  m_weights[PE];
-
-  ap_uint<SIMD> operator[](unsigned const  pe) const {
-#pragma HLS inline
-      return  (m_weights[pe]);
-    }
-};
 
 #endif
