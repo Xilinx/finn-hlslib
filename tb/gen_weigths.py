@@ -48,7 +48,7 @@ activation_precision = 16
 expand = 1
 simd = 2
 pe = 1
-w_precision = 2
+w_precision = 1
 mmv=2
 
 tile = ifm_channels *kernel_dim*kernel_dim * ofm_channels // (simd*pe)
