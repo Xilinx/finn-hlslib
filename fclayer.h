@@ -98,7 +98,7 @@ void StreamingFCLayer_Batch(hls::stream<ap_uint<InStreamW>>  &in,
 			    unsigned const   reps,
 				R const &r) {
 #pragma HLS INLINE
-  unsigned const  InpPerImage = MatrixW / InStreamW * TSrcI::width;
+  unsigned const  InpPerImage = (MatrixW * TSrcI::width) / InStreamW ;
   unsigned const  OutPerImage = MatrixH / PE;
 
   WidthAdjustedInputStream <InStreamW, SIMD*TSrcI::width, InpPerImage>  wa_in (in,  reps);

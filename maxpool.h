@@ -261,7 +261,7 @@ void ReLU_Batch(stream<ap_uint<PECount * ActType::width> > & in,
 }
 
 /**
- * \brief   Accumulate-pool - like average pooling over the whole frame, but without the dividion at end
+ * \brief   Accumulate-pool - like average pooling over the whole frame, but without the division at end
  *
  * \tparam ImgDim       Width and Heigth of the Input Feature Map (assumed square)
  * \tparam NumChannels  Number of Input Feature Maps
