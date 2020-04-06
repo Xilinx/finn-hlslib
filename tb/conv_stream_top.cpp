@@ -28,38 +28,51 @@
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- *****************************************************************************/
-
-/*****************************************************************************
+ ******************************************************************************/
+/******************************************************************************
  *
  *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *           Thomas B. Preusser <thomas.preusser@utexas.edu>
- *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
- *           Christoph Doehring <cdoehrin@xilinx.com>
  *
- *  @file bnn-library.h
+ *  \file conv_top.cpp
  *
- *  Library of templated HLS functions for BNN deployment. 
- *  Include this file in the network top funtion.
+ *  HLS Top function with a single convolutional layer for unit testing
  *
  *****************************************************************************/
-
 #include <hls_stream.h>
-#include "ap_int.h"
-#include <iostream>
-#include <string>
-
 using namespace hls;
-using namespace std;
+#include "ap_int.h"
+#include "bnn-library.h"
 
-#define CASSERT_DATAFLOW(x) {if (!(x)) {std::cout<< "CASSERT_DATAFLOW condition is not met " << endl; exit(-1);	}}
-
+#include "activations.hpp"
 #include "weights.hpp"
-#include "mmv.hpp"			   
-#include "streamtools.h"
+#include "activations.hpp"
+#include "interpret.hpp"
 #include "dma.h"
-#include "slidingwindow.h"
-#include "maxpool.h"
-#include "fclayer.h"
-#include "convlayer.h"
-#include "vvau.hpp"
+#include "mvau.hpp"
+#include "conv.hpp"
+#include "memdata.h"
+#include "config.h"
+
+void Testbench_conv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream<ap_uint<OFM_Channels1*ACTIVATION_PRECISION> > & out, unsigned int numReps){
+#pragma HLS DATAFLOW
+
+    unsigned const MatrixW = KERNEL_DIM * KERNEL_DIM * IFM_Channels1;
+    unsigned const MatrixH = OFM_Channels1;
+    unsigned const InpPerImage = IFMDim1*IFMDim1;
+
+    hls::stream<ap_uint<SIMD1*INPUT_PRECISION> > convInp;
+    hls::stream<ap_uint<SIMD1*PE1*WIDTH> > paramStreamOut;
+
+    GenParamStream<TILE1, SIMD1, PE1, WIDTH>(PARAM::weights, paramStreamOut, numReps * OFMDim1 * OFMDim1);
+
+    WidthAdjustedInputStream <IFM_Channels1*INPUT_PRECISION, SIMD1*INPUT_PRECISION, InpPerImage>  wa_in (in,  numReps);
+    WidthAdjustedOutputStream <PE1*ACTIVATION_PRECISION, OFM_Channels1*ACTIVATION_PRECISION, OFMDim1 * OFMDim1 * (OFM_Channels1 / PE1)>  mvOut (out,  numReps);
+
+    ConvolutionInputGenerator<KERNEL_DIM, IFM_Channels1, INPUT_PRECISION, IFMDim1, OFMDim1, SIMD1, 1>(wa_in, convInp, numReps);
+
+    Matrix_Vector_Activate_Stream_Batch<MatrixW, MatrixH, SIMD1, PE1, Slice<ap_uint<INPUT_PRECISION> >, Slice<ap_int<ACTIVATION_PRECISION> >, Identity, ap_uint<WIDTH> >
+    (    static_cast<hls::stream<ap_uint<SIMD1*INPUT_PRECISION>>&>(convInp),
+         static_cast<hls::stream<ap_uint<PE1*ACTIVATION_PRECISION>>&>  (mvOut),
+         paramStreamOut, PassThroughActivation<ap_uint<16>>(), numReps* OFMDim1 * OFMDim1, ap_resource_dsp()    );
+
+}
