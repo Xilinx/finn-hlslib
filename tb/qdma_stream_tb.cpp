@@ -1,10 +1,12 @@
-#include "streamtools.h"
+#include "ap_int.h"
+#include <hls_stream.h>
+#include "bnn-library.h"
 
 void qdma_conv_top(hls::stream<qdma_axis<128,0,0,0> > & in, hls::stream<qdma_axis<128,0,0,0> > & out);
 
 int main(){
-	hls::stream<qdma_axis<128,0,0,0> > input_stream;
-	hls::stream<qdma_axis<128,0,0,0> > output_stream;
+	hls::stream<qdma_axis<128,0,0,0> > input_stream("in");
+	hls::stream<qdma_axis<128,0,0,0> > output_stream("out");
 	ap_uint<128> mem[1000];
 	qdma_axis<128,0,0,0> tmp;
 	
@@ -21,10 +23,10 @@ int main(){
 	for(int i=0; i<1000; i++){
 		tmp = output_stream.read();
 		if(tmp.get_data() != mem[i]){
-			return -1;
+			return 1;
 		}
 		if(tmp.get_last() != (i==999)){
-			return -1;
+			return 2;
 		}
 	}
 
