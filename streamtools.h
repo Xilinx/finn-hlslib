@@ -152,7 +152,6 @@ void SameResize(stream<ap_uint<NumChannels* In_t::width> > &in,
 	// Padding Down and Right (might be 1 element more than up and left in case of odd padding)
 	constexpr unsigned int PaddingDown = Padding - PaddingUp;
 	constexpr unsigned int PaddingRight = Padding - PaddingLeft;
-
 	ap_uint<NumChannels* In_t::width> outData, inData;
 
 	for(unsigned int y = 0; y<OutputDim; y++){
@@ -211,6 +210,7 @@ void SameResize_Batch(stream<ap_uint<NumChannels* In_t::width> > &in,
 	}
 
 }
+
 
 
 /**
