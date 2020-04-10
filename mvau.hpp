@@ -258,7 +258,7 @@ void Matrix_Vector_Activate_Stream_Batch(hls::stream<TI> &in,
     Weights_Tile<SIMD, TW, PE > w;
     ap_uint<PE * SIMD * TW::width> W_packed = weight.read();
     for (unsigned pe = 0; pe < PE; pe++) {
-      w.m_weights[PE - pe - 1] = W_packed((pe+1)*SIMD*TW::width-1,pe*SIMD*TW::width);
+      w.m_weights[pe] = W_packed((pe+1)*SIMD*TW::width-1,pe*SIMD*TW::width);
     }
 
     // Threshold Initialisation
