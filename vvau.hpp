@@ -96,7 +96,6 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
   // how many synapse groups each row is split into
   // alternatively: number of horizontal matrix chunks
   unsigned const  SF = (Channels*Kernel*Kernel) / SIMD;
-
   // input vector buffers
   TI  inputBuf[SF];
 #pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=0
@@ -142,7 +141,7 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
       auto const  wgt = TWeightI()(w[pe]);
       for (unsigned mmv = 0; mmv < MMV; mmv++){
         auto const  act = TSrcI()(inElem, mmv);
-		accu[mmv][pe] += mul(wgt[0], act(pe,mmv), r);
+		accu[mmv][pe] += mul(wgt[0], act(pe+nf*PE,mmv), r);
       }
     }
 

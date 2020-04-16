@@ -193,7 +193,7 @@ void Thresholding_Batch(hls::stream<TI> &in,
     {
 #pragma HLS UNROLL
       auto const act = TSrcI()(inElem);
-      outElem(pe,0) = activation.activate(nf, pe, act(pe,0));
+      outElem(pe,0,1) = activation.activate(nf, pe, act(pe,0));
     }
     out.write(outElem);
     if (++nf == NF)

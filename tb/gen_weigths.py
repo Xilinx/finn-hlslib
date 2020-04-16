@@ -38,15 +38,15 @@ outFileConfig = open("config.h" , "wt")
 
 kernel_dim = 3 
 stride = 1
-input_precision = 4
-ifm_channels = 1
+input_precision = 8
+ifm_channels = 2
 ofm_channels = 1
 ifm_dimension = 8
 ofm_dimension = 6
 
 activation_precision = 16
 expand = 1
-simd = 1
+simd = 2
 pe = 1
 w_precision = 1
 mmv=2
