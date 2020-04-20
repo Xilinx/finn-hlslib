@@ -228,9 +228,14 @@ void Matrix_Vector_Activate_Stream_Batch(hls::stream<TI> &in,
   // input vector buffers
   TI  inputBuf[SF];
 #pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
-
+  // accumulators
   decltype(activation.init(0,0))  accu[1][PE];
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
+  // unpacked and packed buffers for weight stream
+  Weights_Tile<SIMD, TW, PE > w;
+#pragma HLS ARRAY_PARTITION variable=w.m_weights complete dim=0
+  ap_uint<PE * SIMD * TW::width> W_packed;
+
 
   unsigned  nf   = 0;
   unsigned  sf   = 0;
@@ -255,9 +260,9 @@ void Matrix_Vector_Activate_Stream_Batch(hls::stream<TI> &in,
     }
 
     // read from the parameter stream
-    Weights_Tile<SIMD, TW, PE > w;
-    ap_uint<PE * SIMD * TW::width> W_packed = weight.read();
+    W_packed = weight.read();
     for (unsigned pe = 0; pe < PE; pe++) {
+#pragma HLS UNROLL
       w.m_weights[pe] = W_packed((pe+1)*SIMD*TW::width-1,pe*SIMD*TW::width);
     }
 
