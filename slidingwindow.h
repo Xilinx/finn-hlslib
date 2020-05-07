@@ -48,10 +48,30 @@
 #ifndef SLIDINGWINDOW_H
 #define SLIDINGWINDOW_H
  
+#include "utils.hpp"
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y)) /* \brief Maximum value between x and y*/
 #define MIN(x, y) (((x) > (y)) ? (y) : (x)) /* !< \brief Minimum value between x and y*/
-
+template <typename T>
+void memory_resource(T inputBuf, ap_resource_dflt const&){
+#pragma HLS inline
+#pragma HLS RESOURCE variable=inputBuf core=RAM_2P
+}
+template <typename T>
+void memory_resource(T inputBuf, ap_resource_bram const&){
+#pragma HLS inline
+#pragma HLS RESOURCE variable=inputBuf core=RAM_S2P_BRAM
+}
+template <typename T>
+void memory_resource(T inputBuf, ap_resource_uram const&){
+#pragma HLS inline
+#pragma HLS RESOURCE variable=inputBuf core=RAM_S2P_URAM
+}
+template <typename T>
+void memory_resource(T inputBuf, ap_resource_lutram const&){
+#pragma HLS inline
+#pragma HLS RESOURCE variable=inputBuf core=RAM_S2P_LUTRAM
+}
 
 /**
  * \brief Sliding Window unit that produces output vectors for feeding
@@ -482,10 +502,12 @@ for (unsigned int count_image = 0; count_image < numReps; count_image++) {
  * \tparam OFMDim           Width and Heigth of the Output Feature Map (assumed square)
  * \tparam SIMD             Number of input columns computed in parallel
  * \tparam Stride           Stride of the convolutional kernel
- * 
+ * \tparam R          	  Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the paramaters
+ *
  * \param in                Input stream
  * \param out               Output stream
  * \param numReps           Number of time the function has to be repeatedly executed (e.g. number of images)
+ * \param r			  Resource type for the hardware implementation of the memory block
  */
 template<unsigned int ConvKernelDim, 
 		 unsigned int IFMChannels,
@@ -493,11 +515,13 @@ template<unsigned int ConvKernelDim,
 		 unsigned int IFMDim, 
 		 unsigned int OFMDim,
 		 unsigned int SIMD,
-		 unsigned int Stride = 1>  
+		 unsigned int Stride, 
+		 typename R>  
 void ConvolutionInputGenerator_dws(
 		stream<ap_uint<SIMD*Input_precision> > & in,
 		stream<ap_uint<SIMD*Input_precision> > & out,
-		const unsigned int numReps = 1) {
+		const unsigned int numReps,
+		R const &r) {
   CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
   CASSERT_DATAFLOW(ConvKernelDim % Stride == 0);
   const unsigned int multiplying_factor = IFMChannels/SIMD;
@@ -505,7 +529,7 @@ void ConvolutionInputGenerator_dws(
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks][Stride * IFMDim * multiplying_factor];
 
 #pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
-#pragma HLS RESOURCE variable inputBuf core=RAM_2P
+  memory_resource(inputBuf, r);
   const unsigned int cycles_write_block = (OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor);
   const unsigned int cycles_read_block = Stride * IFMDim * multiplying_factor;
   const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);

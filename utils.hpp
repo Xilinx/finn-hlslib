@@ -71,6 +71,10 @@ struct first_param<R (C::*)(A, Args...)> { typedef A  type; };
 class ap_resource_dflt {};
 class ap_resource_lut {};
 class ap_resource_dsp {};
+//- Resource Representatives for sliding window-------------------------------
+class ap_resource_lutram {};
+class ap_resource_bram {};
+class ap_resource_uram {};
 
 /**
  * \brief   Stream logger - Logging call to dump on file - not synthezisable
