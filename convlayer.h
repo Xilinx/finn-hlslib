@@ -114,7 +114,7 @@ void ConvLayer_Batch(hls::stream<ap_uint<InStreamW>>  &in,
   WidthAdjustedOutputStream <PE*TDstI::width, OutStreamW, OFMDim * OFMDim * (OFMChannels / PE)>  mvOut (out,  reps);
   hls::stream<ap_uint<SIMD*TSrcI::width> > convInp("StreamingConvLayer_Batch.convInp");
   ConvolutionInputGenerator<ConvKernelDim, IFMChannels, TSrcI::width, IFMDim,
-			OFMDim, SIMD,1>(wa_in, convInp, reps);
+			OFMDim, SIMD,1>(wa_in, convInp, reps, ap_resource_dflt());
   Matrix_Vector_Activate_Batch<MatrixW, MatrixH, SIMD, PE, 1, TSrcI, TDstI, TWeightI>
     (static_cast<hls::stream<ap_uint<SIMD*TSrcI::width>>&>(convInp),
      static_cast<hls::stream<ap_uint<PE*TDstI::width>>&>  (mvOut),
@@ -190,7 +190,7 @@ void ConvLayer_Batch_MMV(hls::stream<ap_uint<InStreamW>>  &in,
   stream<MultiChanData<MMV, PE * TDstI::width> > mmv2dwc("mmv2dwc");
   hls::stream<MultiChanData<MMV, SIMD *TSrcI::width> > convInp("StreamingConvLayer_Batch.convInp");
   ConvolutionInputGenerator_MMV<ConvKernelDim, IFMChannels, TSrcI::width, IFMDim,
-			OFMDim, SIMD, STRIDE, MMV>(wa_in, convInp, reps);
+			OFMDim, SIMD, STRIDE, MMV>(wa_in, convInp, reps, ap_resource_dflt());
   Matrix_Vector_Activate_Batch<MatrixW, MatrixH, SIMD, PE, MMV, TSrcI, TDstI, TWeightI>
     (static_cast<hls::stream<MultiChanData<MMV,SIMD*TSrcI::width>>&>(convInp),
      static_cast<hls::stream<MultiChanData<MMV,PE*TDstI::width>>&>(mmv2dwc),
