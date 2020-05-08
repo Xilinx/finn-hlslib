@@ -731,7 +731,6 @@ void ConvolutionInputGenerator_kernel_stride_dws(
     stream<ap_uint<SIMD*Input_precision> > & out,
 	const unsigned int numReps,
 	R const &r) {
-    ){
 	CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
     CASSERT_DATAFLOW(ConvKernelDim % Stride != 0);
 	const unsigned int multiplying_factor = IFMChannels/SIMD;
