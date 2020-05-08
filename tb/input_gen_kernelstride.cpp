@@ -58,7 +58,7 @@ ConvolutionInputGenerator_kernel_stride<KERNEL_DIM,
 	IFMDim, 
 	OFMDim, 
 	SIMD,
-	STRIDE>(in_simd, out_simd, numReps);
+	STRIDE>(in_simd, out_simd, numReps, ap_resource_dflt());
 	
 StreamingDataWidthConverter_Batch<SIMD*INPUT_PRECISION, IFM_Channels*INPUT_PRECISION, KERNEL_DIM*KERNEL_DIM*OFMDim*OFMDim*IFM_Channels/SIMD>(out_simd, out, numReps);
 
