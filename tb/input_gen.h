@@ -39,3 +39,9 @@
 #define MMV 1
 #define INPUT_MULTIPLIER 1
 
+#define KERNEL_DIMH 2
+#define KERNEL_DIMW 2
+#define IFMDimH 6
+#define IFMDimW 6
+#define OFMDimH 3
+#define OFMDimW 3

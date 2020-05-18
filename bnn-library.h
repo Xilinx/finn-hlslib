@@ -59,6 +59,7 @@ using namespace std;
 #include "streamtools.h"
 #include "dma.h"
 #include "slidingwindow.h"
+#include "swu_custom.h"
 #include "maxpool.h"
 #include "fclayer.h"
 #include "convlayer.h"

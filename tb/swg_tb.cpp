@@ -47,10 +47,40 @@
 using namespace hls;
 using namespace std;
 
+#include "bnn-library.h"
+
+#define SIMD 1
+#define KERNEL_DIMH 2
+#define KERNEL_DIMW 2
+#define IFM_Channels 2
+#define IFMDim 6
+#define OFMDim 3
+#define STRIDE 2
+#define INPUT_PRECISION 8
+#define MMV 1
+#define INPUT_MULTIPLIER 1
 #define MAX_IMAGES 2
 
-void Testbench(stream<ap_uint<IFM_Channels*INPUT_PRECISION> > & in, stream<ap_uint<IFM_Channels*INPUT_PRECISION> > & out, unsigned int numReps);
+void Testbench(stream<ap_uint<IFM_Channels * INPUT_PRECISION>> &in, stream<ap_uint<IFM_Channels * INPUT_PRECISION>> &out, unsigned int numReps)
+{
+#pragma HLS DATAFLOW
+	stream<ap_uint<SIMD * INPUT_PRECISION>> in_simd("in_simd");
+	stream<ap_uint<SIMD * INPUT_PRECISION>> out_simd("out_simd");
+	StreamingDataWidthConverter_Batch<IFM_Channels * INPUT_PRECISION, SIMD * INPUT_PRECISION, IFMDim * IFMDim>(in, in_simd, numReps);
 
+	ConvolutionInputGenerator_rect<KERNEL_DIMH,
+							  KERNEL_DIMW,
+							  IFM_Channels,
+							  INPUT_PRECISION,
+							  IFMDimH,
+							  IFMDimW,
+							  OFMDimH,
+							  OFMDimW,
+							  SIMD,
+							  STRIDE>(in_simd, out_simd, numReps, ap_resource_dflt());
+
+	StreamingDataWidthConverter_Batch<SIMD * INPUT_PRECISION, IFM_Channels * INPUT_PRECISION, KERNEL_DIM * KERNEL_DIM * OFMDim * OFMDim * IFM_Channels / SIMD>(out_simd, out, numReps);
+}
 
 int main()
 {
