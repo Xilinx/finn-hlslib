@@ -145,6 +145,36 @@ public:
   }
 };
 
+
+/**
+ * Use a simple per-row function.
+ *
+ * The thresholds are taken from an array indexed by output row.
+ * It is currently public to allow direct initialization and
+ * to make its name accessible for top-level HLS pragmas.
+ *
+ * The default comparison returns true if the threshold value defined for
+ * the indexed row is smaller than the passed accumulator value.
+ */
+
+template<unsigned NF, unsigned PE,
+   typename TI, typename TP, typename TR, typename Fxn = std::multiplies<TR>>
+class ChannelWiseOperation {
+public:
+  TP parameter[PE][NF];
+public:
+  TI init(unsigned const  nf, unsigned const  pe) const {
+#pragma HLS inline
+    return  TI(0);
+  }
+public:
+  TR activate(unsigned const  nf, unsigned const  pe,  TI const &in) const {
+#pragma HLS inline
+    TR result = Fxn()(parameter[pe][nf], in);
+    return result;
+  }
+};
+
 /**
  * \brief Thresholding function for multiple images
  *
@@ -186,6 +216,8 @@ void Thresholding_Batch(hls::stream<TI> &in,
   // of smaller nested loops) to get the pipelinening the way we want
   for (unsigned i = 0; i < reps * ImgDim * ImgDim * NF; i++)
   {
+    #pragma HLS PIPELINE II=1
+
     TI inElem;
     inElem = in.read();
     auto outElem = TDstI().template operator()<TO>();
