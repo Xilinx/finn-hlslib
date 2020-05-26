@@ -147,14 +147,15 @@ public:
 
 
 /**
- * Use a simple per-row function.
+ * Use a simple function with per-row parameters.
  *
- * The thresholds are taken from an array indexed by output row.
+ * The parameters are taken from an array indexed by output row.
  * It is currently public to allow direct initialization and
  * to make its name accessible for top-level HLS pragmas.
- *
- * The default comparison returns true if the threshold value defined for
- * the indexed row is smaller than the passed accumulator value.
+ * 
+ * TI    DataType of input layer values
+ * TP    DataType of parameters
+ * TR    DataType of return values
  */
 
 template<unsigned NF, unsigned PE,
