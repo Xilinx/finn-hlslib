@@ -162,7 +162,7 @@ template<unsigned NF, unsigned PE,
    typename TI, typename TP, typename TR, typename Fxn = std::multiplies<TR>>
 class ChannelWiseOperation {
 public:
-  TP parameter[PE][NF];
+  TP parameters[PE][NF];
 public:
   TI init(unsigned const  nf, unsigned const  pe) const {
 #pragma HLS inline
@@ -171,7 +171,7 @@ public:
 public:
   TR activate(unsigned const  nf, unsigned const  pe,  TI const &in) const {
 #pragma HLS inline
-    TR result = Fxn()(parameter[pe][nf], in);
+    TR result = Fxn()(parameters[pe][nf], in);
     return result;
   }
 };
