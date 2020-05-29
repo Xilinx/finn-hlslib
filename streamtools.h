@@ -236,6 +236,100 @@ void StreamingCast(hls::stream<InT> & in, hls::stream<OutT> & out, unsigned int 
   }
 }
 
+/**
+ * \brief   FM Padding - Padds the input with zeroes for when the sliding window is
+ *          centered on border pixels
+ *
+ * Used to add padding to the input with zeroes in case the sliding window is
+ * centered on border pixels
+ *
+ * \tparam     ImgDim          Size of the input feature map
+ * \tparam     OutputDim       Size of the output feature map
+ * \tparam	   Padding	   	   Amount of padding in total
+ * \tparam     NumChannels     Amount of channels of the input feature map
+ * \tparam     In_t            Input datatype
+ * \tparam     PaddingStyle    Type of padding that will be applied
+ *
+ * \param      in              Input stream
+ * \param      out             Output stream
+ *
+ */
+template<	unsigned int ImgDim,
+			unsigned int OutputDim,
+			unsigned int Padding,
+			unsigned int NumChannels,
+			typename In_t,
+      unsigned int PaddingStyle=2>
+void FMPadding(stream<ap_uint<NumChannels* In_t::width> > &in,
+		stream<ap_uint<NumChannels* In_t::width> > &out){
+
+
+	// Padding Up and Left
+  constexpr unsigned int PaddingUp = Padding/2 + ((PaddingStyle == 2) ? ((Padding % 2) > 0) : 0);
+  constexpr unsigned int PaddingLeft = Padding/2 + ((PaddingStyle == 2) ? ((Padding % 2) > 0) : 0);
+
+	// Padding Down and Right (might be 1 element more than up and left in case of odd padding)
+	constexpr unsigned int PaddingDown = Padding - PaddingUp;
+	constexpr unsigned int PaddingRight = Padding - PaddingLeft;
+	ap_uint<NumChannels* In_t::width> outData, inData;
+
+	for(unsigned int y = 0; y<OutputDim; y++){
+		for(unsigned int x=0; x < OutputDim; x++){
+#pragma HLS PIPELINE II=1
+
+			// Padding Rows
+			if(y < PaddingUp || y >= (OutputDim - PaddingDown)){
+				outData = 0;
+			}
+			// Padding Cols
+			else if(x < PaddingLeft || x >= (OutputDim - PaddingRight)){
+				outData = 0;
+			}
+			// No Padding
+			else{
+				inData = in.read();
+				outData = inData;
+			}
+
+			out.write(outData);
+		}
+	}
+}
+
+/**
+ * \brief   FM Padding - Padds the input of multiple frames with zeroes
+ *          for when the sliding window is centered on border pixels
+ *
+ * Used to add padding with zeroes to multiple inputs in case the sliding window is
+ * centered on border pixels
+ *
+ * \tparam     ImgDim          Size of the input feature map
+ * \tparam     OutputDim       Size of the output feature map
+ * \tparam	   Padding	   	   Amount of padding in total
+ * \tparam     NumChannels     Amount of channels of the input feature map
+ * \tparam     In_t            Input datatype
+ * \tparam     PaddingStyle    Type of padding that will be applied
+ *
+ * \param      in              Input stream
+ * \param      out             Output stream
+ * \param      numReps         Amount of frames / images
+ *
+ */
+template<	unsigned int ImgDim,
+			unsigned int OutputDim,
+			unsigned int Padding,
+			unsigned int NumChannels,
+			typename In_t,
+      unsigned int PaddingStyle=2>
+void FMPadding_Batch(stream<ap_uint<NumChannels* In_t::width> > &in,
+		stream<ap_uint<NumChannels* In_t::width> > &out,
+		const unsigned int numReps) {
+	for (unsigned int rep = 0; rep < numReps; rep++) {
+		FMPadding<ImgDim, OutputDim, Padding, NumChannels, In_t, PaddingStyle>(in, out);
+	}
+
+}
+
 
 /**
  * \brief   Stream Data Width Converter - Converts the width of the input stream in the output stream
