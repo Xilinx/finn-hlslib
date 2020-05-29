@@ -34,14 +34,14 @@ using namespace hls;
 #define MULT_OUT_TYPE  ap_int<MULT_OUT_BITS>
 #define OUT_T ap_int
 
-#define NF (IFM_Channels/PE)
+#define FOLD (OFM_Channels/PE)
 
 
 
 
-const int bipolar_init[PE][NF] = BIPOLAR_INIT;
-const int add_init[PE][NF] = ADD_INIT;
-const int mult_init[PE][NF] = MULT_INIT;
+const int bipolar_init[PE][FOLD] = BIPOLAR_INIT;
+const int add_init[PE][FOLD] = ADD_INIT;
+const int mult_init[PE][FOLD] = MULT_INIT;
 
 template<typename T>
 struct per_channel_neg

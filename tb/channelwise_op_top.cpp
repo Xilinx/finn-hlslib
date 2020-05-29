@@ -15,9 +15,8 @@ void Testbench_channelwise_op(stream<ap_uint<IFM_Channels*INPUT_BITS> > & in,
 
 
     // [bipolar mult]
-    ChannelWiseOperation<NF, PE,ap_uint<INPUT_BITS>, BIPO_OUT_TYPE, 
-                BIPO_PARAM_TYPE, per_channel_neg<BIPO_OUT_TYPE> > bipolar_params= 
-                                        {.parameter = BIPOLAR_INIT};
+    ChannelWiseOperation<FOLD, PE,ap_uint<INPUT_BITS>, BIPO_PARAM_TYPE, BIPO_OUT_TYPE, 
+            per_channel_neg<BIPO_OUT_TYPE> > bipolar_params= {.parameters = BIPOLAR_INIT};
     
     stream<ap_uint<PE*BIPO_OUT_BITS>>  bipolar_out;
     Thresholding_Batch< IFMDim, IFM_Channels, PE,
@@ -26,9 +25,8 @@ void Testbench_channelwise_op(stream<ap_uint<IFM_Channels*INPUT_BITS> > & in,
 
 
     // [add] 
-    ChannelWiseOperation<NF, PE,BIPO_OUT_TYPE, ADD_OUT_TYPE, 
-                ADD_PARAM_TYPE, std::plus<ADD_OUT_TYPE> > add_params = 
-                                                    {.parameter = ADD_INIT};
+    ChannelWiseOperation<FOLD, PE,BIPO_OUT_TYPE, ADD_PARAM_TYPE, ADD_OUT_TYPE, 
+            std::plus<ADD_OUT_TYPE> > add_params = {.parameters = ADD_INIT};
     
     stream<ap_uint<PE*ADD_OUT_BITS>>  add_out;
     Thresholding_Batch< IFMDim, IFM_Channels, PE,
@@ -37,9 +35,8 @@ void Testbench_channelwise_op(stream<ap_uint<IFM_Channels*INPUT_BITS> > & in,
 
 
     // [mult] 
-    ChannelWiseOperation<NF, PE,ADD_OUT_TYPE, MULT_OUT_TYPE, 
-                MULT_PARAM_TYPE, std::multiplies<MULT_OUT_TYPE> > mult_params= 
-                                                        {.parameter = MULT_INIT};
+    ChannelWiseOperation<FOLD, PE,ADD_OUT_TYPE, MULT_PARAM_TYPE, MULT_OUT_TYPE, 
+            std::multiplies<MULT_OUT_TYPE> > mult_params= {.parameters = MULT_INIT};
     
     stream<ap_uint<PE*MULT_OUT_BITS>>  mul_out;
     Thresholding_Batch< IFMDim, IFM_Channels, PE,
@@ -48,5 +45,5 @@ void Testbench_channelwise_op(stream<ap_uint<IFM_Channels*INPUT_BITS> > & in,
 
     // [width adapt]
     StreamingDataWidthConverter_Batch<PE*MULT_OUT_BITS, OFM_Channels*MULT_OUT_BITS, 
-        IFMDim*IFMDim*NF >(mul_out, out, numReps);
+        IFMDim*IFMDim*FOLD >(mul_out, out, numReps);
 }

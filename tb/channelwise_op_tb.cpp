@@ -85,7 +85,7 @@ int main()
                         if (expected_out != produced_out){
                             std::cout << "ERROR: In round"<<round_idx<<", Expected["<<oy <<"]["<<ox<<"]["<<channel<<"]=" 
                             << expected_out << " actual " <<  produced_out <<
-                            " | input value:"<<IMAGE[n_image][ox][oy][channel] <<
+                            " | input value:"<<IMAGE[round_idx][n_image][ox][oy][channel] <<
                             " | Params - >  bip: "<<bipolar_init[pe_idx][f_idx]<< 
                             " | add: "<<add_init[pe_idx][f_idx]<< 
                             " | mul: "<<mult_init[pe_idx][f_idx]<< 
