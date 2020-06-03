@@ -145,6 +145,37 @@ public:
   }
 };
 
+
+/**
+ * Use a simple activation function with per-row parameters.
+ *
+ * The parameters are taken from an array indexed by output row.
+ * It is currently public to allow direct initialization and
+ * to make its name accessible for top-level HLS pragmas.
+ * 
+ * TI    DataType of input layer values
+ * TP    DataType of parameters
+ * TR    DataType of return values
+ */
+
+template<unsigned NF, unsigned PE,
+   typename TI, typename TP, typename TR, typename Fxn = std::multiplies<TR>>
+class ChannelWiseOperation {
+public:
+  TP parameters[PE][NF];
+public:
+  TI init(unsigned const  nf, unsigned const  pe) const {
+#pragma HLS inline
+    return  TI(0);
+  }
+public:
+  TR activate(unsigned const  nf, unsigned const  pe,  TI const &in) const {
+#pragma HLS inline
+    TR result = Fxn()(parameters[pe][nf], in);
+    return result;
+  }
+};
+
 /**
  * \brief Thresholding function for multiple images
  *
@@ -186,6 +217,8 @@ void Thresholding_Batch(hls::stream<TI> &in,
   // of smaller nested loops) to get the pipelinening the way we want
   for (unsigned i = 0; i < reps * ImgDim * ImgDim * NF; i++)
   {
+    #pragma HLS PIPELINE II=1
+
     TI inElem;
     inElem = in.read();
     auto outElem = TDstI().template operator()<TO>();
