@@ -47,7 +47,9 @@
 #define MAXPOOL_H
  
 #include <limits>
- 
+
+#include "interpret.hpp"
+
 /**
  * \brief   Max Pool implementation for Binarized values 
  *
@@ -61,7 +63,7 @@
  */
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels>
 void StreamingMaxPool(stream<ap_uint<NumChannels> > & in,
-		stream<ap_uint<NumChannels> > & out) {
+        stream<ap_uint<NumChannels> > & out) {
   CASSERT_DATAFLOW(ImgDim % PoolDim == 0);
   // need buffer space for a single maxpooled row of the image
   ap_uint<NumChannels> buf[ImgDim / PoolDim];
@@ -82,7 +84,7 @@ void StreamingMaxPool(stream<ap_uint<NumChannels> > & in,
         buf[xp] |= acc;
       }
     }
-	for (unsigned int outpix = 0; outpix < ImgDim / PoolDim; outpix++) {
+    for (unsigned int outpix = 0; outpix < ImgDim / PoolDim; outpix++) {
 #pragma HLS PIPELINE II=1
       out.write(buf[outpix]);
       // get buffer ready for next use
@@ -105,7 +107,7 @@ void StreamingMaxPool(stream<ap_uint<NumChannels> > & in,
  */
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels>
 void StreamingMaxPool_Batch(stream<ap_uint<NumChannels> > & in,
-		stream<ap_uint<NumChannels> > & out, unsigned int numReps) {
+        stream<ap_uint<NumChannels> > & out, unsigned int numReps) {
   for (unsigned int rep = 0; rep < numReps; rep++) {
     StreamingMaxPool<ImgDim, PoolDim, NumChannels>(in, out);
   }
@@ -127,10 +129,10 @@ void StreamingMaxPool_Batch(stream<ap_uint<NumChannels> > & in,
  *
  */
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, typename ActType, int min_value, 
-		int StreamW 
-		>
+        int StreamW 
+        >
 void StreamingMaxPool_Precision(stream<ap_uint<StreamW> > & in,
-		stream<ap_uint<StreamW> > & out) {
+        stream<ap_uint<StreamW> > & out) {
   CASSERT_DATAFLOW(ImgDim % PoolDim == 0);
   // need buffer space for a single maxpooled row of the image
   ActType buf[ImgDim / PoolDim][NumChannels];
@@ -145,16 +147,16 @@ void StreamingMaxPool_Precision(stream<ap_uint<StreamW> > & in,
   for (unsigned int yp = 0; yp < ImgDim / PoolDim; yp++) {
     for (unsigned int ky = 0; ky < PoolDim; ky++) {
       for (unsigned int xp = 0; xp < ImgDim / PoolDim; xp++) {
-        // Change to comparator	
+        // Change to comparator 
         for (unsigned int kx = 0; kx < PoolDim; kx++) {
 #pragma HLS PIPELINE II=1
           inputData = in.read();
           for(unsigned int ch = 0; ch<NumChannels; ch++){
-#pragma HLS UNROLL						
+#pragma HLS UNROLL                      
             unsigned int lowBit = ch * ActType::width;
             unsigned int highBit = (ch+1) * ActType::width -1;
-            ActType channeldata = inputData(highBit, lowBit);					
-            ActType oldMax = buf[xp][ch];				
+            ActType channeldata = inputData(highBit, lowBit);                   
+            ActType oldMax = buf[xp][ch];               
             if(channeldata > oldMax){
               buf[xp][ch] = channeldata;
             }
@@ -166,7 +168,7 @@ void StreamingMaxPool_Precision(stream<ap_uint<StreamW> > & in,
       for(unsigned int ch = 0; ch < NumChannels; ch++){
 #pragma HLS UNROLL
         unsigned int lowBit = ch * ActType::width;
-        unsigned int highBit = (ch+1) * ActType::width -1;	
+        unsigned int highBit = (ch+1) * ActType::width -1;  
         outputData(highBit, lowBit) = buf[outpix][ch];
         // get buffer ready for next use
         buf[outpix][ch] = min_value;
@@ -192,9 +194,9 @@ void StreamingMaxPool_Precision(stream<ap_uint<StreamW> > & in,
  */
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, typename ActType, int min_value, 
         int InStreamW, int OutStreamW  // safely deducible (stream width must be int though!)
-		>
+        >
 void StreamingMaxPool_Precision_Batch(stream<ap_uint<InStreamW> > & in,
-		stream<ap_uint<OutStreamW> > & out, unsigned int numReps) {
+        stream<ap_uint<OutStreamW> > & out, unsigned int numReps) {
 #pragma HLS INLINE
   unsigned const  InpPerImage = ImgDim*ImgDim*NumChannels*ActType::width/InStreamW ;
   unsigned const  OutPerImage = ImgDim*ImgDim / (PoolDim*PoolDim);
@@ -224,20 +226,20 @@ void StreamingMaxPool_Precision_Batch(stream<ap_uint<InStreamW> > & in,
  *
  */
 template<
-		unsigned int ImgDim,			
+        unsigned int ImgDim,            
     unsigned int NumChannels,  
-		typename ActType,			
-		unsigned int PECount,
+        typename ActType,           
+        unsigned int PECount,
     int offset = 0>
 void ReLU_Batch(stream<ap_uint<PECount * ActType::width> > & in,
-		stream<ap_uint<PECount * ActType::width> > & out, const unsigned int numReps) {
+        stream<ap_uint<PECount * ActType::width> > & out, const unsigned int numReps) {
 
-	ap_uint<PECount * ActType::width> thin;
-	ap_uint<PECount * ActType::width> thout;
-	
-	//call to thresholding library function
-	for(unsigned int reps=0; reps<numReps; reps++){
-		for(unsigned int pixel=0; pixel<ImgDim*ImgDim; pixel++){
+    ap_uint<PECount * ActType::width> thin;
+    ap_uint<PECount * ActType::width> thout;
+    
+    //call to thresholding library function
+    for(unsigned int reps=0; reps<numReps; reps++){
+        for(unsigned int pixel=0; pixel<ImgDim*ImgDim; pixel++){
       for(unsigned int fold=0; fold<NumChannels/PECount; fold++){
 #pragma HLS PIPELINE II=1
         thin = in.read();
@@ -256,8 +258,8 @@ void ReLU_Batch(stream<ap_uint<PECount * ActType::width> > & in,
         }    
         out.write(thout);
       }
-		}
-	}
+        }
+    }
 }
 
 /**
@@ -276,19 +278,19 @@ void ReLU_Batch(stream<ap_uint<PECount * ActType::width> > & in,
  */
 template<
     unsigned int ImgDim,     
-		unsigned int NumChannels,		
-		typename ActType,			
-		unsigned int PECount,      
-		typename AccType>
+        unsigned int NumChannels,       
+        typename ActType,           
+        unsigned int PECount,      
+        typename AccType>
 void AccPool_Batch(stream<ap_uint<PECount * ActType::width> > & in,
-		stream<ap_uint<PECount * AccType::width> > & out, const unsigned int numReps) {
-	ap_uint<PECount * ActType::width> thin;
+        stream<ap_uint<PECount * AccType::width> > & out, const unsigned int numReps) {
+    ap_uint<PECount * ActType::width> thin;
   ap_uint<PECount * AccType::width> accumulators[NumChannels/PECount];
 #pragma HLS RESOURCE variable=accumulators core=RAM_2P_LUTRAM
         
-	//call to thresholding library function
-	for(unsigned int reps=0; reps<numReps; reps++){
-		for(unsigned int pixel=0; pixel<ImgDim*ImgDim; pixel++){
+    //call to thresholding library function
+    for(unsigned int reps=0; reps<numReps; reps++){
+        for(unsigned int pixel=0; pixel<ImgDim*ImgDim; pixel++){
       for(unsigned int fold=0; fold<NumChannels/PECount; fold++){
 #pragma HLS PIPELINE II=1
         thin = in.read();
@@ -309,12 +311,12 @@ void AccPool_Batch(stream<ap_uint<PECount * ActType::width> > & in,
         }
         accumulators[fold] = accbank;     
       }
-		}
+        }
     for (unsigned int fold = 0; fold < NumChannels / PECount; fold++)
     {
       out.write(accumulators[fold]);
     }
-	}
+    }
 }
 
 
@@ -333,16 +335,20 @@ void AccPool_Batch(stream<ap_uint<PECount * ActType::width> > & in,
  * \param numReps       Number of times the function has to be repeatedly executed (e.g. number of images)
  *
  */
+
+
+// TODO: 32 to ceil(log2(NumClasses)), Out_T not needed in that case
+
 template<
-		// tensor size parameters
-		unsigned int NumClasses,
-		unsigned int PECount,
+        // tensor size parameters
+        unsigned int NumClasses,
+        unsigned int PECount,
     unsigned int NumTop,
-		typename In_T,
+        typename In_T,
     typename Out_T>
 void LabelSelect_Batch(stream<ap_uint<PECount * In_T::width> > & in,
-		stream<ap_uint<32> > & out, const unsigned int numReps) {
-	ap_uint<PECount * In_T::width> inval;
+        stream<ap_uint<32> > & out, const unsigned int numReps) { 
+    ap_uint<PECount * In_T::width> inval;
   Out_T toplabels[NumTop];
 #pragma HLS ARRAY_PARTITION variable=toplabels complete dim=1
   In_T topval[NumTop];
@@ -351,7 +357,7 @@ for(unsigned int reps=0; reps<numReps; reps++){
   unsigned int idx = 0;
   for(unsigned int topx=0; topx<NumTop; topx++){
   #pragma HLS UNROLL
-          topval[topx] = 1<<31;
+          topval[topx] = 1<<31; // TODO: generalize 
     }
   for(unsigned int block=0; block<(NumClasses/PECount); block++){
   #pragma HLS PIPELINE II=1
@@ -381,7 +387,82 @@ for(unsigned int reps=0; reps<numReps; reps++){
     for(unsigned int topx = 0; topx < NumTop; topx++){
             out.write(toplabels[NumTop - topx - 1]);
     }
-	}
+    }
+}
+
+
+/**
+ * \brief Pool_batch function
+ *
+ * The function performs the pool
+ *
+ *
+ * \tparam Channels   Number of channels in the pool layer
+ * \tparam PE       Number of channels in the pool layer computed in parallel
+ * \tparam Kernel     Kernel size of the Pool
+ * \tparam TSrcI      DataType of the input value (Slice)
+ * \tparam TDstI      DataType of the output value (Slice)
+ * \tparam TI         DataType of the input stream - safely deducible from the paramaters
+ * \tparam TO         DataType of the output stream - safely deducible from the paramaters
+ * \tparam TA         DataType of the function class (e.g. Max, Avg, Sum) - safely deducible from the paramaters
+ *
+ * \param in          Input stream
+ * \param out         Output stream
+ * \param function    Function class in the pool (Max, Avg, Sum)
+ * \param reps        Number of time the function has to be repeatedly executed (e.g. number of images)
+ */
+template<
+  unsigned Channels, unsigned PE, unsigned Kernel,
+  typename TSrcI = Identity,typename TDstI = Identity,
+  typename TI, typename TO, typename TA
+>
+void Pool_batch(hls::stream<TI> &in,
+                  hls::stream<TO> &out,
+                  TA  const &function,
+                  int const  reps) {
+
+  unsigned const  NF = Channels / PE;
+  unsigned const  SF = Kernel * Kernel;
+
+  decltype(function.init(0,0))  accu[PE];
+#pragma HLS ARRAY_PARTITION variable=accu complete dim=0
+  unsigned  nf   = 0;
+  unsigned  sf   = 0;
+  unsigned const TOTAL_FOLD = NF * SF ;
+  // everything merged into a common iteration space (one "big" loop instead
+  // of smaller nested loops) to get the pipelinening the way we want
+  for(unsigned  i = 0; i < reps * TOTAL_FOLD; i++) {
+#pragma HLS PIPELINE II=1
+    TI  pixel_slice;
+    pixel_slice = in.read();
+
+    // Threshold Initialisation
+    if(sf == 0) {
+      for(unsigned  pe = 0; pe < PE; pe++) {
+#pragma HLS UNROLL
+        accu[pe] = function.init(0,0);
+      }
+    }
+
+    auto const  slice_channels = TSrcI()(pixel_slice,0);
+    for(unsigned  pe = 0; pe < PE; pe++) {
+#pragma HLS UNROLL
+        accu[pe] = function.pool(slice_channels(pe,0), accu[pe]);
+    }
+
+    // keep track of which folded synapse/neuron we are processing
+    if(++sf == SF) {
+      // produce output and clear accumulators
+      auto  outElem = TDstI().template operator()<TO>();
+      for(unsigned  pe = 0; pe < PE; pe++) {
+#pragma HLS UNROLL
+          outElem(pe,0,1) = function.activate(accu[pe]); //
+      }
+      out.write(outElem);
+      // next folded neuron or image
+      sf = 0;
+    }
+  }
 }
 
 #endif
