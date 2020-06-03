@@ -147,7 +147,7 @@ public:
 
 
 /**
- * Use a simple function with per-row parameters.
+ * Use a simple activation function with per-row parameters.
  *
  * The parameters are taken from an array indexed by output row.
  * It is currently public to allow direct initialization and
