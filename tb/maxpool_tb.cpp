@@ -50,7 +50,7 @@
 #include "bnn-library.h"
 
 #include "pool_config.h"
-#include "pool.hpp"
+#include "pool_tb.hpp"
 #include "activations.hpp"
 #include "interpret.hpp"
 
