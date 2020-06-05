@@ -111,7 +111,7 @@ public:
   }
 };
 
-/**
+/*!
  * Use a simple per-row threshold comparison as activation function.
  *
  * The thresholds are taken from an array indexed by output row.
@@ -146,16 +146,19 @@ public:
 };
 
 
-/**
- * Use a simple activation function with per-row parameters.
+/*!
+ * \brief Use a simple activation function with per-row parameters.
  *
  * The parameters are taken from an array indexed by output row.
  * It is currently public to allow direct initialization and
  * to make its name accessible for top-level HLS pragmas.
  * 
- * TI    DataType of input layer values
- * TP    DataType of parameters
- * TR    DataType of return values
+ * \tparam NF    First dimension of the parameter matrix
+ * \tparam PE    Second dimension of the parameter matrix
+ * \tparam TI    DataType of input layer values
+ * \tparam TP    DataType of parameters
+ * \tparam TR    DataType of return values
+ * \tparam Fxn   Function to be applied on the channel input value
  */
 
 template<unsigned NF, unsigned PE,
@@ -176,7 +179,7 @@ public:
   }
 };
 
-/**
+/*!
  * \brief Thresholding function for multiple images
  *
  * The function performs thresholds comparison with input activation vector, 
