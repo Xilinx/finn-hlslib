@@ -888,7 +888,7 @@ CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
 				#pragma HLS PIPELINE II=1
 					ap_uint<SIMD*Input_precision> inElem = in.read();
 					if ((x%Stride == 0)&&(y%Stride == 0)) {
-						out.write(e);
+						out.write(inElem);
 					}
 				}
 			}
