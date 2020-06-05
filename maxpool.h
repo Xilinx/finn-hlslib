@@ -38,8 +38,7 @@
  *           Christoph Doehring <cdoehrin@xilinx.com>
  *
  *
- *  Library of templated HLS functions for BNN deployment. 
- *  This file implement the BNN maxpool layer.
+ *  Library of templated HLS functions for QNN deployment. 
  *
  ******************************************************************************/
 
@@ -52,6 +51,8 @@
 
 /**
  * \brief   Max Pool implementation for Binarized values 
+ * 
+ * This function performes the maxpool for binary inputs, and works with kernel and stride being equal 
  *
  * \tparam     ImgDim       Width and Heigth of the Input Feature Map (assumed square)
  * \tparam     PoolDim      Dimension of the Max Pool kernel (assumed square)
@@ -94,8 +95,10 @@ void StreamingMaxPool(stream<ap_uint<NumChannels> > & in,
 }
 
 /**
- * \brief   Max Pool implementation for Binarized values 
+ * \brief   Max Pool implementation for Binarized values on multiple images
  *
+ * This function performes the maxpool for binary inputs, and works with kernel and stride being equal 
+ * 
  * \tparam ImgDim       Width and Heigth of the Input Feature Map (assumed square)
  * \tparam PoolDim      Dimension of the Max Pool kernel (assumed square)
  * \tparam NumChannels  Number of Input Feature Maps
@@ -115,8 +118,10 @@ void StreamingMaxPool_Batch(stream<ap_uint<NumChannels> > & in,
 
 
 /**
- * \brief   Max Pool implementation for Binarized values 
+ * \brief   Max Pool implementation for non Binarized values 
  *
+ * This function performes the maxpool for non-binary inputs, and works with kernel and stride being equal 
+ * 
  * \tparam ImgDim       Width and Heigth of the Input Feature Map (assumed square)
  * \tparam PoolDim      Dimension of the Max Pool kernel (assumed square)
  * \tparam NumChannels  Number of Input Feature Maps
@@ -178,8 +183,10 @@ void StreamingMaxPool_Precision(stream<ap_uint<StreamW> > & in,
   }
 }
 /**
- * \brief   Max Pool implementation for Binarized values 
+ * \brief   Max Pool implementation for non binarized values on multiple images
  *
+ * This function performes the maxpool for non binary inputs, and works with kernel and stride being equal 
+ * 
  * \tparam ImgDim       Width and Heigth of the Input Feature Map (assumed square)
  * \tparam PoolDim      Dimension of the Max Pool kernel (assumed square)
  * \tparam NumChannels  Number of Input Feature Maps
@@ -394,11 +401,12 @@ for(unsigned int reps=0; reps<numReps; reps++){
 /**
  * \brief Pool_batch function
  *
- * The function performs the pool
- *
+ * The function performs a generic pool function (defined in pool.hpp) and works in conjuction 
+ * with a sliding window unit performing im2col on the input data, allowing 
+ * generic kernel and stride values
  *
  * \tparam Channels   Number of channels in the pool layer
- * \tparam PE       Number of channels in the pool layer computed in parallel
+ * \tparam PE         Number of channels in the pool layer computed in parallel
  * \tparam Kernel     Kernel size of the Pool
  * \tparam TSrcI      DataType of the input value (Slice)
  * \tparam TDstI      DataType of the output value (Slice)
@@ -424,7 +432,7 @@ void Pool_batch(hls::stream<TI> &in,
   unsigned const  NF = Channels / PE;
   unsigned const  SF = Kernel * Kernel;
 
-  decltype(function.init(0,0))  accu[PE];
+  decltype(function.init())  accu[PE];
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
   unsigned  nf   = 0;
   unsigned  sf   = 0;
