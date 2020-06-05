@@ -34,18 +34,5 @@ activations.hpp
 The activations.hpp file lists a set of classes used to implement the activation part of the mvau. 
 
 
-.. doxygenclass:: Activation
-   :members:
-   :private-members:
+.. doxygenfile:: activations.hpp
 
-.. doxygenclass:: PassThroughActivation
-   :members:
-   :private-members:
-
-.. doxygenclass:: ThresholdActivation
-   :members:
-   :private-members:
-
-.. doxygenclass:: ThresholdsActivation
-   :members:
-   :private-members:
