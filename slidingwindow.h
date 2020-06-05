@@ -856,5 +856,43 @@ void ConvolutionInputGenerator_kernel_stride_dws(
   }
 }
 
-
+/**
+ * \brief Sliding Window for 1x1 kernel with stride!=1
+ * 
+ * Basically performs a downsampling of the image removing rows and columns
+ *
+ * \tparam IFMChannels      Number of Input Feature Maps
+ * \tparam Input_precision  Number bits per pixel
+ * \tparam IFMDim           Width and Heigth of the Input Feature Map (assumed square)
+ * \tparam SIMD             Number of input columns computed in parallel
+ * \tparam Stride           Stride of the convolutional kernel
+ *
+ * \param in                Input stream
+ * \param out               Output stream
+ * \param numReps           Number of time the function has to be repeatedly executed (e.g. number of images)
+ */
+template<	unsigned int IFMChannels,
+		unsigned int Input_precision,		
+		unsigned int IFMDim, 	
+		unsigned int SIMD,  
+		unsigned int Stride>
+void ConvolutionInputGenerator_kernel1(
+		stream<ap_uint<SIMD*Input_precision> > & in,
+		stream<ap_uint<SIMD*Input_precision> > & out, 
+		const unsigned int numReps) {
+CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+	for (unsigned int im=0; im<numReps; im++) {
+		for (unsigned int y = 0; y < IFMDim; y++) {
+			for (unsigned int x = 0; x < IFMDim; x++) {
+				for (unsigned int count_simd =0; count_simd < IFMChannels/SIMD; count_simd++) {
+				#pragma HLS PIPELINE II=1
+					ap_uint<SIMD*Input_precision> inElem = in.read();
+					if ((x%Stride == 0)&&(y%Stride == 0)) {
+						out.write(e);
+					}
+				}
+			}
+		}
+	}		
+}
 #endif
