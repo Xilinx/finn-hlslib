@@ -243,25 +243,27 @@ void StreamingCast(hls::stream<InT> & in, hls::stream<OutT> & out, unsigned int 
  * Used to add padding to the input with zeroes in case the sliding window is
  * centered on border pixels
  *
- * \tparam     ImgDim          Size of the input feature map
- * \tparam     OutputDim       Size of the output feature map
- * \tparam	   Padding	   	   Amount of padding in total
- * \tparam     NumChannels     Amount of channels of the input feature map
- * \tparam     In_t            Input datatype
- * \tparam     PaddingStyle    Type of padding that will be applied
+ * \tparam	ImgDim		Size of the input feature map
+ * \tparam	OutputDim		Size of the output feature map
+ * \tparam	Padding		Amount of padding in total
+ * \tparam	NumChannels	Amount of channels of the input feature map
+ * \tparam	SIMD			Input parallelism 
+ * \tparam	In_t			Input datatype
+ * \tparam	PaddingStyle	Type of padding that will be applied
  *
- * \param      in              Input stream
- * \param      out             Output stream
+ * \param		in			Input stream
+ * \param		out			Output stream
  *
  */
 template<	unsigned int ImgDim,
 			unsigned int OutputDim,
 			unsigned int Padding,
 			unsigned int NumChannels,
+			unsigned int SIMD,			
 			typename In_t,
       unsigned int PaddingStyle=2>
-void FMPadding(stream<ap_uint<NumChannels* In_t::width> > &in,
-		stream<ap_uint<NumChannels* In_t::width> > &out){
+void FMPadding(stream<ap_uint<SIMD* In_t::width> > &in,
+		stream<ap_uint<SIMD* In_t::width> > &out){
 
 
 	// Padding Up and Left
@@ -271,10 +273,12 @@ void FMPadding(stream<ap_uint<NumChannels* In_t::width> > &in,
 	// Padding Down and Right (might be 1 element more than up and left in case of odd padding)
 	constexpr unsigned int PaddingDown = Padding - PaddingUp;
 	constexpr unsigned int PaddingRight = Padding - PaddingLeft;
-	ap_uint<NumChannels* In_t::width> outData, inData;
+	constexpr unsigned int Folding = NumChannels/SIMD;
+	ap_uint<SIMD* In_t::width> outData, inData;
 
 	for(unsigned int y = 0; y<OutputDim; y++){
 		for(unsigned int x=0; x < OutputDim; x++){
+			for(unsigned int simd=0; simd < Folding; simd++) {
 #pragma HLS PIPELINE II=1
 
 			// Padding Rows
@@ -292,6 +296,7 @@ void FMPadding(stream<ap_uint<NumChannels* In_t::width> > &in,
 			}
 
 			out.write(outData);
+			}
 		}
 	}
 }
@@ -303,29 +308,31 @@ void FMPadding(stream<ap_uint<NumChannels* In_t::width> > &in,
  * Used to add padding with zeroes to multiple inputs in case the sliding window is
  * centered on border pixels
  *
- * \tparam     ImgDim          Size of the input feature map
- * \tparam     OutputDim       Size of the output feature map
- * \tparam	   Padding	   	   Amount of padding in total
- * \tparam     NumChannels     Amount of channels of the input feature map
- * \tparam     In_t            Input datatype
- * \tparam     PaddingStyle    Type of padding that will be applied
+ * \tparam	ImgDim		Size of the input feature map
+ * \tparam	OutputDim		Size of the output feature map
+ * \tparam	Padding		Amount of padding in total
+ * \tparam	NumChannels	Amount of channels of the input feature map
+ * \tparam	SIMD			Input parallelism 
+ * \tparam	In_t			Input datatype
+ * \tparam	PaddingStyle	Type of padding that will be applied
  *
- * \param      in              Input stream
- * \param      out             Output stream
- * \param      numReps         Amount of frames / images
+ * \param		in			Input stream
+ * \param		out			Output stream
+ * \param		numReps		Amount of frames / images
  *
  */
 template<	unsigned int ImgDim,
 			unsigned int OutputDim,
 			unsigned int Padding,
 			unsigned int NumChannels,
+			unsigned int SIMD,
 			typename In_t,
       unsigned int PaddingStyle=2>
-void FMPadding_Batch(stream<ap_uint<NumChannels* In_t::width> > &in,
-		stream<ap_uint<NumChannels* In_t::width> > &out,
+void FMPadding_Batch(stream<ap_uint<SIMD* In_t::width> > &in,
+		stream<ap_uint<SIMD* In_t::width> > &out,
 		const unsigned int numReps) {
 	for (unsigned int rep = 0; rep < numReps; rep++) {
-		FMPadding<ImgDim, OutputDim, Padding, NumChannels, In_t, PaddingStyle>(in, out);
+		FMPadding<ImgDim, OutputDim, Padding, NumChannels, SIMD, In_t, PaddingStyle>(in, out);
 	}
 
 }

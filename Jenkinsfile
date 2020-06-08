@@ -118,5 +118,11 @@ node {
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_qdma_stream.tcl')
     }
+    }, tenthBranch: {
+        stage('Run tests Pool Kernel Stride') {
+              env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_kernel_stride_pool.tcl')
+    }
     }
 }

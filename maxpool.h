@@ -448,7 +448,7 @@ void Pool_batch(hls::stream<TI> &in,
     if(sf == 0) {
       for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS UNROLL
-        accu[pe] = function.init(0,0);
+        accu[pe] = function.init();
       }
     }
 
