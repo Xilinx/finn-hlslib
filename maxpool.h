@@ -343,9 +343,6 @@ void AccPool_Batch(stream<ap_uint<PECount * ActType::width> > & in,
  *
  */
 
-
-// TODO: 32 to ceil(log2(NumClasses)), Out_T not needed in that case
-
 template<
         // tensor size parameters
         unsigned int NumClasses,
@@ -354,47 +351,57 @@ template<
         typename In_T,
     typename Out_T>
 void LabelSelect_Batch(stream<ap_uint<PECount * In_T::width> > & in,
-        stream<ap_uint<32> > & out, const unsigned int numReps) { 
-    ap_uint<PECount * In_T::width> inval;
+        stream<Out_T> & out, const unsigned int numReps) { 
+
+  const Out_T Out_T_MAX_VAL = (Out_T(-1)<0)? ~(1<<(Out_T::width-1)) : ~(0);
+  CASSERT_DATAFLOW(Out_T_MAX_VAL >= NumClasses-1);
+
+  const In_T In_T_MIN_VAL = (In_T(-1)<0)? 1<<(In_T::width-1) : 0;
+  ap_uint<PECount * In_T::width> inval;
+
   Out_T toplabels[NumTop];
-#pragma HLS ARRAY_PARTITION variable=toplabels complete dim=1
+  #pragma HLS ARRAY_PARTITION variable=toplabels complete dim=1
+
   In_T topval[NumTop];
-#pragma HLS ARRAY_PARTITION variable=topval complete dim=1
-for(unsigned int reps=0; reps<numReps; reps++){
-  unsigned int idx = 0;
-  for(unsigned int topx=0; topx<NumTop; topx++){
-  #pragma HLS UNROLL
-          topval[topx] = 1<<31; // TODO: generalize 
-    }
-  for(unsigned int block=0; block<(NumClasses/PECount); block++){
-  #pragma HLS PIPELINE II=1
-    inval = in.read();
-    for(unsigned int elem=0; elem<PECount; elem++){
-      unsigned int lowBit = elem * In_T::width;
-      unsigned int highBit = (elem+1) * In_T::width - 1;
-      In_T val = inval(highBit,lowBit);
-      for(unsigned int topx=0; topx<NumTop; topx++){
+  #pragma HLS ARRAY_PARTITION variable=topval complete dim=1
+
+  for(unsigned int reps=0; reps<numReps; reps++){
+    unsigned int idx = 0;
+    for(unsigned int topx=0; topx<NumTop; topx++){
       #pragma HLS UNROLL
-        if(val > topval[topx]){
-          if(topx==(NumTop-1)){
-            topval[topx] = val;
-            toplabels[topx] = idx;
-          } else if(val > topval[topx+1]){
-            topval[topx] = topval[topx+1];
-            toplabels[topx] = toplabels[topx+1];
-          } else {
-            topval[topx] = val;
-            toplabels[topx] = idx;
+      topval[topx] = In_T_MIN_VAL; 
+    }
+    for(unsigned int block=0; block<(NumClasses/PECount); block++){
+      #pragma HLS PIPELINE II=1
+      inval = in.read();
+      for(unsigned int elem=0; elem<PECount; elem++){
+        #pragma HLS UNROLL
+        unsigned int lowBit = elem * In_T::width;
+        unsigned int highBit = (elem+1) * In_T::width - 1;
+        In_T val = inval(highBit,lowBit);
+        for(unsigned int topx=0; topx<NumTop; topx++){
+          #pragma HLS UNROLL
+          if(val > topval[topx]){
+            if(topx==(NumTop-1)){
+              topval[topx] = val;
+              toplabels[topx] = idx;
+            } else if(val > topval[topx+1]){
+              topval[topx] = topval[topx+1];
+              toplabels[topx] = toplabels[topx+1];
+            } else {
+              topval[topx] = val;
+              toplabels[topx] = idx;
+            }
           }
-        }            
+        }
+        idx++;
       }
-      idx++;
+    }
+
+    for(unsigned int topx = 0; topx < NumTop; topx++){
+      out.write(toplabels[NumTop - topx - 1]);
     }
   }
-    for(unsigned int topx = 0; topx < NumTop; topx++){
-            out.write(toplabels[NumTop - topx - 1]);
-    }
-    }
 }
 
 
