@@ -43,31 +43,31 @@ node {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_swg.tcl')
-    }
+        }
     }, secondBranch: {
         stage('Run tests POOL') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_pool.tcl')
-    }
+        }
     }, thirdBranch: {
         stage('Run tests DWC') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_dwc.tcl')
-    }
+        }
     }, fourthBranch: {
         stage('Run tests ADD') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_add.tcl')
-    }
+        }
     }, fifthBranch: {
         stage('Run tests DUP_STREAM') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_dup_stream.tcl')
-    }
+        }
     }, sixthBranch: {
         stage('Set-up virtual env') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
@@ -105,24 +105,30 @@ node {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_dwcnm.tcl')
-    }
+        }
     }, eigthBranch: {
         stage('Run tests SWG_KS') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_swg_kernelstride.tcl')
-    }
+        }
     }, ninthBranch: {
         stage('Run tests QDMA') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_qdma_stream.tcl')
-    }
+        }
     }, tenthBranch: {
         stage('Run tests Pool Kernel Stride') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_kernel_stride_pool.tcl')
-    }
+        }
+    }, eleventhBranch: {
+        stage('Run tests LabelSelect Batch') {
+              env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2019.2_released/installs/lin64/Vivado/2019.2/settings64.sh; cd tb; vivado_hls -f test_label_select.tcl')
+        }
     }
 }
