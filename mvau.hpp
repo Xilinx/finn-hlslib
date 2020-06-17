@@ -136,6 +136,7 @@ void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
     // Threshold Initialisation
     if(sf == 0) {
       for(unsigned  pe = 0; pe < PE; pe++) {
+#pragma HLS UNROLL
         for(unsigned mmv = 0; mmv < MMV; mmv++) {
 #pragma HLS UNROLL
           accu[mmv][pe] = activation.init(nf, pe);
