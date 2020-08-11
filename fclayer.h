@@ -105,7 +105,7 @@ void StreamingFCLayer_Batch(hls::stream<ap_uint<InStreamW>>  &in,
   StreamingDataWidthConverter_Batch<InStreamW, SIMD*TSrcI::width, InpPerImage>(in, wa_in, reps);
   Matrix_Vector_Activate_Batch<MatrixW, MatrixH, SIMD, PE, 1, TSrcI, TDstI, TWeightI>
     (static_cast<hls::stream<ap_uint<SIMD*TSrcI::width>>&>(wa_in),
-     static_cast<hls::stream<ap_uint<PE*TDstI::width>>&>  (wa_out),
+     static_cast<hls::stream<ap_uint<PE*TDstI::width>>&>  (mvOut),
      weights, activation, reps, r);
   StreamingDataWidthConverter_Batch<PE*TDstI::width, OutStreamW, OutPerImage>(mvOut, out, reps);
 
