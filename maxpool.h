@@ -215,7 +215,7 @@ void StreamingMaxPool_Precision_Batch(stream<ap_uint<InStreamW> > & in,
       (static_cast<hls::stream<ap_uint<NumChannels*ActType::width>>&>(wa_in), 
       static_cast<hls::stream<ap_uint<NumChannels*ActType::width>>&>(wa_out));
   }
-  StreamingDataWidthConverter_Batch<NumChannels*ActType::width, OutStreamW, OutPerImage>(mvOut, out, numReps);
+  StreamingDataWidthConverter_Batch<NumChannels*ActType::width, OutStreamW, OutPerImage>(wa_out, out, numReps);
   
 }
 
