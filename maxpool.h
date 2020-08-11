@@ -207,13 +207,16 @@ void StreamingMaxPool_Precision_Batch(stream<ap_uint<InStreamW> > & in,
 #pragma HLS INLINE
   unsigned const  InpPerImage = ImgDim*ImgDim*NumChannels*ActType::width/InStreamW ;
   unsigned const  OutPerImage = ImgDim*ImgDim / (PoolDim*PoolDim);
-  WidthAdjustedInputStream <InStreamW, NumChannels*ActType::width, InpPerImage>  wa_in (in,  numReps);
-  WidthAdjustedOutputStream<NumChannels*ActType::width,  OutStreamW, OutPerImage>  wa_out(out, numReps);
+  hls::stream<ap_uint<SIMD*TSrcI::width> > wa_in("StreamingMaxPool_Precision_Batch.wa_in");
+  hls::stream<ap_uint<PE*TDstI::width> > mvOut("StreamingMaxPool_Precision_Batch.mvOut");
+  StreamingDataWidthConverter_Batch<InStreamW, NumChannels*TSrcI::width, InpPerImage>(in, wa_in, reps);
   for (unsigned int rep = 0; rep < numReps; rep++) {
     StreamingMaxPool_Precision<ImgDim, PoolDim, NumChannels, ActType, min_value>
       (static_cast<hls::stream<ap_uint<NumChannels*ActType::width>>&>(wa_in), 
       static_cast<hls::stream<ap_uint<NumChannels*ActType::width>>&>(wa_out));
   }
+  StreamingDataWidthConverter_Batch<NumChannels*TDstI::width, OutStreamW, OutPerImage>(mvOut, out, reps);
+  
 }
 
 

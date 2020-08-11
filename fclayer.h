@@ -100,14 +100,15 @@ void StreamingFCLayer_Batch(hls::stream<ap_uint<InStreamW>>  &in,
 #pragma HLS INLINE
   unsigned const  InpPerImage = (MatrixW * TSrcI::width) / InStreamW ;
   unsigned const  OutPerImage = MatrixH / PE;
-
-  WidthAdjustedInputStream <InStreamW, SIMD*TSrcI::width, InpPerImage>  wa_in (in,  reps);
-  WidthAdjustedOutputStream<PE*TDstI::width,  OutStreamW, OutPerImage>  wa_out(out, reps);
-
+  hls::stream<ap_uint<SIMD*TSrcI::width> > wa_in("StreamingFCLayer_Batch.wa_in");
+  hls::stream<ap_uint<PE*TDstI::width> > mvOut("StreamingFCLayer_Batch.mvOut");
+  StreamingDataWidthConverter_Batch<InStreamW, SIMD*TSrcI::width, InpPerImage>(in, wa_in, reps);
   Matrix_Vector_Activate_Batch<MatrixW, MatrixH, SIMD, PE, 1, TSrcI, TDstI, TWeightI>
     (static_cast<hls::stream<ap_uint<SIMD*TSrcI::width>>&>(wa_in),
      static_cast<hls::stream<ap_uint<PE*TDstI::width>>&>  (wa_out),
      weights, activation, reps, r);
+  StreamingDataWidthConverter_Batch<PE*TDstI::width, OutStreamW, OutPerImage>(mvOut, out, reps);
+
 }
 
 #endif
