@@ -110,15 +110,18 @@ void ConvLayer_Batch(hls::stream<ap_uint<InStreamW>>  &in,
   unsigned const MatrixW = ConvKernelDim * ConvKernelDim * IFMChannels;
   unsigned const MatrixH = OFMChannels;
   unsigned const InpPerImage = IFMDim*IFMDim*IFMChannels/InStreamW * TSrcI::width;
-  WidthAdjustedInputStream <InStreamW, SIMD*TSrcI::width, InpPerImage>  wa_in (in,  reps);
-  WidthAdjustedOutputStream <PE*TDstI::width, OutStreamW, OFMDim * OFMDim * (OFMChannels / PE)>  mvOut (out,  reps);
+  hls::stream<ap_uint<SIMD*TSrcI::width> > wa_in("StreamingConvLayer_Batch.wa_in");
   hls::stream<ap_uint<SIMD*TSrcI::width> > convInp("StreamingConvLayer_Batch.convInp");
+  hls::stream<ap_uint<PE*TDstI::width> > mvOut("StreamingConvLayer_Batch.mvOut");
+  StreamingDataWidthConverter_Batch<InStreamW, SIMD*TSrcI::width, InpPerImage>(in, wa_in, reps);
   ConvolutionInputGenerator<ConvKernelDim, IFMChannels, TSrcI::width, IFMDim,
 			OFMDim, SIMD,1>(wa_in, convInp, reps, ap_resource_dflt());
   Matrix_Vector_Activate_Batch<MatrixW, MatrixH, SIMD, PE, 1, TSrcI, TDstI, TWeightI>
     (static_cast<hls::stream<ap_uint<SIMD*TSrcI::width>>&>(convInp),
      static_cast<hls::stream<ap_uint<PE*TDstI::width>>&>  (mvOut),
      weights, activation, reps* OFMDim * OFMDim, r);
+  StreamingDataWidthConverter_Batch<PE*TDstI::width, OutStreamW, OFMDim * OFMDim * (OFMChannels / PE)>(mvOut, out, reps);
+
 }
 
 
@@ -185,18 +188,19 @@ void ConvLayer_Batch_MMV(hls::stream<ap_uint<InStreamW>>  &in,
   unsigned const MatrixH = OFMChannels;
   unsigned const InpPerImage = IFMDim*IFMDim*IFMChannels/InStreamW * TSrcI::width;
   const unsigned int mmvReps = (reps * OFMDim * OFMDim) / MMV;
-  WidthAdjustedInputStream <InStreamW, SIMD*TSrcI::width, InpPerImage>  wa_in (in,  reps);
-  WidthAdjustedOutputStream <PE*TDstI::width*MMV, OutStreamW, OFMDim * OFMDim * (OFMChannels / PE)/MMV>  mvOut (out,  reps);
   stream<MultiChanData<MMV, PE * TDstI::width> > mmv2dwc("mmv2dwc");
   hls::stream<MultiChanData<MMV, SIMD *TSrcI::width> > convInp("StreamingConvLayer_Batch.convInp");
+  hls::stream<ap_uint<PE*TDstI::width*MMV>> mvOut("mvOut");
+  StreamingDataWidthConverter_Batch<InStreamW, SIMD*TSrcI::width, InpPerImage>(in, wa_in, reps);
+
   ConvolutionInputGenerator_MMV<ConvKernelDim, IFMChannels, TSrcI::width, IFMDim,
-			OFMDim, SIMD, STRIDE, MMV>(wa_in, convInp, reps, ap_resource_dflt());
+			OFMDim, SIMD, STRIDE, MMV>(in, convInp, reps, ap_resource_dflt());
   Matrix_Vector_Activate_Batch<MatrixW, MatrixH, SIMD, PE, MMV, TSrcI, TDstI, TWeightI>
     (static_cast<hls::stream<MultiChanData<MMV,SIMD*TSrcI::width>>&>(convInp),
      static_cast<hls::stream<MultiChanData<MMV,PE*TDstI::width>>&>(mmv2dwc),
      weights, activation, mmvReps, r);
   FlattenMultiChanData<MMV, PE * TDstI::width>(mmv2dwc, mvOut, mmvReps); // I guess it should be flattened after the MMV DWC
-
+  StreamingDataWidthConverter_Batch<PE*TDstI::width*MMV, OutStreamW, OFMDim * OFMDim * (OFMChannels / PE)/MMV>(mvOut, out, reps);
 }
 
 #endif
