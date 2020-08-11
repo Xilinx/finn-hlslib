@@ -47,7 +47,7 @@ set_top Testbench_label_select
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}
 create_clock -period 5 -name default
-csim_design -clean -compiler clang 
+csim_design 
 csynth_design
 cosim_design
 exit
