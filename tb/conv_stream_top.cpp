@@ -66,7 +66,7 @@ void Testbench_conv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream
     hls::stream<ap_uint<PE1*ACTIVATION_PRECISION> > mvOut;
     GenParamStream<TILE1, SIMD1, PE1, WIDTH>(PARAM::weights, paramStreamOut, numReps * OFMDim1 * OFMDim1);
 
-    StreamingDataWidthConverter_Batch<IFM_Channels1*INPUT_PRECISION, SIMD1*INPUT_PRECISION, InpPerImage>(in, wa_in, reps);
+    StreamingDataWidthConverter_Batch<IFM_Channels1*INPUT_PRECISION, SIMD1*INPUT_PRECISION, InpPerImage>(in, wa_in, numReps);
     ConvolutionInputGenerator<KERNEL_DIM, IFM_Channels1, INPUT_PRECISION, IFMDim1, OFMDim1, SIMD1, 1>(wa_in, convInp, numReps, ap_resource_dflt());
 
     Matrix_Vector_Activate_Stream_Batch<MatrixW, MatrixH, SIMD1, PE1, Slice<ap_uint<INPUT_PRECISION> >, Slice<ap_int<ACTIVATION_PRECISION> >, Identity, ap_uint<WIDTH> >
@@ -74,6 +74,6 @@ void Testbench_conv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream
          static_cast<hls::stream<ap_uint<PE1*ACTIVATION_PRECISION>>&>  (mvOut),
          paramStreamOut, PassThroughActivation<ap_uint<16>>(), numReps* OFMDim1 * OFMDim1, ap_resource_dsp()    );
 	
-	StreamingDataWidthConverter_Batch<PE1*ACTIVATION_PRECISION, OFM_Channels1*ACTIVATION_PRECISION, OFMDim1 * OFMDim1 * (OFM_Channels1 / PE1)>(mvOut, out, reps);
+	StreamingDataWidthConverter_Batch<PE1*ACTIVATION_PRECISION, OFM_Channels1*ACTIVATION_PRECISION, OFMDim1 * OFMDim1 * (OFM_Channels1 / PE1)>(mvOut, out, numReps);
 
 }
