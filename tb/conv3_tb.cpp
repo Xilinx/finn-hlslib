@@ -50,8 +50,8 @@
 #include "ap_int.h"
 #include "weights.hpp"
 #include "bnn-library.h"
-#include "memdataM.h"
-#include "configM.h"
+#include "memdata.h"
+#include "config.h"
 #include "activations.hpp"
 #include "weights.hpp"
 #include "activations.hpp"
@@ -67,7 +67,7 @@ void Testbench_conv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream
 #define _I 4
 // Helper function for generating fixed_point weights
 void create_memdata(){
-	ofstream memdata("..//..//..//..//memdataM.h", ios::out);
+	ofstream memdata("..//..//..//..//memdata.h", ios::out);
 	memdata << "#ifndef PARAMS_HPP\n";
 	memdata << "#define PARAMS_HPP\n";
 	memdata << "namespace PARAM{\n";
@@ -164,7 +164,7 @@ int main()
 		}
 	}
 	conv<MAX_IMAGES,IFMDim1,OFMDim1,IFM_Channels1,OFM_Channels1, KERNEL_DIM, 1, ap_uint<INPUT_PRECISION> >(IMAGE, W1, TEST);
-	Testbench_conv(input_stream, output_stream, MAX_IMAGES); // TODO: fix the thresholding
+	Testbench_conv(input_stream, output_stream, MAX_IMAGES);
 	int err_counter = 0, err_perimage=0;
 	ap_uint<ACTIVATION_PRECISION> out_chan;
 	for (unsigned int n_image = 0; n_image < MAX_IMAGES; n_image++) {
