@@ -80,6 +80,12 @@ node {
         stage('Generate weigths for depthwise separable conv test') {
             sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_dws.py;')
         }
+		stage('Generate weigths for non square conv test') {
+            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_nonsquare.py;')
+        }
+		stage('Generate weigths for non square conv test') {
+            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_nonsquare_dws.py;')
+        }
         stage('Run tests CONV3') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
@@ -99,6 +105,16 @@ node {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv_dws.tcl')
+        }
+		stage('Run tests NON_SQUARE_CONV') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv_nonsquare.tcl')
+        }
+		stage('Run tests NON_SQUARE_DWS_CONV') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv_nonsquare_dws.tcl')
         }
     }, seventhBranch: {
         stage('Run tests DWCNM') {
