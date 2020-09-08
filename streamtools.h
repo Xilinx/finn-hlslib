@@ -339,6 +339,112 @@ void FMPadding_Batch(stream<ap_uint<SIMD* In_t::width> > &in,
 
 
 /**
+ * \brief   FM Padding - Padds the input with zeroes for when the sliding window is
+ *          centered on border pixels
+ *
+ * Used to add padding with zeroes to multiple inputs in case the sliding window is
+ * centered on border pixels - working on non-square images and padding
+ *
+ * \tparam	OutputDim_x	Width of the output feature map (padded)
+ * \tparam	OutputDim_y	Height of the output feature map (padded)
+ * \tparam	Padding_x	Amount of padding over x axis
+ * \tparam	Padding_y	Amount of padding over y axis
+ * \tparam	NumChannels	Amount of channels of the input feature map
+ * \tparam	SIMD			Input parallelism 
+ * \tparam	In_t			Input datatype
+ * \tparam	PaddingStyle	Type of padding that will be applied
+ *
+ * \param		in			Input stream
+ * \param		out			Output stream
+ *
+ */
+template<	unsigned int OutputDim_x,
+			unsigned int OutputDim_y,
+			unsigned int Padding_x,
+			unsigned int Padding_y,
+			unsigned int NumChannels,
+			unsigned int SIMD,			
+			typename In_t,
+      unsigned int PaddingStyle=2>
+void FMPadding_nonsquare(stream<ap_uint<SIMD* In_t::width> > &in,
+		stream<ap_uint<SIMD* In_t::width> > &out){
+
+
+	// Padding Up and Left
+  constexpr unsigned int PaddingUp = Padding_y/2 + ((PaddingStyle == 2) ? ((Padding_y % 2) > 0) : 0);
+  constexpr unsigned int PaddingLeft = Padding_x/2 + ((PaddingStyle == 2) ? ((Padding_x % 2) > 0) : 0);
+
+	// Padding Down and Right (might be 1 element more than up and left in case of odd padding)
+	constexpr unsigned int PaddingDown = Padding_y - PaddingUp;
+	constexpr unsigned int PaddingRight = Padding_x - PaddingLeft;
+	constexpr unsigned int Folding = NumChannels/SIMD;
+	ap_uint<SIMD* In_t::width> outData, inData;
+
+	for(unsigned int y = 0; y<OutputDim_y; y++){
+		for(unsigned int x=0; x < OutputDim_x; x++){
+			for(unsigned int simd=0; simd < Folding; simd++) {
+#pragma HLS PIPELINE II=1
+
+			// Padding Rows
+			if(y < PaddingUp || y >= (OutputDim_y - PaddingDown)){
+				outData = 0;
+			}
+			// Padding Cols
+			else if(x < PaddingLeft || x >= (OutputDim_x - PaddingRight)){
+				outData = 0;
+			}
+			// No Padding
+			else{
+				inData = in.read();
+				outData = inData;
+			}
+
+			out.write(outData);
+			}
+		}
+	}
+}
+
+/**
+ * \brief   FM Padding Non Square - Padds the input of multiple frames with zeroes
+ *          for when the sliding window is centered on border pixels
+ *
+ * Used to add padding with zeroes to multiple inputs in case the sliding window is
+ * centered on border pixels - working on non-square images and padding
+ *
+ * \tparam	OutputDim_x	Width of the output feature map (padded)
+ * \tparam	OutputDim_y	Height of the output feature map (padded)
+ * \tparam	Padding_x	Amount of padding over x axis
+ * \tparam	Padding_y	Amount of padding over y axis
+ * \tparam	NumChannels	Amount of channels of the input feature map
+ * \tparam	SIMD			Input parallelism 
+ * \tparam	In_t			Input datatype
+ * \tparam	PaddingStyle	Type of padding that will be applied
+ *
+ * \param		in			Input stream
+ * \param		out			Output stream
+ * \param		numReps		Amount of frames / images
+ *
+ */
+template<	unsigned int OutputDim_x,
+			unsigned int OutputDim_y,
+			unsigned int Padding_x,
+			unsigned int Padding_y,
+			unsigned int NumChannels,
+			unsigned int SIMD,
+			typename In_t,
+      unsigned int PaddingStyle=2>
+void FMPadding_nonsquare_Batch(stream<ap_uint<SIMD* In_t::width> > &in,
+		stream<ap_uint<SIMD* In_t::width> > &out,
+		const unsigned int numReps) {
+	for (unsigned int rep = 0; rep < numReps; rep++) {
+		FMPadding_nonsquare<OutputDim_x, OutputDim_y, Padding_x, Padding_y, NumChannels, SIMD, In_t, PaddingStyle>(in, out);
+	}
+
+}
+
+
+/**
  * \brief   Stream Data Width Converter - Converts the width of the input stream in the output stream
  *
  * Used to upscale or downscale a stream, without any loss of data in the procedure. 
