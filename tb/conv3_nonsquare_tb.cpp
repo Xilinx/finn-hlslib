@@ -39,8 +39,6 @@
  *
  *****************************************************************************/
 #include <iostream>
-#include <fstream>
-#include <time.h>
 #include <cmath>
 #include <ctime>
 #include <cstring>
@@ -50,8 +48,8 @@
 #include "ap_int.h"
 #include "weights.hpp"
 #include "bnn-library.h"
-#include "memdata.h"
-#include "config.h"
+#include "memdata_nonsquare.h"
+#include "config_nonsquare.h"
 #include "activations.hpp"
 #include "weights.hpp"
 #include "activations.hpp"
@@ -61,96 +59,57 @@
 using namespace hls;
 using namespace std;
 
-#define MAX_IMAGES 1
-void Testbench_conv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream<ap_uint<OFM_Channels1*ACTIVATION_PRECISION> > & out, unsigned int numReps);
 
-#define _I 4
-// Helper function for generating fixed_point weights
-void create_memdata(){
-	ofstream memdata("..//..//..//..//memdata.h", ios::out);
-	memdata << "#ifndef PARAMS_HPP\n";
-	memdata << "#define PARAMS_HPP\n";
-	memdata << "namespace PARAM{\n";
-	if(WIDTH == 1){
-		memdata << "static BinaryWeights<" << SIMD1 << "," << PE1 << "," << TILE1 << "> weights= {\n{\n";
-	}else{
-		memdata << "static FixedPointWeights<" << SIMD1 << ",ap_fixed<" << WIDTH << "," << _I << ">," << PE1 << "," << TILE1 << "> weights= {\n{\n";
-	}
-	srand( (unsigned)time( NULL ) );
-	for(unsigned int p=0; p<PE1; p++){
-		memdata << "{\n";
-		for(unsigned int t=0; t<TILE1; t++){
-			memdata << "0x";
-			for(unsigned int s=0; s<SIMD1; s++){
-				float rr = ((float)rand()/RAND_MAX * 4) - 2;
-				ap_fixed<WIDTH, _I> val = rr;
-				int castInt = val.range(WIDTH-1, 0);
-				memdata << setfill('0') << setw(8) << hex << castInt;
-				//cout << rr << endl;
-			}
-			if(t != TILE1){
-				memdata << ",\n";
-			}
-		}
-		memdata << "}\n";
-		if(p != PE1-1){
-			memdata << ",";
-		}
-	}
-	memdata << "}\n};\n}\n";
-	memdata << "#endif\n";
-	memdata.close();
-}
+
+
+#define MAX_IMAGES 1
+void Testbench_conv_nonsquare(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream<ap_uint<OFM_Channels1*ACTIVATION_PRECISION> > & out, unsigned int numReps);
 
 int main()
 {
-	create_memdata();
-	static	ap_uint<INPUT_PRECISION> IMAGE[MAX_IMAGES][IFMDim1*IFMDim1][IFM_Channels1];
-	static	ap_uint<ACTIVATION_PRECISION> TEST[MAX_IMAGES][OFMDim1][OFMDim1][OFM_Channels1];
+	static	ap_uint<INPUT_PRECISION> IMAGE[MAX_IMAGES][IFMDim1_x][IFMDim1_y][IFM_Channels1];
+	static	ap_int<ACTIVATION_PRECISION> TEST[MAX_IMAGES][OFMDim1_x][OFMDim1_y][OFM_Channels1];
 	stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > input_stream("input_stream");
 	stream<ap_uint<OFM_Channels1*ACTIVATION_PRECISION> > output_stream("output_stream");
 	unsigned int counter = 0;
 	for (unsigned int n_image = 0; n_image < MAX_IMAGES; n_image++) {
-		for (unsigned int oy = 0; oy < IFMDim1; oy++) {
-			for (unsigned int ox = 0; ox < IFMDim1; ox++) {
+		for (unsigned int oy = 0; oy < IFMDim1_y; oy++) {
+			for (unsigned int ox = 0; ox < IFMDim1_x; ox++) {
 				ap_uint<INPUT_PRECISION*IFM_Channels1> input_channel = 0;
 				for(unsigned int channel = 0; channel < IFM_Channels1; channel++)
 				{
 					ap_uint<INPUT_PRECISION> input = (ap_uint<INPUT_PRECISION>)(counter);
-					IMAGE[n_image][oy*IFMDim1+ox][channel]= input;
+					IMAGE[n_image][ox][oy][channel]= input;
 					input_channel = input_channel >> INPUT_PRECISION;
 					input_channel(IFM_Channels1*INPUT_PRECISION-1,(IFM_Channels1-1)*INPUT_PRECISION)=input;
-					cout << "input: " << input << endl;
+
 					counter++;
 				}
 				input_stream.write(input_channel);
-				cout << "input_channel: " << input_channel << endl;
 			}
 		}
 	}
-	static	ap_uint<WIDTH> W1[OFM_Channels1][KERNEL_DIM][KERNEL_DIM][IFM_Channels1];
+	static	ap_int<WIDTH> W1[OFM_Channels1][KERNEL_DIM_X][KERNEL_DIM_Y][IFM_Channels1];
 	// initialize the weights
-	constexpr int TX = (IFM_Channels1*KERNEL_DIM*KERNEL_DIM) / SIMD1;
+	constexpr int TX = (IFM_Channels1*KERNEL_DIM_X*KERNEL_DIM_Y) / SIMD1;
 	constexpr int TY = OFM_Channels1 / PE1;
 	unsigned int kx=0;
 	unsigned int ky=0;
 	unsigned int chan_count=0;
 	unsigned int out_chan_count=0;
-	for(int pe=0;pe <PE1;pe++){
 	for (unsigned int oy = 0; oy < TY; oy++) {
 		for (unsigned int ox = 0; ox <TX; ox++) {
-
+			for(int pe=0;pe <PE1;pe++){
 				for(int simd=0;simd<SIMD1;simd++){
 					W1[out_chan_count][kx][ky][chan_count] = PARAM::weights.weights(oy*TX + ox)[pe][simd];
-					//cout << "weight[" << oy*TX + ox << "][" << pe << "][" << simd << "] = " << PARAM::weights.weights(oy*TX + ox)[pe][simd] << endl;
-					chan_count++;
+			    	chan_count++;
 				    if (chan_count==IFM_Channels1){
 				    	chan_count=0;
 						kx++;
-						if (kx==KERNEL_DIM){
+						if (kx==KERNEL_DIM_X){
 							kx=0;
 							ky++;
-							if (ky==KERNEL_DIM){
+							if (ky==KERNEL_DIM_Y){
 								ky=0;
 						    	out_chan_count++;
 							    if (out_chan_count==OFM_Channels1){
@@ -163,17 +122,17 @@ int main()
 			}
 		}
 	}
-	conv<MAX_IMAGES,IFMDim1,OFMDim1,IFM_Channels1,OFM_Channels1, KERNEL_DIM, 1, ap_uint<INPUT_PRECISION> >(IMAGE, W1, TEST);
-	Testbench_conv(input_stream, output_stream, MAX_IMAGES);
+	conv_nonsquare<MAX_IMAGES,IFMDim1_x,IFMDim1_y,OFMDim1_x,OFMDim1_y,IFM_Channels1,OFM_Channels1, KERNEL_DIM_X, KERNEL_DIM_Y, STRIDE_x, STRIDE_y, ap_uint<INPUT_PRECISION>, ap_int<ACTIVATION_PRECISION>, ap_int<WIDTH> >(IMAGE, W1, TEST);
+	Testbench_conv_nonsquare(input_stream, output_stream, MAX_IMAGES);
 	int err_counter = 0, err_perimage=0;
-	ap_uint<ACTIVATION_PRECISION> out_chan;
+	ap_int<ACTIVATION_PRECISION> out_chan;
 	for (unsigned int n_image = 0; n_image < MAX_IMAGES; n_image++) {
-		for (unsigned int oy = 0; oy < OFMDim1; oy++) {
-			for (unsigned int ox = 0; ox < OFMDim1; ox++) {
+		for (unsigned int oy = 0; oy < OFMDim1_y; oy++) {
+			for (unsigned int ox = 0; ox < OFMDim1_x; ox++) {
 				for(int e=0;e<1;e++){
 					ap_uint<OFM_Channels1*ACTIVATION_PRECISION> outElem = output_stream.read();
 					for(unsigned int channel = 0; channel < OFM_Channels1; channel++){
-						ap_uint<ACTIVATION_PRECISION> EXP = TEST[n_image][ox][oy][channel + e * OFM_Channels1];
+						ap_int<ACTIVATION_PRECISION> EXP = TEST[n_image][ox][oy][channel + e * OFM_Channels1];
 						out_chan(ACTIVATION_PRECISION-1,0) = outElem((channel + 1)*ACTIVATION_PRECISION-1,channel*ACTIVATION_PRECISION);
 
 						if (EXP != out_chan){
@@ -183,8 +142,6 @@ int main()
 							err_perimage++;
 							//if(err_counter>10)
 								//return 1;
-						}else{
-							std::cout << "Expected["<<oy <<"]["<<ox<<"]["<<channel<<"]=" << EXP << " actual " <<  out_chan << std::endl;
 						}
 					}
 				}
