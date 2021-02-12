@@ -52,8 +52,8 @@ ofm_dimension_x = 6
 ofm_dimension_y = 4
 
 activation_precision = 16
-simd = 1
-pe = 1
+simd = 2
+pe = 2
 w_precision = 4
 mmv=2
 

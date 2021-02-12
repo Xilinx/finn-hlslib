@@ -97,9 +97,10 @@ int main()
 	unsigned int ky=0;
 	unsigned int chan_count=0;
 	unsigned int out_chan_count=0;
-	for (unsigned int oy = 0; oy < TY; oy++) {
-		for (unsigned int ox = 0; ox <TX; ox++) {
-			for(int pe=0;pe <PE1;pe++){
+
+	for(int pe=0;pe <PE1;pe++){
+		for (unsigned int oy = 0; oy < TY; oy++) {
+			for (unsigned int ox = 0; ox <TX; ox++) {
 				for(int simd=0;simd<SIMD1;simd++){
 					W1[out_chan_count][kx][ky][chan_count] = PARAM::weights.weights(oy*TX + ox)[pe][simd];
 			    	chan_count++;
