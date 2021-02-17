@@ -1214,7 +1214,7 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
   CASSERT_DATAFLOW(Dilation_y == 1); // Dilation on the Y axes not yet supported, available only for API definition
 
   const unsigned int multiplying_factor = IFMChannels/SIMD;
-  const unsigned int number_blocks = ConvKernelDim_y/Stride_y + 1 ;
+  const unsigned int number_blocks = (ConvKernelDim_y*Dilation_y)/Stride_y + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks][Stride_x * IFMDim_x * multiplying_factor];
 
 #pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
@@ -1222,7 +1222,7 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
   const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * ConvKernelDim_y * multiplying_factor);
   const unsigned int cycles_read_block = Stride_x * IFMDim_x * multiplying_factor;
   const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
-  const unsigned int baseIter = IFMDim_x * ConvKernelDim_y * multiplying_factor// Initial buffer
+  const unsigned int baseIter = IFMDim_x * ConvKernelDim_y * Dilation_y  * multiplying_factor// Initial buffer
 			                  + OFMDim_y * MAX(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
@@ -1234,7 +1234,7 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS PIPELINE II=1
-      if (inp < IFMDim_x * ConvKernelDim_y *multiplying_factor) {// Initial buffer of ConvKernelDim lines
+      if (inp < IFMDim_x * ConvKernelDim_y * Dilation_y *multiplying_factor) {// Initial buffer of ConvKernelDim lines
         ap_uint<SIMD*Input_precision> inElem;
         inElem = in.read();
         inputBuf[current_block_write][current_line] = inElem;
@@ -1250,12 +1250,12 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
           counter_internal_block = 0;
         }
       } else {
-        if (counter_internal_block < cycles_write_block-1) { // We are writing output, MMV IFMChan per cycle
-          unsigned int current_block_read = (current_block_write + 1 + k_y / Stride_y);
+        if (counter_internal_block < cycles_write_block-1) { // We are writing output, IFMChan per cycle
+          unsigned int current_block_read = (current_block_write + 1 + (k_y*Dilation_y) / Stride_y);
           if (current_block_read >= number_blocks) {
             current_block_read-= number_blocks;
 		  }
-          unsigned int current_line_in_block = (((k_y%Stride_y) * IFMDim_y + ofm_x*Stride_x + k_x*Dilation_x)*multiplying_factor + count_simd);
+          unsigned int current_line_in_block = ((ofm_x*Stride_x + k_x*Dilation_x)*multiplying_factor + count_simd);
           ap_uint<SIMD*Input_precision> outElem;
           outElem = inputBuf[current_block_read][(current_line_in_block)];
           out.write(outElem);
