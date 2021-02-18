@@ -146,5 +146,11 @@ node {
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_label_select.tcl')
         }
+    }, twelfthBranch: {
+        stage('Run tests Dilated SWG') {
+              env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_swg_dilated.tcl')
+        }
     }
 }
