@@ -42,31 +42,31 @@ node {
         stage('Run tests SWG') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_swg.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_swg.tcl')
         }
     }, secondBranch: {
         stage('Run tests POOL') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_pool.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_pool.tcl')
         }
     }, thirdBranch: {
         stage('Run tests DWC') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_dwc.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_dwc.tcl')
         }
     }, fourthBranch: {
         stage('Run tests ADD') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_add.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_add.tcl')
         }
     }, fifthBranch: {
         stage('Run tests DUP_STREAM') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_dup_stream.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_dup_stream.tcl')
         }
     }, sixthBranch: {
         stage('Set-up virtual env') {
@@ -83,52 +83,52 @@ node {
         stage('Run tests CONV3') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_conv3.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_conv3.tcl')
         }
         stage('Run tests CONV3_STREAM') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_conv_stream.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_conv_stream.tcl')
         }
         stage('Run tests CONVMMV') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_convmmv.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_convmmv.tcl')
         }
         stage('Run tests DWSCONV') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_conv_dws.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_conv_dws.tcl')
         }
     }, seventhBranch: {
         stage('Run tests DWCNM') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_dwcnm.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_dwcnm.tcl')
         }
     }, eigthBranch: {
         stage('Run tests SWG_KS') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_swg_kernelstride.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_swg_kernelstride.tcl')
         }
     }, ninthBranch: {
         stage('Run tests QDMA') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_qdma_stream.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_qdma_stream.tcl')
         }
     }, tenthBranch: {
         stage('Run tests Pool Kernel Stride') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_kernel_stride_pool.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_kernel_stride_pool.tcl')
         }
     }, eleventhBranch: {
         stage('Run tests LabelSelect Batch') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_label_select.tcl')
+            sh('source /proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh; cd tb; vitis_hls -f test_label_select.tcl')
         }
     }
 }
