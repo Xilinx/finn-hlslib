@@ -54,6 +54,50 @@
 
 #include "interpret.hpp"
 
+namespace comp{
+
+  template<typename input_type = void>
+    struct greater;
+
+  template<typename input_type = void>
+    struct less;
+
+  template<typename input_type = void>
+    struct greater_equal;
+
+  template<typename input_type = void>
+    struct less_equal;	
+
+  template<typename input_type>
+    struct greater : public binary_function<input_type, input_type, ap_uint<1>> {
+      ap_uint<1>
+      operator()(const input_type& a, const input_type& b) const
+      { return a > b; }
+    };
+
+  template<typename input_type>
+    struct less : public binary_function<input_type, input_type, ap_uint<1>> {
+      ap_uint<1>
+      operator()(const input_type& a, const input_type& b) const
+      { return a < b; }
+    };
+
+  template<typename input_type>
+    struct greater_equal : public binary_function<input_type, input_type, ap_uint<1>> {
+      ap_uint<1>
+      operator()(const input_type& a, const input_type& b) const
+      { return a >= b; }
+    };
+
+  template<typename input_type>
+    struct less_equal : public binary_function<input_type, input_type, ap_uint<1>> {
+      ap_uint<1>
+      operator()(const input_type& a, const input_type& b) const
+      { return a <= b; }
+    };
+	
+}
+
 /**
  * General contract for activation functions.
  *
@@ -96,7 +140,7 @@ public:
  * The default comparison returns true if the threshold value is
  * smaller than the passed accumulator value.
  */
-template<typename TA, typename Compare = std::less<TA>>
+template<typename TA, typename Compare = comp::less<TA>>
 class ThresholdActivation : public Activation<TA, bool> {
   TA const  m_threshold;
 public:
@@ -122,7 +166,7 @@ public:
  * the indexed row is smaller than the passed accumulator value.
  */
 template<unsigned NF, unsigned PE, unsigned NumTH, 
-	 typename TA, typename TR, int ActVal = 0, typename Compare = std::less<TA>>
+	 typename TA, typename TR, int ActVal = 0, typename Compare = comp::less<TA>>
 class ThresholdsActivation {
 public:
   TA m_thresholds[PE][NF][NumTH];

@@ -57,7 +57,7 @@
  * It is used to implement depth-wise separable convolution
  * 
  * \tparam Channels   Number of channels
- * \tparam Kernel	    Kernel dimension (assumed square)
+ * \tparam Kernel_2   Kernel * Kernel dimension (Kernel ^ 2 if square)
  * \tparam SIMD       Number of input columns computed in parallel
  * \tparam PE         Number of output rows computed in parallel
  * \tparam MMV        Number of output pixels computed in parallel
@@ -78,7 +78,7 @@
  * \param r           Resource type for the hardware implementation of the MAC block
  */
 template<
-  unsigned Channels, unsigned Kernel, unsigned SIMD, unsigned PE, unsigned MMV, 
+  unsigned Channels, unsigned Kernel_2, unsigned SIMD, unsigned PE, unsigned MMV, 
   typename TSrcI = Identity, typename TDstI = Identity, typename TWeightI = Identity,
   typename TI, typename TO, typename TW, typename TA, typename R
 >
@@ -95,7 +95,7 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
 
   // how many synapse groups each row is split into
   // alternatively: number of horizontal matrix chunks
-  unsigned const  SF = (Channels*Kernel*Kernel) / Channels;
+  unsigned const  SF = (Channels*Kernel_2) / Channels;
   decltype(activation.init(0,0))  accu[MMV][PE];
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
 
