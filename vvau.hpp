@@ -105,7 +105,11 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
   // everything merged into a common iteration space (one "big" loop instead
   // of smaller nested loops) to get the pipelinening the way we want
   unsigned const TOTAL_FOLD = NF * SF ;//* Channels/SIMD;
+#ifndef FREE_RUNNING
   for(unsigned  i = 0; i < reps * TOTAL_FOLD; i++) {
+#else
+  while(1) {
+#endif
 #pragma HLS PIPELINE II=1
     TI  inElem;
     inElem = in.read();
