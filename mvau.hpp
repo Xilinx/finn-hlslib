@@ -95,7 +95,7 @@ void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
 				  TA  const &activation,
 				  int const  reps,
 				  R const &r) {
-
+#ifndef FREE_RUNNING
   // how many different rows each neuron will compute
   // alternatively: number of vertical matrix chunks
   unsigned const  NF = MatrixH / PE;
@@ -119,11 +119,8 @@ void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
   // everything merged into a common iteration space (one "big" loop instead
   // of smaller nested loops) to get the pipelinening the way we want
   unsigned const TOTAL_FOLD = NF * SF;
-#ifndef FREE_RUNNING
+
   for(unsigned  i = 0; i < reps * TOTAL_FOLD; i++) {
-#else
-  while(1) {
-#endif
 #pragma HLS PIPELINE II=1
     TI  inElem;
     if(nf == 0) {
@@ -180,9 +177,62 @@ void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
       }
     }
   }
+  
+#else
+#pragma HLS PIPELINE II=1
+  // how many different rows each neuron will compute
+  // alternatively: number of vertical matrix chunks
+  unsigned const  NF = MatrixH / PE;
+
+  // how many synapse groups each row is split into
+  // alternatively: number of horizontal matrix chunks
+  unsigned const  SF = MatrixW / SIMD;
+
+  decltype(activation.init(0,0))  accu[MMV][PE];
+#pragma HLS ARRAY_PARTITION variable=accu complete dim=0
+
+
+  unsigned  tile = 0; // invariant: tile = nf*SF + sf
+
+  // everything merged into a common iteration space (one "big" loop instead
+  // of smaller nested loops) to get the pipelinening the way we want
+  unsigned const TOTAL_FOLD = NF * SF;
+  TI  inElem;
+  inElem = in.read();
+  // Threshold Initialisation
+  for(unsigned  pe = 0; pe < PE; pe++) {
+#pragma HLS UNROLL
+	for(unsigned mmv = 0; mmv < MMV; mmv++) {
+#pragma HLS UNROLL
+	  accu[mmv][pe] = activation.init(0, pe);
+	}
+  }
+
+
+    // compute matrix-vector product for each processing element
+  auto const &w = weights.weights(tile);
+  for(unsigned  pe = 0; pe < PE; pe++) {
+#pragma HLS UNROLL
+    auto const  wgt = TWeightI()(w[pe]);
+    for (unsigned mmv = 0; mmv < MMV; mmv++){
+      auto const  act = TSrcI()(inElem, mmv);
+      accu[mmv][pe] = mac<SIMD>(accu[mmv][pe], wgt, act, r, mmv);
+    }
+  }
+
+    // produce output and clear accumulators
+  auto  outElem = TDstI().template operator()<TO>();
+  for (unsigned  pe = 0; pe < PE; pe++) {
+#pragma HLS UNROLL
+    for (unsigned mmv = 0; mmv < MMV; mmv++){
+#pragma HLS UNROLL
+      outElem(pe,mmv,1) = activation.activate(0, pe, accu[mmv][pe]);
+    }
+  }
+  out.write(outElem);
+
+#endif
 }
-
-
 /**
  * \brief Matrix vector activate function with streaming weights
  *
