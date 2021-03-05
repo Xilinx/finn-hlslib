@@ -179,7 +179,7 @@ void Matrix_Vector_Activate_Batch(hls::stream<TI> &in,
   }
   
 #else
-#pragma HLS PIPELINE II=1
+#pragma HLS PIPELINE II=1 enable_flush
   // how many different rows each neuron will compute
   // alternatively: number of vertical matrix chunks
   unsigned const  NF = MatrixH / PE;
