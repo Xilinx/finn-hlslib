@@ -186,8 +186,9 @@ void ConvLayer_Batch_MMV(hls::stream<ap_uint<InStreamW>>  &in,
   unsigned const InpPerImage = IFMDim*IFMDim*IFMChannels*TSrcI::width/InStreamW;
   const unsigned int mmvReps = (reps * OFMDim * OFMDim) / MMV;
   WidthAdjustedInputStream <InStreamW, SIMD*TSrcI::width, InpPerImage>  wa_in (in,  reps);
-  WidthAdjustedOutputStream <PE*TDstI::width*MMV, OutStreamW, OFMDim * OFMDim * (OFMChannels / PE)/MMV>  mvOut (out,  reps);
+  WidthAdjustedOutputStream <OFMChannels*TDstI::width*MMV, OutStreamW, OFMDim * OFMDim * (OFMChannels / PE)/MMV>  mvOut (out,  reps);
   stream<MultiChanData<MMV, PE * TDstI::width> > mmv2dwc("mmv2dwc");
+  stream<MultiChanData<MMV, OFMChannels * TDstI::width> > dwc2flat("dwc2flat");
   hls::stream<MultiChanData<MMV, SIMD *TSrcI::width> > convInp("StreamingConvLayer_Batch.convInp");
   ConvolutionInputGenerator_MMV<ConvKernelDim, IFMChannels, TSrcI::width, IFMDim,
 			OFMDim, SIMD, STRIDE, MMV>(wa_in, convInp, reps, ap_resource_dflt());
@@ -195,7 +196,8 @@ void ConvLayer_Batch_MMV(hls::stream<ap_uint<InStreamW>>  &in,
     (static_cast<hls::stream<MultiChanData<MMV,SIMD*TSrcI::width>>&>(convInp),
      static_cast<hls::stream<MultiChanData<MMV,PE*TDstI::width>>&>(mmv2dwc),
      weights, activation, mmvReps, r);
-  FlattenMultiChanData<MMV, PE * TDstI::width>(mmv2dwc, mvOut, mmvReps); // I guess it should be flattened after the MMV DWC
+  MultiChanDataWidthConverter_Batch<PE * TDstI::width, OFMChannels * TDstI::width,  OFMDim * OFMDim * (OFMChannels / PE), MMV>(mmv2dwc, dwc2flat, reps);
+  FlattenMultiChanData<MMV, OFMChannels * TDstI::width>(dwc2flat, mvOut, mmvReps);
 
 }
 
