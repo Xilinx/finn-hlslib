@@ -104,7 +104,7 @@ void create_memdata(){
 
 int main()
 {
-	create_memdata();
+	//create_memdata();
 	static	ap_uint<INPUT_PRECISION> IMAGE[MAX_IMAGES][IFMDim1*IFMDim1][IFM_Channels1];
 	static	ap_uint<ACTIVATION_PRECISION> TEST[MAX_IMAGES][OFMDim1][OFMDim1][OFM_Channels1];
 	stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > input_stream("input_stream");
@@ -120,11 +120,9 @@ int main()
 					IMAGE[n_image][oy*IFMDim1+ox][channel]= input;
 					input_channel = input_channel >> INPUT_PRECISION;
 					input_channel(IFM_Channels1*INPUT_PRECISION-1,(IFM_Channels1-1)*INPUT_PRECISION)=input;
-					cout << "input: " << input << endl;
 					counter++;
 				}
 				input_stream.write(input_channel);
-				cout << "input_channel: " << input_channel << endl;
 			}
 		}
 	}
@@ -136,13 +134,14 @@ int main()
 	unsigned int ky=0;
 	unsigned int chan_count=0;
 	unsigned int out_chan_count=0;
-	for(int pe=0;pe <PE1;pe++){
-	for (unsigned int oy = 0; oy < TY; oy++) {
-		for (unsigned int ox = 0; ox <TX; ox++) {
 
-				for(int simd=0;simd<SIMD1;simd++){
+	for (unsigned int oy = 0; oy < TY; oy++) {
+		for(unsigned int pe=0;pe <PE1;pe++){
+			for (unsigned int ox = 0; ox <TX; ox++) {
+				for(unsigned int simd=0;simd<SIMD1;simd++){
 					W1[out_chan_count][kx][ky][chan_count] = PARAM::weights.weights(oy*TX + ox)[pe][simd];
-					//cout << "weight[" << oy*TX + ox << "][" << pe << "][" << simd << "] = " << PARAM::weights.weights(oy*TX + ox)[pe][simd] << endl;
+					//cout << "TILE " << oy*TX + ox << " PE " << pe << " SIMD " << simd << endl;
+					//cout << "IFM " << chan_count << " KX " << kx << " KY " << ky << " OFM " << out_chan_count << endl;
 					chan_count++;
 				    if (chan_count==IFM_Channels1){
 				    	chan_count=0;
@@ -178,11 +177,8 @@ int main()
 
 						if (EXP != out_chan){
 							std::cout << "ERROR: Expected["<<oy <<"]["<<ox<<"]["<<channel<<"]=" << EXP << " actual " <<  out_chan << std::endl;
-							//return 1;
 							err_counter ++;
 							err_perimage++;
-							//if(err_counter>10)
-								//return 1;
 						}else{
 							std::cout << "Expected["<<oy <<"]["<<ox<<"]["<<channel<<"]=" << EXP << " actual " <<  out_chan << std::endl;
 						}
