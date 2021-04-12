@@ -36,6 +36,6 @@
 #define OFMDim 4
 #define STRIDE 2
 #define INPUT_PRECISION 8
-#define MMV 4
+#define MMV 2
 #define INPUT_MULTIPLIER 1
 

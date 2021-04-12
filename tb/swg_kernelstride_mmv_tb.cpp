@@ -47,7 +47,7 @@
 using namespace hls;
 using namespace std;
 
-#define MAX_IMAGES 1
+#define MAX_IMAGES 2
 
 void Testbench(stream<ap_uint<IFM_Channels*INPUT_PRECISION> > & in, stream<ap_uint<IFM_Channels*INPUT_PRECISION*MMV> > & out, unsigned int numReps);
 

@@ -634,9 +634,6 @@ void ConvolutionInputGenerator_kernel_stride_MMV(
 	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, current_k_y = 0, count_simd =0;
 #pragma HLS RESET variable=inp
 
-#pragma HLS DEPENDENCE variable=inputBuf inter false
-#pragma HLS DEPENDENCE variable=inputBuf intra false
-
 for (unsigned int count_image = 0; count_image < numReps; count_image++) {
   unsigned int floor_block_read = 0, ceil_block_read = number_blocks;
   unsigned int current_block_write = 0;
@@ -719,8 +716,6 @@ for (unsigned int count_image = 0; count_image < numReps; count_image++) {
 				for(unsigned int v = 0; v < MMV; v++) {
 #pragma HLS UNROLL
 					inputBuf[v][current_block_write][current_line] = inElem;
-#pragma AP dependence variable=inputBuf intra false
-#pragma AP dependence variable=inputBuf inter false
 					}
 				current_line++;
 				if (current_line == IFMDim * multiplying_factor) // We read the whole block, we change the next block in which we want to we
