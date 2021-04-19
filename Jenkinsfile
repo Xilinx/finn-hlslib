@@ -86,6 +86,12 @@ node {
 		stage('Generate weigths for non square conv test') {
             sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_nonsquare_dws.py;')
         }
+		stage('Generate weigths for conv STMR test non injecting errors') {
+            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_stmr.py no_inj;')
+        }
+		stage('Generate weigths for conv STMR test injecting errors') {
+            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_stmr.py inj;')
+        }
         stage('Run tests CONV3') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
@@ -116,6 +122,11 @@ node {
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv_nonsquare_dws.tcl')
         }
+		stage('Run tests CONV_STMR') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_stmr.tcl')
+        }
     }, seventhBranch: {
         stage('Run tests DWCNM') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
@@ -145,6 +156,18 @@ node {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_label_select.tcl')
+        }
+    }, twelfthBranch: {
+        stage('Run tests Dilated SWG') {
+              env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_swg_dilated.tcl')
+        }
+    }, thirteenthBranch: {
+        stage('Run tests MMV SWG Kernel Stride') {
+              env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_swg_kernelstride_mmv.tcl')
         }
     }
 }
