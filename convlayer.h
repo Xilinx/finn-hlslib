@@ -54,6 +54,8 @@
 
 #include "streamtools.h"
 #include "mvau.hpp"
+#include "tmrcheck.hpp"
+
 /**
  * \brief 	Convolutional layer implementation
  *
