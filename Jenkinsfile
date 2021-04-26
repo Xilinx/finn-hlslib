@@ -125,15 +125,20 @@ node {
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv_nonsquare_dws.tcl')
         }
-		stage('Run test TMRC') {
+		stage('Run tests TMRC') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_tmrc_stmr.tcl')
         }
-		stage('Run tests CONV_STMR') {
+		stage('Run tests CONV_NOINJ_STMR') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_stmr.tcl')
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_noinj_stmr.tcl')
+        }
+	    stage('Run tests CONV_INJ_STMR') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_inj_stmr.tcl')
         }
     }, seventhBranch: {
         stage('Run tests DWCNM') {
