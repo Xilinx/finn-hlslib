@@ -89,38 +89,6 @@ template<int MAX_IMAGE,
 	}
 
 template<int MAX_IMAGE,
-	int IFMDim,
-	int OFMDim,
-	int IFMCh,
-	int OFMCh,
-	int kernel,
-	int stride,
-	typename TI,
-	typename TO,
-	typename TW>
-	void conv_stmr(TI const img[MAX_IMAGE][IFMDim*IFMDim][IFMCh], TW const weights[OFMCh][kernel][kernel][IFMCh], TO out[MAX_IMAGE][OFMDim][OFMDim][OFMCh]){
-		for(int n=0;n<MAX_IMAGE;n++){
-			cout << "Image " << n << endl;
-			cout << "Conv function computes: " << endl;
-			cout << "Format: <OFM[Row][Column][Channel]>" << endl;
-			for(int x=0;x<OFMDim;x++)
-				for(int y=0;y<OFMDim;y++)
-					for(int h=0;h<OFMCh;h++){
-						TO tmp = 0;
-						for (int ky=0;ky<kernel;ky++)
-							for (int kx=0;kx<kernel;kx++)
-								for(int w=0;w<IFMCh;w++){
-									tmp+=img[n][(y*stride+ky)*IFMDim+x*stride+kx][w] * weights[h][kx][ky][w];
-									//cout << tmp << " = " << weights[h][kx][ky][w] << " * " << img[n][(y*stride+ky)*IFMDim+x*stride+kx][w] << endl;
-								}
-						out[n][x][y][h] = tmp;
-						cout << "OFM[" << x << "][" << y << "][" << h << "]: " << out[n][x][y][h] << endl;
-					}
-			cout << "---------------\n\n" << endl;
-		}
-	}
-
-template<int MAX_IMAGE,
 	int IFMDim_x,
 	int IFMDim_y,
 	int OFMDim_x,
