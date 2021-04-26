@@ -71,7 +71,7 @@ max_ch_width = 6
 
 # Define how many errors to generate in the triplications (if injection is used)
 num_trip_inj = 2 # Set this value to any number between 1 and number of triplications (num_red)
-num_errors_pe = 1 # Set this value to any number between 1 and number of redundancies (redf)
+num_errors_pe = 2 # Set this value to any number between 1 and redundancy factor (redf)
 
 # Check validity of the PE selection
 TMR.isvalid(pe, ofm_channels, redf, num_red)
@@ -86,9 +86,9 @@ width = simd * w_precision
 
 # Generate the set of weights
 for p in range(ofm_channels):
-	for t in range(tile): 
-		w_values[p][t] = random.randint(0, 1 << width-1)  
-		
+    for t in range(tile): 
+        w_values[p][t] = random.randint(0, 1 << width-1)  
+        
 # Channels to triplicate
 ch_list = [1, 3]
 
@@ -98,34 +98,43 @@ w_t_values, channel_mask, red_ch_index = TMR.map(w_values, ofm_channels, pe, red
 # Transform channel mask to binary
 tobin = '{0:0' + str(ofm_ch_red) + 'b}'
 channel_mask = tobin.format(channel_mask)
-
+   
 # Check if user gave argument
-if((len(sys.argv) == 1) or (len(sys.argv) > 2) or (str(sys.argv[1]) != 'inj' and str(sys.argv[1]) != 'no_inj')):
-	
-	print("Error: Please, provide a valid, single argument, it should be either 'inj' or 'no_inj'.")
-	exit(1)	
-	
+if((len(sys.argv) == 1) or (len(sys.argv) > 2)):
+    
+    print("Error: Please, provide a valid, single argument, it should be either 'inj', 'no_inj' or 'tmrcheck'.")
+    exit(1) 
+   
 # User wants to inject errors
-elif(str(sys.argv[1]) == 'inj'): 
-	
-	print("Injecting errors among the triplicated channels...")
-	
-	# Separate weights in case there is folding, to inject errors to individual blocks:
-	w_t_values = np.concatenate(np.hsplit(w_t_values, ofm_ch_red/pe), axis=0)
-	# With the current values, a single error is being injected to 2 triplets (there is chance to be the same triplet twice)
-	for j in range (num_trip_inj):
-		which_triplet = random.randint(0, num_red-1)
-		temp_array = red_ch_index[which_triplet][:]
-		which_triplication = int(np.random.choice(temp_array))
-		for i in range (num_errors_pe):		
-			w_t_values[which_triplication][random.randint(0, tile-1)] = random.randint(0, 1<<width-1)  				
-	# Put weights back to the previous position 
-	w_t_values = np.concatenate(np.array_split(w_t_values, ofm_ch_red/pe), axis=1)		
-	
-# User doesn't want to inject errors	
-elif(str(sys.argv[1]) == 'no_inj'): 	
-	print("Error injection has been skipped.")
-
+elif(str(sys.argv[1]) == 'inj'):
+    injecting = 'true'
+    print("Injecting errors among the triplicated channels...")
+    
+    # Separate weights in case there is folding, to inject errors to individual blocks:
+    w_t_values = np.concatenate(np.hsplit(w_t_values, ofm_ch_red/pe), axis=0)
+    # With the current values, a single error is being injected to 2 triplets (there is chance to be the same triplet twice)
+    for j in range (num_trip_inj):
+        which_triplet = random.randint(0, num_red-1)
+        temp_array = [red_ch_index[which_triplet][0], red_ch_index[which_triplet][0]+1, red_ch_index[which_triplet][0]+2]
+        for i in range (num_errors_pe):
+            which_triplication = int(np.random.choice(temp_array)) 
+            w_t_values[which_triplication][random.randint(0, tile-1)] = random.randint(0, 1<<width-1)               
+    # Put weights back to the previous position 
+    w_t_values = np.concatenate(np.array_split(w_t_values, ofm_ch_red/pe), axis=1)      
+    skip = 0
+    
+# User doesn't want to inject errors    
+elif(str(sys.argv[1]) == 'no_inj'):     
+    injecting = 'false'
+    print("Error injection has been skipped.")    
+    skip = 0
+    
+elif(str(sys.argv[1]) == 'tmrcheck'):     
+    skip = 1
+else:   
+    print("Error: Please, provide a valid argument, it should be either 'inj', 'no_inj' or 'tmrcheck'.")
+    exit(1) 
+   
 # Write config.h output file
 outFileConfig = open("config.h" , "wt")
 outFileConfig.write("#define KERNEL_DIM %d \n" % kernel_dim)
@@ -144,6 +153,8 @@ outFileConfig.write("#define ACTIVATION_PRECISION %d \n" % activation_precision)
 outFileConfig.write("#define REDF %d \n" % redf)
 outFileConfig.write("#define NUM_RED %d \n" % num_red)
 outFileConfig.write("#define MAX_CH_WIDTH %d // 2^6 = 64 channel indexes \n" % max_ch_width)
+if skip == 0:
+    outFileConfig.write("#define INJ %s // Have errors been injected? \n" % injecting)
 outFileConfig.close()
 
 # Write memdata.h output file
@@ -152,32 +163,33 @@ outFileWeights.write("#ifndef PARAMS_HPP\n")
 outFileWeights.write("#define PARAMS_HPP\n")
 outFileWeights.write("namespace PARAM{ \n")
 
-if (w_precision == 1):
-	outFileWeights.write("static BinaryWeights<%d,%d,%d> weights= {\n{\n" %(simd,pe,tile * int(ofm_ch_red/pe)))
-else:
-	outFileWeights.write("static FixedPointWeights<%d,ap_int<%d>,%d,%d> weights= {\n{\n" %(simd,w_precision,pe,tile_tri))			
-			
-for p in range(pe):
-	outFileWeights.write("{ \n")
-	for t in range(tile * int(ofm_ch_red/pe)):
-		outFileWeights.write("%s" % hex(int(w_t_values[p][t])))
-		if t!=tile * int(ofm_ch_red/pe)-1:
-			outFileWeights.write(",\n")
-	outFileWeights.write("} \n")
-	if p!=pe-1:
-		outFileWeights.write(",")
-
-outFileWeights.write("}\n};\n\n")
+if skip == 0:
+    if (w_precision == 1):
+        outFileWeights.write("static BinaryWeights<%d,%d,%d> weights= {\n{\n" %(simd,pe,tile * int(ofm_ch_red/pe)))
+    else:
+        outFileWeights.write("static FixedPointWeights<%d,ap_int<%d>,%d,%d> weights= {\n{\n" %(simd,w_precision,pe,tile_tri))           
+                
+    for p in range(pe):
+        outFileWeights.write("{ \n")
+        for t in range(tile * int(ofm_ch_red/pe)):
+            outFileWeights.write("%s" % hex(int(w_t_values[p][t])))
+            if t!=tile * int(ofm_ch_red/pe)-1:
+                outFileWeights.write(",\n")
+        outFileWeights.write("} \n")
+        if p!=pe-1:
+            outFileWeights.write(",")
+    outFileWeights.write("}\n};\n\n")
+    
 outFileWeights.write("static const ap_uint<%d> channel_mask = 0b%s;\n\n" %(ofm_ch_red, channel_mask))
 outFileWeights.write("static ap_uint<%d> red_ch_index[%d] = {" %(max_ch_width, num_red))
 
 for t in range(num_red):
-	outFileWeights.write("%s" % int(red_ch_index[t][0]))
-	if t != num_red-1:
-		outFileWeights.write(",")
-outFileWeights.write("};")	
-			
-outFileWeights.write("\n\n}\n\n")	
+    outFileWeights.write("%s" % int(red_ch_index[t][0]))
+    if t != num_red-1:
+        outFileWeights.write(",")
+outFileWeights.write("};")  
+            
+outFileWeights.write("\n\n}\n\n")   
 outFileWeights.write("#endif \n")
 outFileWeights.close()
 

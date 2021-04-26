@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2021, Xilinx, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -31,15 +31,15 @@
  ******************************************************************************/
 /******************************************************************************
  *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>,
- *           Timoteo Garcia Bertoa <timoteog@xilinx.com>
+ *  Authors: Timoteo Garcia Bertoa <timoteog@xilinx.com>
  *
- *  \file conv3_tb.cpp
+ *  \file tmrc_stmr_tb.cpp
  *
- *  Testbench for the HLS block which performs conv. using redundancy checks
+ *  Testbench for the HLS block which performs redundancy checks
  *
  *****************************************************************************/
 #define AP_INT_MAX_W 16384
+#define INJ false
 #include <iostream>
 #include <fstream>
 #include <time.h>
@@ -64,71 +64,57 @@ using namespace std;
 
 #define MAX_IMAGES 2
 
-void Testbench_conv_stmr(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in,
+void Testbench_tmrc_stmr(stream<ap_uint<OFM_Channels1*ACTIVATION_PRECISION> > & in,
 						 stream<ap_uint<(OFM_Channels1-NUM_RED*(REDF-1))*ACTIVATION_PRECISION> > & out,
 						 unsigned int numReps,
 						 ap_uint<2> &errortype);
 
 int main()
 {
-	static	ap_uint<INPUT_PRECISION> IMAGE[MAX_IMAGES][IFMDim1*IFMDim1][IFM_Channels1];
+	static	ap_uint<ACTIVATION_PRECISION> OFM_IN[MAX_IMAGES][OFMDim1*OFMDim1][OFM_Channels1];
 	static	ap_uint<ACTIVATION_PRECISION> TEST[MAX_IMAGES][OFMDim1][OFMDim1][OFM_Channels1];
-	stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > input_stream("input_stream");
+	//static	ap_uint<ACTIVATION_PRECISION> TEST[MAX_IMAGES][OFMDim1][OFMDim1][OFM_Channels1];
+	stream<ap_uint<OFM_Channels1*ACTIVATION_PRECISION> > input_stream("input_stream");
 	stream<ap_uint<(OFM_Channels1-NUM_RED*(REDF-1))*ACTIVATION_PRECISION> > output_stream("output_stream");
+	int ch_pointer = 0;
+	int numTriplets = sizeof(PARAM::red_ch_index)/sizeof(PARAM::red_ch_index[0]);
 
-	// Generate input
+	// Generate input OFM
 	unsigned int counter = 0;
+	unsigned int counter_trip = 0;
 	for (unsigned int n_image = 0; n_image < MAX_IMAGES; n_image++) {
-		for (unsigned int oy = 0; oy < IFMDim1; oy++) {
-			for (unsigned int ox = 0; ox < IFMDim1; ox++) {
-				ap_uint<INPUT_PRECISION*IFM_Channels1> input_channel = 0;
-				for(unsigned int channel = 0; channel < IFM_Channels1; channel++)
+		for (unsigned int oy = 0; oy < OFMDim1; oy++) {
+			for (unsigned int ox = 0; ox < OFMDim1; ox++) {
+				ap_uint<ACTIVATION_PRECISION*OFM_Channels1> ofm_in_channel = 0;
+				ch_pointer = 0;
+				for(unsigned int channel = 0; channel < OFM_Channels1; channel++)
 				{
-					ap_uint<INPUT_PRECISION> input = (ap_uint<INPUT_PRECISION>)(counter);
-					IMAGE[n_image][oy*IFMDim1+ox][channel]= input;
-					input_channel = input_channel >> INPUT_PRECISION;
-					input_channel(IFM_Channels1*INPUT_PRECISION-1,(IFM_Channels1-1)*INPUT_PRECISION)=input;
-					//cout << "input: " << input << endl;
-					counter++;
-				}
-				input_stream.write(input_channel);
-				//cout << "input_channel: " << input_channel << endl;
-			}
-		}
-	}
-
-	// Set weights to perform convolution in software
-	static	ap_int<WIDTH> W1[OFM_Channels1][KERNEL_DIM][KERNEL_DIM][IFM_Channels1];
-	constexpr int TX = (IFM_Channels1*KERNEL_DIM*KERNEL_DIM) / SIMD1;
-	constexpr int TY = OFM_Channels1 / PE1;
-	unsigned int kx=0;
-	unsigned int ky=0;
-	unsigned int chan_count=0;
-	unsigned int out_chan_count=0;
-
-	for (unsigned int oy = 0; oy < TY; oy++) {
-		for(int pe=0;pe <PE1;pe++){
-			for (unsigned int ox = 0; ox <TX; ox++) {
-				for(int simd=0;simd<SIMD1;simd++){
-					W1[out_chan_count][kx][ky][chan_count] = PARAM::weights.weights(oy*TX + ox)[pe][simd];
-					//cout << "weight[" << oy*TX + ox << "][" << pe << "][" << simd << "] = " << PARAM::weights.weights(oy*TX + ox)[pe][simd] << endl;
-					chan_count++;
-				    if (chan_count==IFM_Channels1){
-				    	chan_count=0;
-						kx++;
-						if (kx==KERNEL_DIM){
-							kx=0;
-							ky++;
-							if (ky==KERNEL_DIM){
-								ky=0;
-						    	out_chan_count++;
-							    if (out_chan_count==OFM_Channels1){
-							    	out_chan_count=0;
-							    }
-						    }
-					    }
+					ap_uint<ACTIVATION_PRECISION> input = (ap_uint<ACTIVATION_PRECISION>)(counter);
+					OFM_IN[n_image][oy*OFMDim1+ox][channel]= input;
+					ofm_in_channel = ofm_in_channel >> ACTIVATION_PRECISION;
+					ofm_in_channel(OFM_Channels1*ACTIVATION_PRECISION-1,(OFM_Channels1-1)*ACTIVATION_PRECISION)=input;
+					TEST[n_image][ox][oy][channel]=input;
+					cout << "input: " << input << endl;
+					// Check if the current channel needs to be triplicated
+					if (PARAM::red_ch_index[ch_pointer] == channel) {
+						if (ch_pointer < numTriplets) { ch_pointer++; }
+						counter_trip++;
+					}
+					// If current channel is part of a triplet, track it and don't increase counter
+					// If 3 channels have been counted already, increase counter to assign other value to next channel
+					if(counter_trip != 0){
+						if(counter_trip == 3){
+							counter++;
+							counter_trip = 0;
+						} else {
+							counter_trip++;
+						}
+					} else {
+						counter++;
 					}
 				}
+				input_stream.write(ofm_in_channel);
+				cout << "ofm_in_channel: " << ofm_in_channel << endl;
 			}
 		}
 	}
@@ -140,23 +126,19 @@ int main()
 	 */
 	ap_uint<2> errortype = 0;
 
-	// Perform test which computes the OFM and checks redundant channels
-	Testbench_conv_stmr(input_stream, output_stream, MAX_IMAGES, errortype);
-
-	// Perform convolution in software
-	conv_stmr<MAX_IMAGES,IFMDim1,OFMDim1,IFM_Channels1,OFM_Channels1, KERNEL_DIM, 1, ap_uint<INPUT_PRECISION> >(IMAGE, W1, TEST);
+	// Perform test which checks redundant channels
+	Testbench_tmrc_stmr(input_stream, output_stream, MAX_IMAGES, errortype);
 
 	ap_uint<INPUT_PRECISION> TESTIMAGE[1][IFMDim1*IFMDim1][IFM_Channels1];
 	int err_counter = 0, err_perimage=0;
 	ap_uint<ACTIVATION_PRECISION> out_chan;
-	int ch_pointer = 0; int ch_conv = 0;
-	int numTriplets = sizeof(PARAM::red_ch_index)/sizeof(PARAM::red_ch_index[0]);
+	int ch_conv = 0;
 	// Loop of batch of images
 	for (unsigned int n_image = 0; n_image < MAX_IMAGES; n_image++) {
 
 		cout << "Image " << n_image << endl;
 		ap_uint<(OFM_Channels1-NUM_RED*(REDF-1))*ACTIVATION_PRECISION> outElem;
-		cout << "MVTU computes (applying redundancy check): " << endl;
+		cout << "TMRC outputs (applying redundancy check): " << endl;
 		cout << "Format: <OFM[Row][Column][Channel]>" << endl;
 		// Print output values
 		for (unsigned int oy = 0; oy < OFMDim1; oy++) {

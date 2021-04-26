@@ -86,11 +86,14 @@ node {
 		stage('Generate weigths for non square conv test') {
             sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_nonsquare_dws.py;')
         }
+		stage('Generate variables for TMRC test') {
+            sh('source venv/bin/activate; cd tb; python3.7 gen_params_stmr.py tmrcheck;')
+        }
 		stage('Generate weigths for conv STMR test non injecting errors') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_stmr.py no_inj;')
+            sh('source venv/bin/activate; cd tb; python3.7 gen_params_stmr.py no_inj;')
         }
 		stage('Generate weigths for conv STMR test injecting errors') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_stmr.py inj;')
+            sh('source venv/bin/activate; cd tb; python3.7 gen_params_stmr.py inj;')
         }
         stage('Run tests CONV3') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
