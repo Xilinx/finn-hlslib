@@ -86,6 +86,15 @@ node {
 		stage('Generate weigths for non square conv test') {
             sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_nonsquare_dws.py;')
         }
+		stage('Generate variables for TMRC test') {
+            sh('source venv/bin/activate; cd tb; python3.7 gen_params_stmr.py tmrcheck;')
+        }
+		stage('Generate weigths for conv STMR test not injecting errors') {
+            sh('source venv/bin/activate; cd tb; python3.7 gen_params_stmr.py no_inj;')
+        }
+		stage('Generate weigths for conv STMR test injecting errors') {
+            sh('source venv/bin/activate; cd tb; python3.7 gen_params_stmr.py inj;')
+        }
         stage('Run tests CONV3') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
@@ -115,6 +124,16 @@ node {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv_nonsquare_dws.tcl')
+        }
+		stage('Run test TMRC') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_tmrc_stmr.tcl')
+        }
+		stage('Run tests CONV_STMR') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_stmr.tcl')
         }
     }, seventhBranch: {
         stage('Run tests DWCNM') {
