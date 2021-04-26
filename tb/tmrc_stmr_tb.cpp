@@ -94,7 +94,7 @@ int main()
 					ofm_in_channel = ofm_in_channel >> ACTIVATION_PRECISION;
 					ofm_in_channel(OFM_Channels1*ACTIVATION_PRECISION-1,(OFM_Channels1-1)*ACTIVATION_PRECISION)=input;
 					TEST[n_image][ox][oy][channel]=input;
-					cout << "input: " << input << endl;
+					//cout << "input: " << input << endl;
 					// Check if the current channel needs to be triplicated
 					if (PARAM::red_ch_index[ch_pointer] == channel) {
 						if (ch_pointer < numTriplets) { ch_pointer++; }
@@ -114,7 +114,7 @@ int main()
 					}
 				}
 				input_stream.write(ofm_in_channel);
-				cout << "ofm_in_channel: " << ofm_in_channel << endl;
+				//cout << "ofm_in_channel: " << ofm_in_channel << endl;
 			}
 		}
 	}
