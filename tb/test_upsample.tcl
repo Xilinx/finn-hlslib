@@ -7,5 +7,5 @@ set_part {xczu3eg-sbva484-1-i}
 create_clock -period 5 -name default
 csim_design
 csynth_design
-cosim_design
+cosim_design -trace_level all -wave_debug
 exit
