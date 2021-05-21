@@ -5,9 +5,9 @@
 #ifndef UPSAMPLE_CONFIG_H
 #define UPSAMPLE_CONFIG_H
 
-#define PRECISION 4
-#define FM_CHANNELS 4
-#define OFMDIM 64
-#define IFMDIM 32
+#define PRECISION 8
+#define FM_CHANNELS 3
+#define OFMDIM 4
+#define IFMDIM 2
 
 #endif //FINN_HLSLIB_UPSAMPLE_CONFIG_H

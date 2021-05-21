@@ -22,8 +22,8 @@ int main(){
   static ap_uint<PRECISION> golden_in[IFMDIM][IFMDIM][FM_CHANNELS];
   static ap_uint<PRECISION> golden_out[OFMDIM][OFMDIM][FM_CHANNELS];
 
-  stream<ap_uint<PRECISION * FM_CHANNELS>> test_in("test_in");
-  stream<ap_uint<PRECISION * FM_CHANNELS>> test_out("test_out");
+  stream<ap_uint<PRECISION*FM_CHANNELS>> test_in;
+  stream<ap_uint<PRECISION*FM_CHANNELS>> test_out;
 
   for (int i = 0; i<IFMDIM; i++) {
     for (int j = 0; j<IFMDIM; j++) {
@@ -42,8 +42,9 @@ int main(){
   Golden_upsample(golden_in, golden_out);
   Testbench_upsample(test_in, test_out);
 
-  int err_counter = 0;
+
   ap_uint<PRECISION> out_channel;
+  int err_counter = 0;
   for (int i = 0; i<OFMDIM; i++) {
     for (int j = 0; j<OFMDIM; j++) {
       ap_uint<PRECISION * FM_CHANNELS> out_elem = test_out.read();
@@ -58,12 +59,10 @@ int main(){
     }
   }
 
-  if (err_counter == 0) {
-    return 0;
-  } else {
-    return 1;
-  }
+  return err_counter;
 }
+
+
 
 
 
