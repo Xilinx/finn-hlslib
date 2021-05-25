@@ -36,6 +36,7 @@
  *           Thomas B. Preusser <thomas.preusser@utexas.edu>
  *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
  *           Christoph Doehring <cdoehrin@xilinx.com>
+ *           Felix Jentzsch <felixj@xilinx.com>
  *
  *
  *  Library of templated HLS functions for QNN deployment. 
