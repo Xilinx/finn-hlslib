@@ -32,10 +32,11 @@
 /******************************************************************************
  *
  *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *           Felix Jentzsch <felixj@xilinx.com>
  *
  *  \file pool_top.cpp
  *
- *  HLS Top function with a single HLS max pool block unit testing
+ *  HLS Top functions for HLS square/1d max pool block unit testing
  *
  *****************************************************************************/
 #include <hls_stream.h>
@@ -48,4 +49,8 @@ using namespace hls;
 
 void Testbench_pool(stream<ap_uint<FM_Channels1*PRECISION> > & in, stream<ap_uint<FM_Channels1*PRECISION> > & out, unsigned int numReps){
 	StreamingMaxPool_Precision_Batch<IFMDim1, KERNEL_DIM, FM_Channels1, ap_uint<PRECISION>, 0>(in, out, numReps);
+}
+
+void Testbench_pool_1d(stream<ap_uint<FM_Channels1*PRECISION> > & in, stream<ap_uint<FM_Channels1*PRECISION> > & out, unsigned int numReps){
+	StreamingMaxPool_Precision_Batch_1d<IFMDim1, KERNEL_DIM, FM_Channels1, ap_uint<PRECISION>, 0>(in, out, numReps);
 }
