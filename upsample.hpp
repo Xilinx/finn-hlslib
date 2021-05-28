@@ -76,7 +76,7 @@ void UpsampleNearest(
   const unsigned int base_iter = IFMDim;
 
   // FIFO for temporary storing each row for duplication
-  stream<ap_uint<Input_precision * SIMD>> row_buf;
+  stream<ap_uint<Input_precision * SIMD>, IFMDim> row_buf;
 
   // Loop over the rows in the IFM
   for (unsigned int row_idx = 0; row_idx < base_iter; row_idx++) {
