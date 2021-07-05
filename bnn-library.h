@@ -63,3 +63,4 @@ using namespace std;
 #include "fclayer.h"
 #include "convlayer.h"
 #include "vvau.hpp"
+#include "upsample.hpp"
