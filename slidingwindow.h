@@ -1216,6 +1216,203 @@ CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
 	}		
 }
 
+/**
+ * \brief Sliding Window unit that produces output vectors for feeding
+ * a Matrix_Vector_Activate_Batch, implementing the im2col algorithm. To be used for single dimensional feature maps
+ *
+ * \tparam ConvKernelDim_x    	Dimension of the convolutional kernel - x axis
+ * \tparam IFMChannels      	Number of Input Feature Maps
+ * \tparam Input_precision  	Number bits per pixel
+ * \tparam IFMDim_x          	Width of the Input Feature Map
+ * \tparam OFMDim_x           	Width of the Output Feature Map
+ * \tparam SIMD             	Number of input columns computed in parallel
+ * \tparam Stride_x           	Stride of the convolutional kernel - x axis
+ * \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
+ *
+ * \param in                	Input stream
+ * \param out               	Output stream
+ * \param numReps           	Number of time the function has to be repeatedly executed (e.g. number of images)
+ * \param r			  			Resource type for the hardware implementation of the memory block
+ */
+template<unsigned int ConvKernelDim_x,
+		 unsigned int IFMChannels,
+		 unsigned int Input_precision,
+		 unsigned int IFMDim_x,
+		 unsigned int OFMDim_x,
+		 unsigned int SIMD,
+		 unsigned int Stride_x,
+		 unsigned int Multi_Input,
+		 unsigned int MMV, 
+		 typename R>
+void ConvolutionInputGenerator_1D_MMV(
+		stream<ap_uint<Multi_Input*SIMD*Input_precision> > & in,
+		stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
+		const unsigned int numReps,
+		R const &r) {
+  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+  CASSERT_DATAFLOW(IFMDim_x % Multi_Input == 0);
+  CASSERT_DATAFLOW(OFMDim_x % MMV == 0);
+  CASSERT_DATAFLOW(MMV <= OFMDim_x);
+  const unsigned int multiplying_factor = IFMChannels/SIMD;
+  ap_uint<SIMD*Input_precision> inputBuf[MMV][Multi_Input][IFMDim_x * multiplying_factor/Multi_Input];
+#pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
+#pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=2
+  memory_resource(inputBuf, r);
+  const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * multiplying_factor)/MMV;
+  const unsigned int cycles_read_block = Stride_x * IFMDim_x * multiplying_factor/Multi_Input;
+  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int baseIter = IFMDim_x * multiplying_factor / Multi_Input // Initial buffer
+			                  + MAX(cycles_write_block,cycles_read_block);
+  unsigned int counter_internal_block = 0;
+  unsigned int next_block_write = 0;
+  unsigned int current_line = 0;
+  unsigned int read_block = 0;
+  unsigned int inp = 0, ofm_x = 0, k_x = 0, count_simd =0;
+#pragma HLS reset variable=inp
+  for (unsigned int count_image = 0; count_image < numReps; count_image++) {
+    for (unsigned int i = 0; i < baseIter; i++) {
+#pragma HLS PIPELINE II=1
+      if (inp < IFMDim_x * multiplying_factor / Multi_Input) {// Initial buffer of ConvKernelDim lines
+        ap_uint<Multi_Input*SIMD*Input_precision> inElem;
+        inElem = in.read();
+		for (unsigned int input=0 ; input < Multi_Input; input++)
+			{
+#pragma HLS UNROLL
+			ap_uint<SIMD*Input_precision> ChannelElement = inElem(SIMD*Input_precision-1,0);
+	        for(unsigned int v = 0; v < MMV; v++)
+				{
+#pragma HLS UNROLL
+				inputBuf[v][input][current_line] = inElem;
+				}	
+			inElem = inElem >> IFMChannels*Input_precision;
+			}
+        current_line++;
+        inp++;
+        if (current_line == Stride_x * IFMDim_x * multiplying_factor / Multi_Input) {
+          current_line = 0;
+        }
+      } else {
+        if (counter_internal_block < cycles_write_block-1) { // We are writing output, MMV IFMChan per cycle
+          //unsigned int current_line_in_block = (ofm_x*Stride_x + k_x)*multiplying_factor + count_simd;
+          //ap_uint<SIMD*Input_precision> outElem = inputBuf[current_line_in_block%Multi_Input][current_line_in_block/Multi_Input];
+          MultiChanData<MMV, SIMD*Input_precision> outElem;
+		  for(unsigned int v = 0; v < MMV; v++) {
+#pragma HLS UNROLL
+			unsigned int current_line_in_block = ((ofm_x+v)*Stride_x + k_x)*multiplying_factor + count_simd;
+			ap_uint<SIMD*Input_precision> temp_value = inputBuf[v][current_line_in_block%Multi_Input][current_line_in_block/Multi_Input];
+		    outElem.data[v] = temp_value;
+		  }
+		  out.write(outElem);
+          count_simd++;
+          if (count_simd == multiplying_factor) {
+            count_simd=0;
+            k_x++;
+            if (k_x == ConvKernelDim_x) {
+              k_x = 0;
+              ofm_x += MMV;
+                if (ofm_x == OFMDim_x) {
+                  ofm_x = 0;
+                  inp = 0;
+                }
+            }
+          }
+       }
+      } // End else
+    } // End base_iter
+  } // End image
+}
+
+/**
+ * \brief Sliding Window unit that produces output vectors for feeding
+ * a Matrix_Vector_Activate_Batch, implementing the im2col algorithm. To be used for single dimensional feature maps
+ *
+ * \tparam ConvKernelDim_x    	Dimension of the convolutional kernel - x axis
+ * \tparam IFMChannels      	Number of Input Feature Maps
+ * \tparam Input_precision  	Number bits per pixel
+ * \tparam IFMDim_x          	Width of the Input Feature Map
+ * \tparam OFMDim_x           	Width of the Output Feature Map
+ * \tparam SIMD             	Number of input columns computed in parallel
+ * \tparam Stride_x           	Stride of the convolutional kernel - x axis
+ * \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
+ *
+ * \param in                	Input stream
+ * \param out               	Output stream
+ * \param numReps           	Number of time the function has to be repeatedly executed (e.g. number of images)
+ * \param r			  			Resource type for the hardware implementation of the memory block
+ */
+template<unsigned int ConvKernelDim_x,
+		 unsigned int IFMChannels,
+		 unsigned int Input_precision,
+		 unsigned int IFMDim_x,
+		 unsigned int OFMDim_x,
+		 unsigned int SIMD,
+		 unsigned int Stride_x,
+		 unsigned int Multi_Input,
+		 typename R>
+void ConvolutionInputGenerator_1D(
+		stream<ap_uint<Multi_Input*SIMD*Input_precision> > & in,
+		stream<ap_uint<SIMD*Input_precision> > & out,
+		const unsigned int numReps,
+		R const &r) {
+  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+  CASSERT_DATAFLOW(IFMDim_x % Multi_Input == 0);
+
+  const unsigned int multiplying_factor = IFMChannels/SIMD;
+  ap_uint<SIMD*Input_precision> inputBuf[Multi_Input][IFMDim_x * multiplying_factor/Multi_Input];
+#pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
+  memory_resource(inputBuf, r);
+  const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * multiplying_factor);
+  const unsigned int cycles_read_block = Stride_x * IFMDim_x * multiplying_factor/Multi_Input;
+  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int baseIter = IFMDim_x * multiplying_factor / Multi_Input // Initial buffer
+			                  + MAX(cycles_write_block,cycles_read_block);
+  unsigned int counter_internal_block = 0;
+  unsigned int next_block_write = 0;
+  unsigned int current_line = 0;
+  unsigned int read_block = 0;
+  unsigned int inp = 0, ofm_x = 0, k_x = 0, count_simd =0;
+#pragma HLS reset variable=inp
+  for (unsigned int count_image = 0; count_image < numReps; count_image++) {
+    for (unsigned int i = 0; i < baseIter; i++) {
+#pragma HLS PIPELINE II=1
+      if (inp < IFMDim_x * multiplying_factor / Multi_Input) {// Initial buffer of ConvKernelDim lines
+        ap_uint<Multi_Input*SIMD*Input_precision> inElem;
+        inElem = in.read();
+		for (unsigned int input=0 ; input < Multi_Input; input++)
+			{
+#pragma HLS UNROLL
+			ap_uint<SIMD*Input_precision> ChannelElement = inElem(SIMD*Input_precision-1,0);
+	        inputBuf[input][current_line] = inElem;
+			inElem = inElem >> IFMChannels*Input_precision;
+			}
+        current_line++;
+        inp++;
+        if (current_line == Stride_x * IFMDim_x * multiplying_factor / Multi_Input) {
+          current_line = 0;
+        }
+      } else {
+        if (counter_internal_block < cycles_write_block-1) { // We are writing output, MMV IFMChan per cycle
+          unsigned int current_line_in_block = (ofm_x*Stride_x + k_x)*multiplying_factor + count_simd;
+          ap_uint<SIMD*Input_precision> outElem = inputBuf[current_line_in_block%Multi_Input][current_line_in_block/Multi_Input];
+          out.write(outElem);
+          count_simd++;
+          if (count_simd == multiplying_factor) {
+            count_simd=0;
+            k_x++;
+            if (k_x == ConvKernelDim_x) {
+              k_x = 0;
+              ofm_x ++;
+                if (ofm_x == OFMDim_x) {
+                  ofm_x = 0;
+                  inp = 0;
+                }
+            }
+          }
+       }
+      } // End else
+    } // End base_iter
+  } // End image
+}
 
 /**
  * \brief Sliding Window unit that produces output vectors for feeding
