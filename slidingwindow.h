@@ -1227,6 +1227,8 @@ CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
  * \tparam OFMDim_x           	Width of the Output Feature Map
  * \tparam SIMD             	Number of input columns computed in parallel
  * \tparam Stride_x           	Stride of the convolutional kernel - x axis
+ * \tparam Multi_Input          Number of pixels that are read in parallel
+ * \tparam MMV        		     Number of pixels that have to be produced in parallel
  * \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
  *
  * \param in                	Input stream
@@ -1293,8 +1295,6 @@ void ConvolutionInputGenerator_1D_MMV(
         }
       } else {
         if (counter_internal_block < cycles_write_block-1) { // We are writing output, MMV IFMChan per cycle
-          //unsigned int current_line_in_block = (ofm_x*Stride_x + k_x)*multiplying_factor + count_simd;
-          //ap_uint<SIMD*Input_precision> outElem = inputBuf[current_line_in_block%Multi_Input][current_line_in_block/Multi_Input];
           MultiChanData<MMV, SIMD*Input_precision> outElem;
 		  for(unsigned int v = 0; v < MMV; v++) {
 #pragma HLS UNROLL
@@ -1333,6 +1333,7 @@ void ConvolutionInputGenerator_1D_MMV(
  * \tparam OFMDim_x           	Width of the Output Feature Map
  * \tparam SIMD             	Number of input columns computed in parallel
  * \tparam Stride_x           	Stride of the convolutional kernel - x axis
+ * \tparam Multi_Input          Number of pixels that are read in parallel
  * \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
  *
  * \param in                	Input stream
