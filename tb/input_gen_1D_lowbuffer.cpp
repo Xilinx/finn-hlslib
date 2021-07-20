@@ -32,8 +32,9 @@
 /******************************************************************************
  *
  *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *           Mirza Mrahorovic <>
  *
- *  \file input_gen_1D.cpp
+ *  \file input_gen_1D_lowbuffer.cpp
  *
  *  HLS Top function with a single HLS sliding-window generator block unit testing (for 1D convolution)
  *
@@ -44,13 +45,13 @@
 using namespace hls;
 #include "ap_int.h"
 #include "bnn-library.h"
-#include "input_gen_1d_custom.h"
+#include "input_gen_1d_lowbuffer.h"
 
 
 void Testbench(stream<ap_uint<SIMD1*INPUT_PRECISION1> > & in, stream<ap_uint<SIMD1*INPUT_PRECISION1> > & out)//, unsigned int numReps)
 {
 #pragma HLS DATAFLOW
-	ConvolutionInputGenerator_1D_custom<KERNEL_DIM_x,
+	ConvolutionInputGenerator_1D_dws_lowbuffer<KERNEL_DIM_x,
 	IFM_Channels1,
 	INPUT_PRECISION1,
 	IFMDim_x,

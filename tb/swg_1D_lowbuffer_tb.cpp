@@ -32,10 +32,11 @@
 /******************************************************************************
  *
  *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *           Mirza Mrahorovic <>
  *
- *  \file swg_1D_tb.cpp
+ *  \file swg_1D_lowbuffer_tb.cpp
  *
- *  Testbench for the sliding window generator HLS block for 1D convolutions
+ *  Testbench for the sliding window generator HLS block for 1D dws convolutions
  *
  *****************************************************************************/
 #define AP_INT_MAX_W 4096
@@ -45,7 +46,7 @@
 #include <string>
 #include "bnn-library.h"
 
-#include "input_gen_1d_custom.h"
+#include "input_gen_1d_lowbuffer.h"
 
 #include "math.h"
 using namespace hls;
@@ -101,6 +102,7 @@ int main()
     }
 
     int produced_array[OFMDim_x*KERNEL_DIM_x*IFM_Channels1];
+	int output_value;
     idx=0;
 	for(unsigned int n_image = 0; n_image < MAX_IMAGES; n_image++) {
 		for(unsigned int ox = 0; ox < OFMDim_x; ox++) {
@@ -109,7 +111,7 @@ int main()
                 for(unsigned int chan = 0; chan < IFM_Channels1; chan++){
                     ap_int<INPUT_PRECISION1> out_chan = 0;
                     out_chan = outElem(INPUT_PRECISION1-1, 0);
-    				int output_value = (ap_int<INPUT_PRECISION1>) out_chan;
+    				output_value = (ap_int<INPUT_PRECISION1>) out_chan;
                     produced_array[idx] = output_value;
                     idx++;
                     outElem = outElem >> INPUT_PRECISION1;

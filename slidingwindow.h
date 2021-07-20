@@ -1421,16 +1421,11 @@ void ConvolutionInputGenerator_1D(
  * a Matrix_Vector_Activate_Batch, implementing the im2col algorithm. To be used when kernel is not square
  *
  * \tparam ConvKernelDim_x    	Dimension of the convolutional kernel - x axis
- * \tparam ConvKernelDim_y    	Dimension of the convolutional kernel - y axis
  * \tparam IFMChannels      	Number of Input Feature Maps
  * \tparam Input_precision  	Number bits per pixel
  * \tparam IFMDim_x          	Width of the Input Feature Map
- * \tparam IFMDim_y           	Height of the Input Feature Map
  * \tparam OFMDim_x           	Width of the Output Feature Map
- * \tparam OFMDim_y           	Height of the Output Feature Map
  * \tparam SIMD             	Number of input columns computed in parallel
- * \tparam Stride_x           	Stride of the convolutional kernel - x axis
- * \tparam Stride_y          	Stride of the convolutional kernel - y axis
  * \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
  *
  * \param in                	Input stream
@@ -1445,7 +1440,7 @@ template<unsigned int ConvKernelDim_x,
 		 unsigned int OFMDim_x,
 		 unsigned int SIMD,
 		 typename R>
-void ConvolutionInputGenerator_1D_custom(
+void ConvolutionInputGenerator_1D_dws_lowbuffer(
 		stream<ap_uint<SIMD*Input_precision> > & in,
 		stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
@@ -1456,7 +1451,6 @@ void ConvolutionInputGenerator_1D_custom(
 	ap_uint<SIMD*Input_precision> inputBuf[buffer_size];
 #pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
 	memory_resource(inputBuf, r);
-	//const unsigned int cycles_write_block = (OFMDim_x * buffer_size);
 	const unsigned int cycles_read_block = multiplying_factor*(ConvKernelDim_x-1)-(ConvKernelDim_x-1);
 	const unsigned int baseIter = cycles_read_block + (OFMDim_x * buffer_size);
 	unsigned int inp = 0, index_write=0, index_read = 0, j = 0, internal_counter = 0;
@@ -1493,7 +1487,7 @@ void ConvolutionInputGenerator_1D_custom(
 				ap_uint<SIMD*Input_precision> outElem = inputBuf[index_read];
 				out.write(outElem);
 
-				// Update write index pointer
+				// Update read index pointer
 				if (j < ConvKernelDim_x-1){
 					index_read = index_read + multiplying_factor;
 					j++;

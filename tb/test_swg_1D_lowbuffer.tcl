@@ -32,15 +32,16 @@
 ###############################################################################
  #
  #  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ #           Mirza Mrahorovic <>
  #
- # \file test_swg_1D_custom.tcl
+ # \file test_swg_1D_lowbuffer.tcl
  #
  # Tcl script for HLS csim, synthesis and cosim of the sliding window generator block for 1D convolutions
  #
 ###############################################################################
 open_project hls-syn-swg-1d
-add_files input_gen_1D_custom.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT)"
-add_files -tb swg_1D_custom_tb.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT)"
+add_files input_gen_1D_lowbuffer.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT)"
+add_files -tb swg_1D_lowbuffer_tb.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT)"
 set_top Testbench
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}
