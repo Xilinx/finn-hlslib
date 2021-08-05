@@ -1,133 +1,143 @@
-//
-// Created by erling on 5/3/21.
-//
+/******************************************************************************
+ *  Copyright (c) 2019, Xilinx, Inc.
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *
+ *  1.  Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *
+ *  2.  Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *
+ *  3.  Neither the name of the copyright holder nor the names of its
+ *      contributors may be used to endorse or promote products derived from
+ *      this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ *  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ *  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ *  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ *  OR BUSINESS INTERRUPTION). HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ ******************************************************************************/
+ 
+/******************************************************************************
+ *
+ *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *  		    erling on 5/10/21.
+ *
+ *
+ *  Library of templated HLS functions for QNN deployment. 
+ *  Targeting upsampling layers
+ *
+ ******************************************************************************/
 
 #ifndef UPSAMPLE_HPP
 #define UPSAMPLE_HPP
 
-
-// UpsampleNearest
-//  Simple Upsamling layer implementing the most basic Nearest Neighbour upsampling assumes square IFM and OFM.
-//  This can be solved without using a SWU (which is needed for more complicated algorithms e.g. bilinear)
-//  Example: NumChannels=1, IFMDim=2, OFMDim=5 => this gives scale_factor=2 padding=1. THis is consistent with PyTorch Upsample
-//            1 1 1 2 2
-//  1 2  ->   1 1 1 2 2
-//  3 4       1 1 1 2 2
-//            3 3 3 4 4
-//            3 3 3 4 4
-// This can be achieved by reading and buffering row 1 ([1 2]) and creating the output pattern:
-//  [1 1 1 2 2
-//   1 1 1 2 2
-//   1 1 1 2 2 ]
-// Notice that since we have "asymmetric" upsamling we pad the an extra "1" and also and extra "[1 1 1 2 2]" row.
-
-
-// This functions take a stream as input and produces one row as the output stream
-//  The idea is that you can either pass the top-level input stream or the row_buf fifo
-// to this function
-
-
 /**
- * @brief Utility function for UpsampleNearest. Based on IFMDim and OFMDim it duplicates an input row to an output row. It also writes the input back to out_row_buf for buffering
- * 
- * @tparam OFMDim height/width of output feature map 
- * @tparam IFMDim height/width of input feature map
- * @tparam NumChannels depth of input feature map
- * @tparam Input_precision bitwidth of the pixel representation
- * @param in Input stream NHWC
- * @param out Output stream NHWC
- * @param out_row_buf Directly connected to the input, used so that the rows can be buffered and re-fed into this function according to the scale factor
- * @param write_row_buf Boolean input guarding the out_row_buf.
+ * \brief Upsampling with the Nearest Neighbour algorithm. Works with square feature maps
+ *
+ * \tparam 	OFMDim 		Size of the input feature map
+ * \tparam 	IFMDim 		Size of the output feature map
+ * \tparam 	NumChannels 	Amount of channels of the input feature map
+ * \tparam 	In_t		 	Input datatype
+ *
+ * \param 	in 				Input stream
+ * \param 	out 			Output stream
  */
-template<unsigned int OFMDim, unsigned int IFMDim, unsigned int NumChannels, unsigned int Input_precision>
-void UpsampleNearestGenerateOutputRow(
-        stream<ap_uint<Input_precision * NumChannels>> & in,
-        stream<ap_uint<Input_precision * NumChannels>> & out,
-        stream<ap_uint<Input_precision * NumChannels>> & out_row_buf,
-        bool write_row_buf
-        ) {
-  const unsigned int scale_factor = OFMDim/IFMDim;
-  const unsigned int padding = OFMDim % IFMDim;
-
-  for (unsigned int i = 0; i<IFMDim; i++) {
-    ap_uint<Input_precision * NumChannels> in_elem;
-
-    in_elem = in.read();
-
-    // A bit hacky. But if we set the write_row_buf flag we will pass the input to the out_row_buf
-    //  output. So that it can also be stored in the row_buf
-    if (write_row_buf) {
-      out_row_buf.write(in_elem);
-    }
-
-    // Add padding
-    if (i == 0) {
-      for (unsigned int pad_idx = 0; pad_idx<padding; pad_idx++) {
-        out.write(in_elem);
-      }
-    }
-
-    // Duplicate input to the output stream
-    for (unsigned int scale_idx = 0; scale_idx < scale_factor; scale_idx++) {
-    	out.write(in_elem);
-    }
-  }
-}
-
-
-
-/**
- * @brief Upsampling with the Nearest Neighbour algorithm. Only accept square inputs (trivial to extend). It assumes a NHWC data layout and reads in row-by-row of C pixels. 
- *  each pixel is duplicated according to the scale factor = OFMDim/IFMDim. Each row is buffered internally and "replayed" to duplicate in both dimensions.
- *  Does not have any configuration parameters which the FINN compiler can tune. 
- * 
- * @tparam OFMDim height/width of output feature map 
- * @tparam IFMDim height/width of input feature map
- * @tparam NumChannels depth of input feature map
- * @tparam Input_precision bitwidth of the pixel representation
- * @param in Input stream NHWC
- * @param out Output stream NHWC
- */
-template<unsigned int OFMDim, unsigned int IFMDim, unsigned int NumChannels, unsigned int Input_precision>
-void UpsampleNearest(
-        stream<ap_uint<Input_precision * NumChannels>> & in,
-        stream<ap_uint<Input_precision * NumChannels>> & out
+template<unsigned int OFMDim,
+	unsigned int IFMDim,
+	unsigned int NumChannels,
+	typename In_t>
+void UpsampleNearestNeighbour(
+        stream<ap_uint<NumChannels * In_t::width>> & in,
+        stream<ap_uint<NumChannels * In_t::width>> & out
 ) {
   CASSERT_DATAFLOW(OFMDim > IFMDim);
 
-  const unsigned int scale_factor = OFMDim/IFMDim;
-  const unsigned int padding = OFMDim % IFMDim;
-  const unsigned int base_iter = IFMDim;
+  constexpr unsigned int scale_factor = OFMDim/IFMDim;
+  constexpr unsigned int Padding = OFMDim % IFMDim;
+  // Padding might be asymmetrical
+  constexpr unsigned int PaddingDown = Padding/2;
+  constexpr unsigned int PaddingUp = Padding - PaddingDown;
+  // Padding might be asymmetrical
+  constexpr unsigned int PaddingRight = Padding/2;
+  constexpr unsigned int PaddingLeft = Padding - PaddingRight;
 
-  // FIFO for temporary storing each row for duplication
-  stream<ap_uint<Input_precision * NumChannels>, IFMDim> row_buf;
+  ap_uint<NumChannels * In_t::width> outData, inData;
+  ap_uint<NumChannels * In_t::width> RowBuf[IFMDim];
+  int count_row = -PaddingUp; // Counter used to understand whether reading (and buffering) a row or not - Made in order to avoid modulo operations
+  for (unsigned int y = 0; y < OFMDim; y++) {
+	  for (unsigned int x = 0; x < OFMDim; x++) {
+#pragma HLS PIPELINE II=1
+		bool read_row = (y ==0) || count_row==scale_factor;
+		if ((x < IFMDim) && read_row)
+		{
+			inData = in.read();
+			RowBuf[x] = inData;
+		}
+		// Padding Cols
+		if(x < PaddingLeft){
+			outData = RowBuf[0];
+		}
+		else if (x >= (OFMDim - PaddingRight)){
+			outData = RowBuf[IFMDim-1];
 
-  // Loop over the rows in the IFM
-  for (unsigned int row_idx = 0; row_idx < base_iter; row_idx++) {
+		}
+		// Padding Rows
+		else if(y < PaddingUp || y >= (OFMDim - PaddingDown)){
+			outData = RowBuf[(x-PaddingLeft)/scale_factor];
+		}
+		// No Padding
+		else{
 
-    if (row_idx == 0) {
-      // Add possible padding
-      for (int pad_idx = 0; pad_idx < padding; pad_idx++) {
-        // If we are at the first iteration through the padding: Use input stream
-        if (pad_idx == 0) {
-          UpsampleNearestGenerateOutputRow<OFMDim, IFMDim, NumChannels, Input_precision>(in, out, row_buf, true);
-        } else {
-          UpsampleNearestGenerateOutputRow<OFMDim, IFMDim, NumChannels, Input_precision>(row_buf, out, row_buf, true);
-        }
-      }
-    }
-    // Then do the rows. They are done "scale" number of times
+			outData = RowBuf[(x-PaddingLeft)/scale_factor];
+		}
+		//std::cout << outData << " " ;
+		out.write(outData);
+	  }// end for y
+	  //std::cout << std::endl;
+	  count_row++;
+	  if (count_row > scale_factor)
+		  count_row =0;
+  } // end for x
 
-    for (unsigned int scale_idx = 0; scale_idx < scale_factor; scale_idx++) {
-    	bool write_row_buf = scale_idx < (scale_idx - 1);
-      if (scale_idx == 0 && !(row_idx == 0 && padding > 0)) {
-        // First iteration of a row is fetched from top-level input. Except if its the very first and we have padding
-        UpsampleNearestGenerateOutputRow<OFMDim, IFMDim, NumChannels, Input_precision>(in, out, row_buf, write_row_buf);
-      } else {
-        UpsampleNearestGenerateOutputRow<OFMDim, IFMDim, NumChannels, Input_precision>(row_buf, out, row_buf, write_row_buf);
-      }
-    }
+}
+
+
+/**
+ * \brief Upsampling with the Nearest Neighbour algorithm. Works with square feature maps on multiple images
+ *
+ * \tparam 	OFMDim 		Size of the input feature map
+ * \tparam 	IFMDim 		Size of the output feature map
+ * \tparam 	NumChannels 	Amount of channels of the input feature map
+ * \tparam 	In_t		 	Input datatype
+ *
+ * \param 	in 			Input stream
+ * \param 	out 			Output stream
+ * \param     numReps      Number of time the function has to be repeatedly executed (e.g. number of images)
+ */
+template<unsigned int OFMDim,
+	unsigned int IFMDim,
+	unsigned int NumChannels,
+	typename In_t>
+void UpsampleNearestNeighbour_Batch(
+        stream<ap_uint<NumChannels * In_t::width>> & in,
+        stream<ap_uint<NumChannels * In_t::width>> & out,
+		unsigned int numReps) {
+  for (unsigned int rep = 0; rep < numReps; rep++) {
+	UpsampleNearestNeighbour<OFMDim, IFMDim, NumChannels, In_t>(in, out);
   }
 }
 
-#endif //FINN_HLSLIB_UPSAMPLE_HPP
+#endif

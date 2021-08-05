@@ -1,7 +1,13 @@
-//
-// Created by erling on 5/10/21.
-//
-
+/******************************************************************************
+ *
+ *  Authors:  erling on 5/10/21.
+ *  			Giulio Gambardella <giuliog@xilinx.com>
+ *
+ *  \file upsample_top.cpp
+ *  
+ *  Testbench function for unit testing of the Upsample with Nearest Neighbour 
+ *  
+ *****************************************************************************/
 
 #include <iostream>
 #include <hls_stream.h>
@@ -22,8 +28,8 @@ int main(){
   static ap_uint<PRECISION> golden_in[IFMDIM][IFMDIM][FM_CHANNELS];
   static ap_uint<PRECISION> golden_out[OFMDIM][OFMDIM][FM_CHANNELS];
 
-  stream<ap_uint<PRECISION*FM_CHANNELS>> test_in;
-  stream<ap_uint<PRECISION*FM_CHANNELS>> test_out;
+  stream<ap_uint<PRECISION*FM_CHANNELS>> test_in("test_input");
+  stream<ap_uint<PRECISION*FM_CHANNELS>> test_out("test_ouput");
 
   for (int i = 0; i<IFMDIM; i++) {
     for (int j = 0; j<IFMDIM; j++) {
@@ -82,6 +88,8 @@ void Golden_upsample(ap_uint<PRECISION> in[IFMDIM][IFMDIM][FM_CHANNELS], ap_uint
       for (int k = 0; k<FM_CHANNELS; k++) {
         out[i][j][k] = in[src_i][src_j][k];
       }
+	  //std::cout << out[i][j][0] << " " ;
     }
+	//std::cout << std::endl;
   }
 }
