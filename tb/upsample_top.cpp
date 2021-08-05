@@ -28,39 +28,29 @@
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ ******************************************************************************/
+/******************************************************************************
+ *
+ *  Authors:  erling on 5/10/21.
+ *  			Giulio Gambardella <giuliog@xilinx.com>
+ *
+ *  \file upsample_top.cpp
+ *  
+ *  HLS Top function for unit testing of the Upsample with Nearest Neighbour 
+ *  
  *****************************************************************************/
 
-/*****************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *           Thomas B. Preusser <thomas.preusser@utexas.edu>
- *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
- *           Christoph Doehring <cdoehrin@xilinx.com>
- *
- *  @file bnn-library.h
- *
- *  Library of templated HLS functions for BNN deployment. 
- *  Include this file in the network top funtion.
- *
- *****************************************************************************/
 
 #include <hls_stream.h>
-#include "ap_int.h"
-#include <iostream>
-#include <string>
-
 using namespace hls;
-using namespace std;
 
-#define CASSERT_DATAFLOW(x) {if (!(x)) {std::cout<< "CASSERT_DATAFLOW condition is not met " << endl; exit(-1);	}}
+#include "ap_int.h"
+#include "bnn-library.h"
 
-#include "weights.hpp"
-#include "mmv.hpp"			   
-#include "streamtools.h"
-#include "dma.h"
-#include "slidingwindow.h"
-#include "maxpool.h"
-#include "fclayer.h"
-#include "convlayer.h"
-#include "vvau.hpp"
-#include "upsample.hpp"
+#include "upsample_config.h"
+
+
+
+void Testbench_upsample(stream<ap_uint<PRECISION * FM_CHANNELS>> &in, stream<ap_uint<PRECISION * FM_CHANNELS>> &out) {
+	UpsampleNearestNeighbour<OFMDIM, IFMDIM, FM_CHANNELS, ap_uint<PRECISION> >(in,out);
+}
