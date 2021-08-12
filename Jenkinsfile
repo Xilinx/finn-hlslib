@@ -91,11 +91,11 @@ node {
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2021.1_released/installs/lin64/Vivado/2021.1/settings64.sh; cd tb; vitis_hls -f test_conv3.tcl')
         }
-        stage('Run tests CONV3_STREAM') {
+        /* stage('Run tests CONV3_STREAM') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2021.1_released/installs/lin64/Vivado/2021.1/settings64.sh; cd tb; vitis_hls -f test_conv_stream.tcl')
-        }
+        } */
         stage('Run tests CONVMMV') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
