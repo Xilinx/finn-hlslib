@@ -39,8 +39,8 @@
  #
 ###############################################################################
 open_project hls-syn-swg
-add_files input_gen.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT)" 
-add_files -tb swg_tb.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT)" 
+add_files input_gen.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT)" 
+add_files -tb swg_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT)" 
 set_top Testbench
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}

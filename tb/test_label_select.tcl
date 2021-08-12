@@ -41,8 +41,8 @@
 ###############################################################################
 
 open_project hls-syn-label_select
-add_files label_select_top.cpp -cflags "-fdiagnostics-color -std=c++0x -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
-add_files -tb label_select_tb.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+add_files label_select_top.cpp -cflags "-fdiagnostics-color -std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+add_files -tb label_select_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
 set_top Testbench_label_select
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}

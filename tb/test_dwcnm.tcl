@@ -40,8 +40,8 @@
  #
 ###############################################################################
 open_project hls-syn-dwcnm
-add_files dwcnm_top.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb -DINPUT_WIDTH=512 -DOUT_WIDTH=48" 
-add_files -tb dwcnm_tb.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb -DINPUT_WIDTH=512 -DOUT_WIDTH=48 -DIMAGE_SIZE=1204224" 
+add_files dwcnm_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb -DINPUT_WIDTH=512 -DOUT_WIDTH=48" 
+add_files -tb dwcnm_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb -DINPUT_WIDTH=512 -DOUT_WIDTH=48 -DIMAGE_SIZE=1204224" 
 set_top Testbench_dwcnm
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}
