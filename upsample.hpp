@@ -47,8 +47,8 @@
 /**
  * \brief Upsampling with the Nearest Neighbour algorithm. Works with square feature maps
  *
- * \tparam 	OFMDim 		Size of the input feature map
- * \tparam 	IFMDim 		Size of the output feature map
+ * \tparam 	OFMDim 		Size of the output feature map
+ * \tparam 	IFMDim 		Size of the input feature map
  * \tparam 	NumChannels 	Amount of channels of the input feature map
  * \tparam 	In_t		 	Input datatype
  *
@@ -118,8 +118,8 @@ void UpsampleNearestNeighbour(
 /**
  * \brief Upsampling with the Nearest Neighbour algorithm. Works with square feature maps on multiple images
  *
- * \tparam 	OFMDim 		Size of the input feature map
- * \tparam 	IFMDim 		Size of the output feature map
+ * \tparam 	OFMDim 		Size of the output feature map
+ * \tparam 	IFMDim 		Size of the input feature map
  * \tparam 	NumChannels 	Amount of channels of the input feature map
  * \tparam 	In_t		 	Input datatype
  *
