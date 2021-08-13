@@ -158,6 +158,12 @@ node {
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2021.1_released/installs/lin64/Vivado/2021.1/settings64.sh; cd tb; vitis_hls -f test_swg_kernelstride_mmv.tcl')
         }
+    }, fourteenthBranch: {
+        stage('Run tests POOL 1D') {
+              env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2021.1_released/installs/lin64/Vivado/2021.1/settings64.sh; cd tb; vitis_hls -f test_pool_1d.tcl')
+        }
     }, fifteenthBranch: {
         stage('Run tests UPSAMPLE') {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
