@@ -109,7 +109,7 @@ void UpsampleNearestNeighbour(
 	  //std::cout << std::endl;
 	  count_row++;
 	  if (count_row > scale_factor)
-		  count_row =0;
+		  count_row =1;
   } // end for x
 
 }
