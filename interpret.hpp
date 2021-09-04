@@ -176,8 +176,8 @@ class Recast {
 
 template<typename T>
 struct Caster {
-	template<int M>
-	static T cast(ap_int<M> const &arg) { return  T(arg); }
+  template<int M>
+  static T cast(ap_int<M> const &arg) { return  T(arg); }
 };
 
 template<int W, int I, ap_q_mode Q, ap_o_mode O, int N>
@@ -186,9 +186,27 @@ struct Caster<ap_fixed<W, I, Q, O, N>> {
   static ap_fixed<W, I, Q, O, N> cast(ap_int<M> const &arg) {
     return *reinterpret_cast<ap_fixed<W, I, Q, O, N> const*>(&arg);
   }
-}; 
+};
 
-template<typename T, unsigned STRIDE=T::width>
+template<>
+struct Caster<float> {
+  template<int M>
+  static float cast(ap_int<M> const &arg) {
+    return *reinterpret_cast<float const*>(&arg);
+  }
+};
+
+template<typename T>
+struct WidthInspector {
+  static unsigned const width = T::width;
+};
+
+template<>
+struct WidthInspector<float> {
+  static unsigned const width = 32;
+};
+
+template<typename T, unsigned STRIDE=WidthInspector<T>::width>
 class Slice {
  public:
   static unsigned const  width = STRIDE;
@@ -245,7 +263,7 @@ class Slice {
 
 
 // This class is done for Slicing an MMV container (vector of ap_uint)
-template<typename T, unsigned MMV, unsigned STRIDE=T::width>
+template<typename T, unsigned MMV, unsigned STRIDE=WidthInspector<T>::width>
 class Slice_mmv {
  public:
   static unsigned const  width = STRIDE;
