@@ -36,6 +36,7 @@
  *           Thomas B. Preusser <thomas.preusser@utexas.edu>
  *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
  *           Christoph Doehring <cdoehrin@xilinx.com>
+ *           Felix Jentzsch <felix.jentzsch@upb.de>
  *
  *  \file slidingwindow.h
  *
@@ -1634,6 +1635,7 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
  * \brief Sliding Window unit that produces output vectors for feeding
  * a Matrix_Vector_Activate_Batch, implementing the im2col algorithm.
  * To be used only for 1D feature maps.
+ * Feeds all pixels of the window in parallel for full SIMD unfolding of following layer.
  * NOTE: Currently restricted to: Stride = 1 and SIMD = IFMChannels
  *
  * \tparam ConvKernelDim    	Dimension of the convolutional kernel
@@ -1642,13 +1644,13 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
  * \tparam IFMDim           	Height of the Input Feature Map
  * \tparam OFMDim           	Height of the Output Feature Map
  * \tparam SIMD             	Number of input columns computed in parallel
- * \tparam Stride          	    Stride of the convolutional kernel
+ * \tparam Stride          	  Stride of the convolutional kernel
  * \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
  *
  * \param in                	Input stream
  * \param out               	Output stream
  * \param numReps           	Number of time the function has to be repeatedly executed (e.g. number of images)
- * \param r			  			Resource type for the hardware implementation of the memory block
+ * \param r			  			      Resource type for the hardware implementation of the memory block
 */
 template<unsigned int ConvKernelDim,
 		 unsigned int IFMChannels,
@@ -1658,7 +1660,7 @@ template<unsigned int ConvKernelDim,
 		 unsigned int SIMD,
 		 unsigned int Stride,
 		 typename R>
-void ConvolutionInputGenerator_1D(
+void ConvolutionInputGenerator_1D_parallel(
 		stream<ap_uint<SIMD*Input_precision> > & in,
 		stream<ap_uint<ConvKernelDim*SIMD*Input_precision> > & out,
 		const unsigned int numReps,
