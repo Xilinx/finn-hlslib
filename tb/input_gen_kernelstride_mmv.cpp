@@ -42,7 +42,7 @@
 using namespace hls;
 #include "ap_int.h"
 #include "bnn-library.h"
-#include "input_gen_kernelstride_mmv.h"
+#include "data/input_gen_kernelstride_mmv.h"
 
 void Testbench(stream<ap_uint<IFM_Channels*INPUT_PRECISION> > & in, stream<ap_uint<IFM_Channels*INPUT_PRECISION*MMV> > & out, unsigned int numReps)
 {

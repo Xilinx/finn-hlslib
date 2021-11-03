@@ -45,7 +45,7 @@
 using namespace hls;
 #include "ap_int.h"
 #include "bnn-library.h"
-#include "input_gen_1d.h"
+#include "data/input_gen_1d.h"
 
 void Testbench(stream<ap_uint<IFM_Channels1*INPUT_PRECISION1> > & in, stream<ap_uint<KERNEL_DIM_y*IFM_Channels1*INPUT_PRECISION1> > & out)//, unsigned int numReps)
 {

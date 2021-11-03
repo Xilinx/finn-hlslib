@@ -50,7 +50,7 @@
 #include "ap_int.h"
 #include "weights.hpp"
 #include "bnn-library.h"
-#include "memdata.h"
+#include "data/memdata.h"
 #include "config.h"
 #include "activations.hpp"
 #include "weights.hpp"

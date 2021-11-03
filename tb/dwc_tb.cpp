@@ -49,7 +49,7 @@
 #include "weights.hpp"
 #include "bnn-library.h"
 
-#include "dwc_config.h"
+#include "data/dwc_config.h"
 
 #include "activations.hpp"
 #include "interpret.hpp"

@@ -44,7 +44,7 @@ using namespace hls;
 #include "bnn-library.h"
 
 
-#include "dwc_config.h"
+#include "data/dwc_config.h"
 
 void Testbench_dwc(stream<ap_uint<INPUT_WIDTH> > & in, stream<ap_uint<OUT_WIDTH> > & out, unsigned int numReps){
 	StreamingDataWidthConverter_Batch<INPUT_WIDTH, OUT_WIDTH, NUM_REPEAT>(in, out, numReps);

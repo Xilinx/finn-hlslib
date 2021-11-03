@@ -42,7 +42,7 @@
 using namespace hls;
 #include "ap_int.h"
 #include "bnn-library.h"
-#include "input_gen.h"
+#include "data/input_gen.h"
 
 /*
 void Testbench(stream<ap_uint<SIMD*INPUT_PRECISION> > & in, stream<ap_uint<SIMD*INPUT_PRECISION> > & out, unsigned int numReps)
