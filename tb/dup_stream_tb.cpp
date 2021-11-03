@@ -9,7 +9,7 @@
 #include "weights.hpp"
 #include "bnn-library.h"
 
-#include "dup_stream_config.h"
+#include "data/dup_stream_config.h"
 
 #include "activations.hpp"
 #include "interpret.hpp"

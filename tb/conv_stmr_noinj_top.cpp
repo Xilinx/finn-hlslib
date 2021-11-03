@@ -50,8 +50,8 @@ using namespace hls;
 #include "interpret.hpp"
 #include "mvau.hpp"
 #include "conv.hpp"
-#include "memdata_noinj.h"
-#include "config_noinj.h"
+#include "data/memdata_noinj.h"
+#include "data/config_noinj.h"
 
 void Testbench_conv_noinj_stmr(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in,
 						 stream<ap_uint<(OFM_Channels1-NUM_RED*(REDF-1))*ACTIVATION_PRECISION> > & out,

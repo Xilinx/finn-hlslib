@@ -1,0 +1,21 @@
+#ifndef PARAMS_HPP
+#define PARAMS_HPP
+namespace PARAM{ 
+static FixedPointWeights<2,ap_int<4>,2,5> weights= {
+{
+{ 
+0x6b,
+0x79,
+0x7f,
+0x64,
+0x6b} 
+,{ 
+0x2b,
+0x0,
+0x6b,
+0x6c,
+0x34} 
+}
+};
+ } 
+#endif 

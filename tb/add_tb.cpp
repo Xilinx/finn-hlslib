@@ -9,7 +9,7 @@
 #include "weights.hpp"
 #include "bnn-library.h"
 
-#include "add_config.h"
+#include "data/add_config.h"
 
 #include "activations.hpp"
 #include "interpret.hpp"

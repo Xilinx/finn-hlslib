@@ -49,8 +49,8 @@ using namespace hls;
 #include "interpret.hpp"
 #include "mvau.hpp"
 #include "conv.hpp"
-#include "memdata_nonsquare_dws.h"
-#include "config_nonsquare_dws.h"
+#include "data/memdata_nonsquare_dws.h"
+#include "data/config_nonsquare_dws.h"
 
 void Testbench_conv_nonsquare_dws(stream<ap_uint<FM_Channels1*INPUT_PRECISION> > & in, stream<ap_uint<FM_Channels1*ACTIVATION_PRECISION> > & out, unsigned int numReps){
 #pragma HLS DATAFLOW

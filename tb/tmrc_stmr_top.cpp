@@ -49,8 +49,8 @@ using namespace hls;
 #include "interpret.hpp"
 #include "mvau.hpp"
 #include "conv.hpp"
-#include "memdata_tmrc.h"
-#include "config_tmrc.h"
+#include "data/memdata_tmrc.h"
+#include "data/config_tmrc.h"
 
 void Testbench_tmrc_stmr(stream<ap_uint<OFM_Channels1*ACTIVATION_PRECISION> > & in,
 						 stream<ap_uint<(OFM_Channels1-NUM_RED*(REDF-1))*ACTIVATION_PRECISION> > & out,
