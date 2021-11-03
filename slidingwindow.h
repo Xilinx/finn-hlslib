@@ -36,6 +36,7 @@
  *           Thomas B. Preusser <thomas.preusser@utexas.edu>
  *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
  *           Christoph Doehring <cdoehrin@xilinx.com>
+ *           Felix Jentzsch <felix.jentzsch@upb.de>
  *
  *  \file slidingwindow.h
  *
@@ -1630,6 +1631,118 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
   } // End count_image
 } // End generator
 
+/**
+ * \brief Sliding Window unit that produces output vectors for feeding
+ * a Matrix_Vector_Activate_Batch, implementing the im2col algorithm.
+ * To be used only for 1D feature maps.
+ * Feeds all pixels of the window in parallel for full SIMD unfolding of following layer.
+ * NOTE: Currently restricted to: Stride = 1 and SIMD = IFMChannels
+ *
+ * \tparam ConvKernelDim    	Dimension of the convolutional kernel
+ * \tparam IFMChannels      	Number of Input Feature Maps
+ * \tparam Input_precision  	Number bits per pixel
+ * \tparam IFMDim           	Height of the Input Feature Map
+ * \tparam OFMDim           	Height of the Output Feature Map
+ * \tparam SIMD             	Number of input columns computed in parallel
+ * \tparam Stride          	  Stride of the convolutional kernel
+ * \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
+ *
+ * \param in                	Input stream
+ * \param out               	Output stream
+ * \param numReps           	Number of time the function has to be repeatedly executed (e.g. number of images)
+ * \param r			  			      Resource type for the hardware implementation of the memory block
+*/
+template<unsigned int ConvKernelDim,
+		 unsigned int IFMChannels,
+		 unsigned int Input_precision,
+		 unsigned int IFMDim,
+		 unsigned int OFMDim,
+		 unsigned int SIMD,
+		 unsigned int Stride,
+		 typename R>
+void ConvolutionInputGenerator_1D_parallel(
+		stream<ap_uint<SIMD*Input_precision> > & in,
+		stream<ap_uint<ConvKernelDim*SIMD*Input_precision> > & out,
+		const unsigned int numReps,
+		R const &r) {
+
+  CASSERT_DATAFLOW(Stride == 1);
+  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+  const unsigned int number_blocks = ConvKernelDim + 1 ;
+  ap_uint<SIMD*Input_precision> inputBuf[number_blocks];
+
+#pragma HLS ARRAY_PARTITION variable=inputBuf complete
+  //memory_resource(inputBuf, r); use reg regardless of setting
+  const unsigned int cycles_write_block = 1;
+  const unsigned int cycles_read_block = 1;
+  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int baseIter = ConvKernelDim // Initial buffer
+			                  + OFMDim * MAX(cycles_write_block,cycles_read_block);
+  unsigned int current_block_write = 0;
+  unsigned int next_block_write = 0;
+  unsigned int read_block = 0;
+  unsigned int inp = 0, ofm_y = 0, k_y = 0;
+#pragma HLS reset variable=inp
+  for (unsigned int count_image = 0; count_image < numReps; count_image++) {
+    for (unsigned int i = 0; i < baseIter; i++) {
+#pragma HLS PIPELINE II=1
+      if (inp < ConvKernelDim) {// Initial buffer of ConvKernelDim lines
+        ap_uint<SIMD*Input_precision> inElem;
+        inElem = in.read();
+        inputBuf[current_block_write] = inElem;
+
+        inp++;
+
+        current_block_write++;
+        if (current_block_write == number_blocks) {
+          current_block_write=0;
+        }
+        read_block++;
+        
+      } else {
+        // READING from buffer
+
+        ap_uint<ConvKernelDim*SIMD*Input_precision> outElem;
+
+        for(int k_y=0; k_y<ConvKernelDim; k_y++)
+        {
+#pragma HLS UNROLL
+          unsigned int current_block_read = (current_block_write + 1 + k_y);
+          if (current_block_read >= number_blocks) {
+            current_block_read-= number_blocks;
+          }
+          outElem((k_y+1)*SIMD*Input_precision-1, k_y*SIMD*Input_precision) = inputBuf[current_block_read];
+        }
+
+        out.write(outElem);
+
+        ofm_y++;
+        if (ofm_y == OFMDim) {
+          ofm_y = 0;
+          inp = 0;
+        }
+        
+        if (read_block<IFMDim) { 
+          // WRITING to buffer
+          ap_uint<SIMD*Input_precision> inElem;
+          inElem = in.read();
+          inputBuf[current_block_write] = inElem;
+#pragma AP dependence variable=inputBuf intra false
+#pragma AP dependence variable=inputBuf inter false
+            
+          read_block++;
+          current_block_write++;
+          if (current_block_write == number_blocks) {
+            current_block_write=0;
+			    }
+#pragma AP dependence variable=current_block_write intra false
+          
+        }
+      }
+    } // End base_iter
+	read_block = 0;
+  } // End count_image
+} // End generator
 
 
 #endif
