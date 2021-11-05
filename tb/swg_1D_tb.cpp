@@ -46,7 +46,7 @@
 #include <string>
 #include "bnn-library.h"
 
-#include "input_gen_1d.h"
+#include "data/input_gen_1d.h"
 
 #include "math.h"
 using namespace hls;

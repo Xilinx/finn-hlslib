@@ -51,7 +51,7 @@ void Testbench(stream<ap_uint<IFM_Channels1*INPUT_PRECISION1> > & in, stream<ap_
 {
 #pragma HLS DATAFLOW
 
-	ConvolutionInputGenerator_1D<KERNEL_DIM_y,
+	ConvolutionInputGenerator_1D_parallel<KERNEL_DIM_y,
 	IFM_Channels1,
 	INPUT_PRECISION1,
 	IFMDim_y,
