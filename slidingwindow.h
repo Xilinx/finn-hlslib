@@ -1636,13 +1636,13 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
  * a Matrix_Vector_Activate_Batch, implementing the im2col algorithm.
  * To be used only for 1D feature maps.
  * Feeds all pixels of the window in parallel for full SIMD unfolding of following layer.
- * NOTE: Currently restricted to: Stride = 1 and SIMD = IFMChannels
+ * NOTE: Currently restricted to: SIMD = IFMChannels
  *
  * \tparam ConvKernelDim    	Dimension of the convolutional kernel
  * \tparam IFMChannels      	Number of Input Feature Maps
  * \tparam Input_precision  	Number bits per pixel
- * \tparam IFMDim           	Height of the Input Feature Map
- * \tparam OFMDim           	Height of the Output Feature Map
+ * \tparam IFMDim           	Dimension of the Input Feature Map
+ * \tparam OFMDim           	Dimension of the Output Feature Map
  * \tparam SIMD             	Number of input columns computed in parallel
  * \tparam Stride          	  Stride of the convolutional kernel
  * \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
@@ -1666,32 +1666,23 @@ void ConvolutionInputGenerator_1D_parallel(
 		const unsigned int numReps,
 		R const &r) {
 
-  CASSERT_DATAFLOW(Stride == 1);
   CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
   const unsigned int number_blocks = ConvKernelDim + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks];
 
 #pragma HLS ARRAY_PARTITION variable=inputBuf complete
   //memory_resource(inputBuf, r); use reg regardless of setting
-  const unsigned int cycles_write_block = 1;
-  const unsigned int cycles_read_block = 1;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
-  const unsigned int baseIter = ConvKernelDim // Initial buffer
-			                  + OFMDim * MAX(cycles_write_block,cycles_read_block);
+  const unsigned int baseIter = IFMDim + 1;
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;
   unsigned int read_block = 0;
-  unsigned int inp = 0, ofm_y = 0, k_y = 0;
-#pragma HLS reset variable=inp
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS PIPELINE II=1
-      if (inp < ConvKernelDim) {// Initial buffer of ConvKernelDim lines
+      if (read_block < ConvKernelDim) { // Initial buffer of ConvKernelDim lines
         ap_uint<SIMD*Input_precision> inElem;
         inElem = in.read();
         inputBuf[current_block_write] = inElem;
-
-        inp++;
 
         current_block_write++;
         if (current_block_write == number_blocks) {
@@ -1700,30 +1691,24 @@ void ConvolutionInputGenerator_1D_parallel(
         read_block++;
         
       } else {
-        // READING from buffer
+        
+        if((read_block-ConvKernelDim) % Stride == 0) { // READING from buffer
+          ap_uint<ConvKernelDim*SIMD*Input_precision> outElem;
 
-        ap_uint<ConvKernelDim*SIMD*Input_precision> outElem;
-
-        for(int k_y=0; k_y<ConvKernelDim; k_y++)
-        {
-#pragma HLS UNROLL
-          unsigned int current_block_read = (current_block_write + 1 + k_y);
-          if (current_block_read >= number_blocks) {
-            current_block_read-= number_blocks;
+          for(int k_y=0; k_y<ConvKernelDim; k_y++)
+          {
+  #pragma HLS UNROLL
+            unsigned int current_block_read = (current_block_write + 1 + k_y);
+            if (current_block_read >= number_blocks) {
+              current_block_read-= number_blocks;
+            }
+            outElem((k_y+1)*SIMD*Input_precision-1, k_y*SIMD*Input_precision) = inputBuf[current_block_read];
           }
-          outElem((k_y+1)*SIMD*Input_precision-1, k_y*SIMD*Input_precision) = inputBuf[current_block_read];
-        }
 
-        out.write(outElem);
-
-        ofm_y++;
-        if (ofm_y == OFMDim) {
-          ofm_y = 0;
-          inp = 0;
+          out.write(outElem);
         }
         
-        if (read_block<IFMDim) { 
-          // WRITING to buffer
+        if (read_block<IFMDim) { // WRITING to buffer
           ap_uint<SIMD*Input_precision> inElem;
           inElem = in.read();
           inputBuf[current_block_write] = inElem;
@@ -1736,7 +1721,6 @@ void ConvolutionInputGenerator_1D_parallel(
             current_block_write=0;
 			    }
 #pragma AP dependence variable=current_block_write intra false
-          
         }
       }
     } // End base_iter

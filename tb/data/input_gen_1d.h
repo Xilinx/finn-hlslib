@@ -35,9 +35,9 @@
 #define KERNEL_DIM_y 3
 #define IFM_Channels1 2
 #define IFMDim_x 1
-#define IFMDim_y 34
+#define IFMDim_y 33
 #define OFMDim_x 1
-#define OFMDim_y 32
+#define OFMDim_y 16
 #define STRIDE_x 1
-#define STRIDE_y 1
+#define STRIDE_y 2
 #define INPUT_PRECISION1 8
