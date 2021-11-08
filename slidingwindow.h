@@ -1676,6 +1676,7 @@ void ConvolutionInputGenerator_1D_parallel(
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;
   unsigned int read_block = 0;
+  unsigned int stride_counter = 0;
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS PIPELINE II=1
@@ -1692,7 +1693,7 @@ void ConvolutionInputGenerator_1D_parallel(
         
       } else {
         
-        if((read_block-ConvKernelDim) % Stride == 0) { // READING from buffer
+        if(stride_counter == 0) { // READING from buffer
           ap_uint<ConvKernelDim*SIMD*Input_precision> outElem;
 
           for(int k_y=0; k_y<ConvKernelDim; k_y++)
@@ -1720,11 +1721,16 @@ void ConvolutionInputGenerator_1D_parallel(
           if (current_block_write == number_blocks) {
             current_block_write=0;
 			    }
+          stride_counter++;
+          if (stride_counter == Stride) {
+            stride_counter=0;
+          }
 #pragma AP dependence variable=current_block_write intra false
         }
       }
     } // End base_iter
 	read_block = 0;
+  stride_counter = 0;
   } // End count_image
 } // End generator
 
