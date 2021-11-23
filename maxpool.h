@@ -510,7 +510,7 @@ void LabelSelect_Batch(stream<ap_uint<PECount * In_T::width> > & in,
  *
  * \tparam Channels   Number of channels in the pool layer
  * \tparam PE         Number of channels in the pool layer computed in parallel
- * \tparam Kernel     Kernel size of the Pool
+ * \tparam TotalK     Total kernel size of pooling (e.g. 3x3=9)
  * \tparam TSrcI      DataType of the input value (Slice)
  * \tparam TDstI      DataType of the output value (Slice)
  * \tparam TI         DataType of the input stream - safely deducible from the paramaters
@@ -523,7 +523,7 @@ void LabelSelect_Batch(stream<ap_uint<PECount * In_T::width> > & in,
  * \param reps        Number of time the function has to be repeatedly executed (e.g. number of images)
  */
 template<
-  unsigned Channels, unsigned PE, unsigned Kernel,
+  unsigned Channels, unsigned PE, unsigned TotalK,
   typename TSrcI = Identity,typename TDstI = Identity,
   typename TI, typename TO, typename TA
 >
@@ -533,7 +533,7 @@ void Pool_batch(hls::stream<TI> &in,
                   int const  reps) {
 
   unsigned const  NF = Channels / PE;
-  unsigned const  SF = Kernel * Kernel;
+  unsigned const  SF = TotalK;
 
   decltype(function.init())  accu[PE];
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
@@ -541,7 +541,7 @@ void Pool_batch(hls::stream<TI> &in,
   unsigned  sf   = 0;
   unsigned const TOTAL_FOLD = NF * SF ;
   // everything merged into a common iteration space (one "big" loop instead
-  // of smaller nested loops) to get the pipelinening the way we want
+  // of smaller nested loops) to get the pipelining the way we want
   for(unsigned  i = 0; i < reps * TOTAL_FOLD; i++) {
 #pragma HLS PIPELINE II=1
     TI  pixel_slice;
