@@ -45,7 +45,7 @@ using namespace hls;
 #include "bnn-library.h"
 
 
-#include "pool_config.h"
+#include "data/pool_config.h"
 
 void Testbench_pool(stream<ap_uint<FM_Channels1*PRECISION> > & in, stream<ap_uint<FM_Channels1*PRECISION> > & out, unsigned int numReps){
 #pragma HLS DATAFLOW

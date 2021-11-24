@@ -12,7 +12,7 @@
 #include <iostream>
 #include <hls_stream.h>
 #include "ap_int.h"
-#include "upsample_config.h"
+#include "data/upsample_config.h"
 
 
 using namespace hls;

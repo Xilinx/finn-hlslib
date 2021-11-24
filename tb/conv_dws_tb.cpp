@@ -48,7 +48,7 @@
 #include "ap_int.h"
 #include "weights.hpp"
 #include "bnn-library.h"
-#include "memdata-conv-dws.h"
+#include "data/memdata-conv-dws.h"
 #include "config-conv-dws.h"
 #include "activations.hpp"
 #include "weights.hpp"

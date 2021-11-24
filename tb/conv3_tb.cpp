@@ -48,7 +48,7 @@
 #include "ap_int.h"
 #include "weights.hpp"
 #include "bnn-library.h"
-#include "memdata.h"
+#include "data/memdata.h"
 #include "config.h"
 #include "activations.hpp"
 #include "weights.hpp"
@@ -64,6 +64,7 @@ void Testbench_conv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream
 
 int main()
 {
+	//create_memdata();
 	static	ap_uint<INPUT_PRECISION> IMAGE[MAX_IMAGES][IFMDim1*IFMDim1][IFM_Channels1];
 	static	ap_int<ACTIVATION_PRECISION> TEST[MAX_IMAGES][OFMDim1][OFMDim1][OFM_Channels1];
 	stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > input_stream("input_stream");
@@ -79,7 +80,6 @@ int main()
 					IMAGE[n_image][oy*IFMDim1+ox][channel]= input;
 					input_channel = input_channel >> INPUT_PRECISION;
 					input_channel(IFM_Channels1*INPUT_PRECISION-1,(IFM_Channels1-1)*INPUT_PRECISION)=input;
-
 					counter++;
 				}
 				input_stream.write(input_channel);
@@ -94,12 +94,15 @@ int main()
 	unsigned int ky=0;
 	unsigned int chan_count=0;
 	unsigned int out_chan_count=0;
+
 	for (unsigned int oy = 0; oy < TY; oy++) {
-		for (unsigned int ox = 0; ox <TX; ox++) {
-			for(int pe=0;pe <PE1;pe++){
-				for(int simd=0;simd<SIMD1;simd++){
+		for(unsigned int pe=0;pe <PE1;pe++){
+			for (unsigned int ox = 0; ox <TX; ox++) {
+				for(unsigned int simd=0;simd<SIMD1;simd++){
 					W1[out_chan_count][kx][ky][chan_count] = PARAM::weights.weights(oy*TX + ox)[pe][simd];
-			    	chan_count++;
+					//cout << "TILE " << oy*TX + ox << " PE " << pe << " SIMD " << simd << endl;
+					//cout << "IFM " << chan_count << " KX " << kx << " KY " << ky << " OFM " << out_chan_count << endl;
+					chan_count++;
 				    if (chan_count==IFM_Channels1){
 				    	chan_count=0;
 						kx++;
@@ -134,11 +137,10 @@ int main()
 
 						if (EXP != out_chan){
 							std::cout << "ERROR: Expected["<<oy <<"]["<<ox<<"]["<<channel<<"]=" << EXP << " actual " <<  out_chan << std::endl;
-							//return 1;
 							err_counter ++;
 							err_perimage++;
-							//if(err_counter>10)
-								//return 1;
+						}else{
+							std::cout << "Expected["<<oy <<"]["<<ox<<"]["<<channel<<"]=" << EXP << " actual " <<  out_chan << std::endl;
 						}
 					}
 				}

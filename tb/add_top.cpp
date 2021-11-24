@@ -4,7 +4,7 @@ using namespace hls;
 #include "bnn-library.h"
 
 
-#include "add_config.h"
+#include "data/add_config.h"
 
 void Testbench_add(stream<ap_uint<NUM_CHANNELS * INPUT_WIDTH> > & in1, stream<ap_uint<NUM_CHANNELS * INPUT_WIDTH> > & in2, stream<ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> > & out, const unsigned int numReps){
 	

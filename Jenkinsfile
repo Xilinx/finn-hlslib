@@ -69,23 +69,6 @@ node {
             sh('source /proj/xbuilds/2021.1_released/installs/lin64/Vivado/2021.1/settings64.sh; cd tb; vitis_hls -f test_dup_stream.tcl')
         }
     }, sixthBranch: {
-        stage('Set-up virtual env') {
-            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
-            echo "${env.FINN_HLS_ROOT}"
-            sh('virtualenv venv; source venv/bin/activate;pip3.7 install -r requirements.txt')
-        }
-        stage('Generate weigths for conv test') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths.py;')
-        }
-        stage('Generate weigths for depthwise separable conv test') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_dws.py;')
-        }
-		stage('Generate weigths for non square conv test') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_nonsquare.py;')
-        }
-		stage('Generate weigths for non square conv test') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_nonsquare_dws.py;')
-        }
         stage('Run tests CONV3') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
@@ -115,6 +98,21 @@ node {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_conv_nonsquare_dws.tcl')
+        }
+		stage('Run tests TMRC') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_tmrc_stmr.tcl')
+        }
+		stage('Run tests CONV_NOINJ_STMR') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_noinj_stmr.tcl')
+        }
+	    stage('Run tests CONV_INJ_STMR') {
+            env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_inj_stmr.tcl')
         }
     }, seventhBranch: {
         stage('Run tests DWCNM') {
@@ -169,6 +167,30 @@ node {
               env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
             sh('source /proj/xbuilds/2021.1_released/installs/lin64/Vivado/2021.1/settings64.sh; cd tb; vitis_hls -f test_upsample.tcl')
+        }
+    }, twelfthBranch: {
+        stage('Run tests Dilated SWG') {
+              env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_swg_dilated.tcl')
+        }
+    }, thirteenthBranch: {
+        stage('Run tests MMV SWG Kernel Stride') {
+              env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_swg_kernelstride_mmv.tcl')
+        }
+    }, fourteenthBranch: {
+        stage('Run tests POOL 1D') {
+              env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_pool_1d.tcl')
+        }
+    }, fifteenthBranch: {
+        stage('Run tests UPSAMPLE') {
+              env.FINN_HLS_ROOT = "${env.WORKSPACE}"
+            echo "${env.FINN_HLS_ROOT}"
+            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_upsample.tcl')
         }
     }
 }

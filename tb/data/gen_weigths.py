@@ -36,20 +36,20 @@ import subprocess
 outFileWeights = open("memdata.h" , "wt")
 outFileConfig = open("config.h" , "wt")
 
-kernel_dim = 3 
+kernel_dim = 3
 stride = 1
 input_precision = 8
-ifm_channels = 2
-ofm_channels = 1
-ifm_dimension = 8
-ofm_dimension = 6
+ifm_channels = 4
+ofm_channels = 16
+ifm_dimension = 3
+ofm_dimension = 1
 
 activation_precision = 16
 expand = 1
 simd = 2
-pe = 1
+pe = 2
 w_precision = 1
-mmv=2
+mmv=1
 
 tile = ifm_channels *kernel_dim*kernel_dim * ofm_channels // (simd*pe)
 

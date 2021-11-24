@@ -47,7 +47,7 @@ using namespace hls;
 #include "ap_int.h"
 #include "bnn-library.h"
 
-#include "upsample_config.h"
+#include "data/upsample_config.h"
 
 
 

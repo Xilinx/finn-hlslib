@@ -67,7 +67,7 @@ void Testbench_kernel_stride_pool(stream<ap_uint<FM_Channels1*INPUT_PRECISION> >
             (aw_padded_input, swg_out, numReps, ap_resource_dflt());
 
     MaxPoolFunction<ap_uint<INPUT_PRECISION>,KERNEL_DIM> maxpool_fxn;
-    Pool_batch<FM_Channels1, PE1, KERNEL_DIM,
+    Pool_batch<FM_Channels1, PE1, KERNEL_DIM*KERNEL_DIM,
                 Slice<ap_uint<INPUT_PRECISION> >, Slice< ap_uint<INPUT_PRECISION> > >
     (swg_out,pool_out, maxpool_fxn, OFMDim1*OFMDim1*numReps);
 
