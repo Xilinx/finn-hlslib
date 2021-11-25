@@ -40,7 +40,7 @@ node {
         'LC_ALL=C',
         'LANG=C',
         "FINN_HLS_ROOT=${env.WORKSPACE}",
-        "HLS_ENV_SRC=/proj/xbuilds/2021.1_released/installs/lin64/Vivado/2021.1/settings64.sh"
+        "HLS_ENV_SRC=/proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2/settings64.sh"
     ]){
         parallel firstBranch: {
             stage('Run tests SWG') {
@@ -79,19 +79,19 @@ node {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv_dws.tcl")
             }
             stage('Run tests NON_SQUARE_CONV') {
-                sh("source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_conv_nonsquare.tcl")
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv_nonsquare.tcl")
             }
             stage('Run tests NON_SQUARE_DWS_CONV') {
-                sh("source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_conv_nonsquare_dws.tcl")
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv_nonsquare_dws.tcl")
             }
             stage('Run tests TMRC') {
-                sh("source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_tmrc_stmr.tcl")
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vivado_hls -f test_tmrc_stmr.tcl")
             }
             stage('Run tests CONV_NOINJ_STMR') {
-                sh("source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_noinj_stmr.tcl")
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vivado_hls -f test_conv3_noinj_stmr.tcl")
             }
             stage('Run tests CONV_INJ_STMR') {
-                sh("source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_inj_stmr.tcl")
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vivado_hls -f test_conv3_inj_stmr.tcl")
             }
         }, seventhBranch: {
             stage('Run tests DWCNM') {
