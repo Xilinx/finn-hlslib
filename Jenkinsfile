@@ -38,6 +38,7 @@ node {
     }
     withEnv([
         'LC_ALL=C',
+        'LANG=C',
         "FINN_HLS_ROOT=${env.WORKSPACE}",
         "HLS_ENV_SRC=/proj/xbuilds/2021.1_released/installs/lin64/Vivado/2021.1/settings64.sh"
     ]){
@@ -46,7 +47,7 @@ node {
                 echo "HLS_ENV_SRC: ${env.HLS_ENV_SRC}"
                 echo "FINN_HLS_ROOT: ${env.FINN_HLS_ROOT}"
                 echo "LC_ALL: ${env.LC_ALL}"
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg.tcl")
+                sh("source ${env.HLS_ENV_SRC}; cd tb; LANG=C LC_ALL=C vitis_hls -f test_swg.tcl")
             }
         }, secondBranch: {
             stage('Run tests POOL') {
