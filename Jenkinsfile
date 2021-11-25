@@ -32,105 +32,104 @@
 
 node {
     def app
-    environment {
-        LC_ALL = "C"
-        FINN_HLS_ROOT = "${env.WORKSPACE}"
-        XILINX_PATH = "/proj/xbuilds/2021.1_released/installs/lin64"
-        XILINX_VERSION = "2021.1"
-        HLS_ENV_SRC = "${env.XILINX_PATH}/Vivado/${env.XILINX_VERSION}/settings64.sh"
-    }
-
     stage('Clone repository') {
         /* Let's make sure we have the repository cloned to our workspace */
         checkout scm
     }
-
-    parallel firstBranch: {
-        stage('Run tests SWG') {
-            echo "HLS_ENV_SRC: ${env.HLS_ENV_SRC}"
-            echo "FINN_HLS_ROOT: ${env.FINN_HLS_ROOT}"
-            echo "LC_ALL: ${env.LC_ALL}"
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg.tcl')
-        }
-    }, secondBranch: {
-        stage('Run tests POOL') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_pool.tcl')
-        }
-    }, thirdBranch: {
-        stage('Run tests DWC') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dwc.tcl')
-        }
-    }, fourthBranch: {
-        stage('Run tests ADD') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_add.tcl')
-        }
-    }, fifthBranch: {
-        stage('Run tests DUP_STREAM') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dup_stream.tcl')
-        }
-    }, sixthBranch: {
-        stage('Run tests CONV3') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv3.tcl')
-        }
-        /* stage('Run tests CONV3_STREAM') {   
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv_stream.tcl')
-        } */
-        stage('Run tests CONVMMV') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_convmmv.tcl')
-        }
-        stage('Run tests DWSCONV') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv_dws.tcl')
-        }
-		stage('Run tests NON_SQUARE_CONV') {
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_conv_nonsquare.tcl')
-        }
-		stage('Run tests NON_SQUARE_DWS_CONV') {
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_conv_nonsquare_dws.tcl')
-        }
-		stage('Run tests TMRC') {
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_tmrc_stmr.tcl')
-        }
-		stage('Run tests CONV_NOINJ_STMR') {
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_noinj_stmr.tcl')
-        }
-	    stage('Run tests CONV_INJ_STMR') {
-            sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_inj_stmr.tcl')
-        }
-    }, seventhBranch: {
-        stage('Run tests DWCNM') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dwcnm.tcl')
-        }
-    }, eigthBranch: {
-        stage('Run tests SWG_KS') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_kernelstride.tcl')
-        }
-    }, ninthBranch: {
-        stage('Run tests QDMA') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_qdma_stream.tcl')
-        }
-    }, tenthBranch: {
-        stage('Run tests Pool Kernel Stride') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_kernel_stride_pool.tcl')
-        }
-    }, eleventhBranch: {
-        stage('Run tests LabelSelect Batch') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_label_select.tcl')
-        }
-    }, twelfthBranch: {
-        stage('Run tests Dilated SWG') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_dilated.tcl')
-        }
-    }, thirteenthBranch: {
-        stage('Run tests MMV SWG Kernel Stride') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_kernelstride_mmv.tcl')
-        }
-    }, fourteenthBranch: {
-        stage('Run tests POOL 1D') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_pool_1d.tcl')
-        }
-    }, fifteenthBranch: {
-        stage('Run tests UPSAMPLE') {
-            sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample.tcl')
+    withEnv([
+        'LC_ALL=C',
+        'FINN_HLS_ROOT=${env.WORKSPACE}',
+        'XILINX_PATH=/proj/xbuilds/2021.1_released/installs/lin64',
+        'XILINX_VERSION=2021.1',
+        'HLS_ENV_SRC=${env.XILINX_PATH}/Vivado/${env.XILINX_VERSION}/settings64.sh'
+    ]){
+        parallel firstBranch: {
+            stage('Run tests SWG') {
+                echo "HLS_ENV_SRC: ${env.HLS_ENV_SRC}"
+                echo "FINN_HLS_ROOT: ${env.FINN_HLS_ROOT}"
+                echo "LC_ALL: ${env.LC_ALL}"
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg.tcl')
+            }
+        }, secondBranch: {
+            stage('Run tests POOL') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_pool.tcl')
+            }
+        }, thirdBranch: {
+            stage('Run tests DWC') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dwc.tcl')
+            }
+        }, fourthBranch: {
+            stage('Run tests ADD') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_add.tcl')
+            }
+        }, fifthBranch: {
+            stage('Run tests DUP_STREAM') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dup_stream.tcl')
+            }
+        }, sixthBranch: {
+            stage('Run tests CONV3') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv3.tcl')
+            }
+            /* stage('Run tests CONV3_STREAM') {   
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv_stream.tcl')
+            } */
+            stage('Run tests CONVMMV') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_convmmv.tcl')
+            }
+            stage('Run tests DWSCONV') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv_dws.tcl')
+            }
+            stage('Run tests NON_SQUARE_CONV') {
+                sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_conv_nonsquare.tcl')
+            }
+            stage('Run tests NON_SQUARE_DWS_CONV') {
+                sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vitis_hls -f test_conv_nonsquare_dws.tcl')
+            }
+            stage('Run tests TMRC') {
+                sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_tmrc_stmr.tcl')
+            }
+            stage('Run tests CONV_NOINJ_STMR') {
+                sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_noinj_stmr.tcl')
+            }
+            stage('Run tests CONV_INJ_STMR') {
+                sh('source /proj/xbuilds/2020.1_released/installs/lin64/Vivado/2020.1/settings64.sh; cd tb; vivado_hls -f test_conv3_inj_stmr.tcl')
+            }
+        }, seventhBranch: {
+            stage('Run tests DWCNM') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dwcnm.tcl')
+            }
+        }, eigthBranch: {
+            stage('Run tests SWG_KS') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_kernelstride.tcl')
+            }
+        }, ninthBranch: {
+            stage('Run tests QDMA') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_qdma_stream.tcl')
+            }
+        }, tenthBranch: {
+            stage('Run tests Pool Kernel Stride') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_kernel_stride_pool.tcl')
+            }
+        }, eleventhBranch: {
+            stage('Run tests LabelSelect Batch') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_label_select.tcl')
+            }
+        }, twelfthBranch: {
+            stage('Run tests Dilated SWG') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_dilated.tcl')
+            }
+        }, thirteenthBranch: {
+            stage('Run tests MMV SWG Kernel Stride') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_kernelstride_mmv.tcl')
+            }
+        }, fourteenthBranch: {
+            stage('Run tests POOL 1D') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_pool_1d.tcl')
+            }
+        }, fifteenthBranch: {
+            stage('Run tests UPSAMPLE') {
+                sh('source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample.tcl')
+            }
         }
     }
 }
