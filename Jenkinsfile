@@ -38,10 +38,10 @@ node {
     }
     withEnv([
         'LC_ALL=C',
-        'FINN_HLS_ROOT=${env.WORKSPACE}',
+        "FINN_HLS_ROOT=${env.WORKSPACE}",
         'XILINX_PATH=/proj/xbuilds/2021.1_released/installs/lin64',
         'XILINX_VERSION=2021.1',
-        'HLS_ENV_SRC=${env.XILINX_PATH}/Vivado/${env.XILINX_VERSION}/settings64.sh'
+        "HLS_ENV_SRC=${env.XILINX_PATH}/Vivado/${env.XILINX_VERSION}/settings64.sh"
     ]){
         parallel firstBranch: {
             stage('Run tests SWG') {
