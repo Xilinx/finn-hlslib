@@ -244,7 +244,7 @@ public:
  * \param reps            Number of time the function has to be repeatedly executed (e.g. number of images)
  */
 template <
-    unsigned ImgDimH, unsigned ImgDimW, unsigned NumChannels, unsigned PE,
+    unsigned ImgDim, unsigned NumChannels, unsigned PE,
     typename TSrcI = Identity, typename TDstI = Identity,
     typename TI, typename TO, typename TA>
 void Thresholding_Batch(hls::stream<TI> &in,
