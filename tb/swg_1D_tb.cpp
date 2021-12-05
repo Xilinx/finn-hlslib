@@ -46,7 +46,7 @@
 #include <string>
 #include "bnn-library.h"
 
-#include "input_gen_1d.h"
+#include "data/input_gen_1d.h"
 
 #include "math.h"
 using namespace hls;
@@ -54,13 +54,14 @@ using namespace std;
 
 #define MAX_IMAGES 1
 
-void Testbench(stream<ap_uint<IFM_Channels1*INPUT_PRECISION1> > & in, stream<ap_uint<KERNEL_DIM_y*IFM_Channels1*INPUT_PRECISION1> > & out); //, unsigned int numReps)
+void Testbench(stream<ap_uint<SIMD1*INPUT_PRECISION1> > & in, stream<ap_uint<SIMD1*INPUT_PRECISION1> > & out); //, unsigned int numReps)
 
 int main()
 {
 	stream<ap_uint<IFM_Channels1*INPUT_PRECISION1> > input_stream("input_stream");
 	stream<ap_uint<IFM_Channels1*INPUT_PRECISION1> > output_stream("output_stream");
-	stream<ap_uint<KERNEL_DIM_y*IFM_Channels1*INPUT_PRECISION1> > output_stream_wide("output_stream_mmv");
+	stream<ap_uint<SIMD1*INPUT_PRECISION1> > in_simd("in_simd");
+	stream<ap_uint<SIMD1*INPUT_PRECISION1> > out_simd("out_simd");
 
 	static	ap_int<INPUT_PRECISION1> IMAGE[MAX_IMAGES][IFMDim_x][IFMDim_y][IFM_Channels1];
 	int counter = 0;
@@ -80,8 +81,9 @@ int main()
 			}
 		}
 	}
-	Testbench(input_stream, output_stream_wide);//, MAX_IMAGES);
-	StreamingDataWidthConverter_Batch<KERNEL_DIM_y*IFM_Channels1*INPUT_PRECISION1, IFM_Channels1*INPUT_PRECISION1, IFMDim_y>(output_stream_wide, output_stream, 1);
+	StreamingDataWidthConverter_Batch<IFM_Channels1*INPUT_PRECISION1, SIMD1*INPUT_PRECISION1, IFMDim_x>(input_stream, in_simd, 1);
+	Testbench(in_simd, out_simd);//, MAX_IMAGES);
+	StreamingDataWidthConverter_Batch<SIMD1*INPUT_PRECISION1, IFM_Channels1*INPUT_PRECISION1, KERNEL_DIM_x*OFMDim_x*IFM_Channels1/SIMD1>(out_simd, output_stream, 1);
 
 	ap_int<INPUT_PRECISION1> out_chan;
 	int expected_value;

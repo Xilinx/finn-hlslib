@@ -73,7 +73,7 @@
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_dflt const&){
 #pragma HLS inline
-#pragma HLS RESOURCE variable=inputBuf core=RAM_2P
+#pragma HLS BIND_STORAGE variable=inputBuf type=RAM_2P
 }
 /**
  * \brief     Memory resource pragma instantiation for the sliding window generator, BRAM resource
@@ -95,7 +95,7 @@ void memory_resource(T inputBuf, ap_resource_dflt const&){
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_bram const&){
 #pragma HLS inline
-#pragma HLS RESOURCE variable=inputBuf core=RAM_S2P_BRAM
+#pragma HLS BIND_STORAGE variable=inputBuf type=RAM_S2P impl=BRAM
 }
 /**
  * \brief     Memory resource pragma instantiation for the sliding window generator, URAM resource
@@ -117,7 +117,7 @@ void memory_resource(T inputBuf, ap_resource_bram const&){
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_uram const&){
 #pragma HLS inline
-#pragma HLS RESOURCE variable=inputBuf core=RAM_S2P_URAM
+#pragma HLS BIND_STORAGE variable=inputBuf type=RAM_S2P impl=URAM
 }
 /**
  * \brief     Memory resource pragma instantiation for the sliding window generator, LUTRAM resource
@@ -139,7 +139,7 @@ void memory_resource(T inputBuf, ap_resource_uram const&){
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_lutram const&){
 #pragma HLS inline
-#pragma HLS RESOURCE variable=inputBuf core=RAM_S2P_LUTRAM
+#pragma HLS BIND_STORAGE variable=inputBuf type=RAM_S2P impl=LUTRAM
 }
 
 /**
@@ -1743,6 +1743,237 @@ void ConvolutionInputGenerator_1D_parallel(
 	read_block = 0;
   } // End count_image
 } // End generator
+
+
+/**
+* \brief Sliding Window unit that produces output vectors for feeding
+* a Matrix_Vector_Activate_Batch, implementing the im2col algorithm. To be used for single dimensional feature maps
+*
+* \tparam ConvKernelDim_x    	Dimension of the convolutional kernel - x axis
+* \tparam IFMChannels      	Number of Input Feature Maps
+* \tparam Input_precision  	Number bits per pixel
+* \tparam IFMDim_x          	Width of the Input Feature Map
+* \tparam OFMDim_x           	Width of the Output Feature Map
+* \tparam SIMD             	Number of input columns computed in parallel
+* \tparam Stride_x           	Stride of the convolutional kernel - x axis
+* \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
+*
+* \param in                	Input stream
+* \param out               	Output stream
+* \param numReps           	Number of time the function has to be repeatedly executed (e.g. number of images)
+* \param r			  			Resource type for the hardware implementation of the memory block
+*/
+template<unsigned int ConvKernelDim_x,
+	unsigned int IFMChannels,
+	unsigned int Input_precision,
+	unsigned int IFMDim_x,
+	unsigned int OFMDim_x,
+	unsigned int SIMD,
+	unsigned int Stride_x,
+	typename R>
+void ConvolutionInputGenerator_1D(stream<ap_uint<SIMD*Input_precision> > & in, stream<ap_uint<SIMD*Input_precision> > & out, const unsigned int numReps, R const &r) {
+		CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+
+		const unsigned int multiplying_factor = IFMChannels/SIMD;
+		ap_uint<SIMD*Input_precision> inputBuf[IFMDim_x * multiplying_factor];
+		#pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
+		memory_resource(inputBuf, r);
+		const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * multiplying_factor);
+		const unsigned int cycles_read_block =  IFMDim_x * multiplying_factor;
+		const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+		const unsigned int baseIter = IFMDim_x * multiplying_factor // Initial buffer
+ 										+ MAX(cycles_write_block,cycles_read_block);
+		unsigned int counter_internal_block = 0;
+		unsigned int current_line = 0;
+		unsigned int inp = 0, ofm_x = 0, k_x = 0, count_simd =0;
+		#pragma HLS reset variable=inp
+		for (unsigned int count_image = 0; count_image < numReps; count_image++) {
+			for (unsigned int i = 0; i < baseIter; i++) {
+				#pragma HLS PIPELINE II=1
+				if (inp < IFMDim_x * multiplying_factor) {// Initial buffer of ConvKernelDim lines
+					ap_uint<SIMD*Input_precision> inElem;
+					inElem = in.read();
+          inputBuf[current_line] = inElem;
+					current_line++;
+					inp++;
+				}
+				else {
+						unsigned int current_line_in_block = (ofm_x*Stride_x + k_x)*multiplying_factor + count_simd;
+						ap_uint<SIMD*Input_precision> outElem = inputBuf[current_line_in_block];
+						out.write(outElem);
+						count_simd++;
+						if (count_simd == multiplying_factor) {
+							count_simd=0;
+							k_x++;
+							if (k_x == ConvKernelDim_x) {
+								k_x = 0;
+								ofm_x ++;
+								if (ofm_x == OFMDim_x) {
+									ofm_x = 0;
+									inp = 0;
+								}
+							}
+						}
+				} // End else
+			} // End base_iter
+		} // End image
+	}
+
+/**
+ * \brief Sliding Window unit that produces output vectors for feeding
+ * a Matrix_Vector_Activate_Batch, implementing the im2col algorithm. To be used for single dimensional feature maps
+ *
+ * \tparam ConvKernelDim_x    	Dimension of the convolutional kernel - x axis
+ * \tparam IFMChannels      	Number of Input Feature Maps
+ * \tparam Input_precision  	Number bits per pixel
+ * \tparam IFMDim_x          	Width of the Input Feature Map
+ * \tparam OFMDim_x           	Width of the Output Feature Map
+ * \tparam SIMD             	Number of input columns computed in parallel
+ * \tparam Stride_x           	Stride of the convolutional kernel - x axis
+ * \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
+ *
+ * \param in                	Input stream
+ * \param out               	Output stream
+ * \param numReps           	Number of time the function has to be repeatedly executed (e.g. number of images)
+ * \param r			  			Resource type for the hardware implementation of the memory block
+ */
+template<unsigned int ConvKernelDim_x,
+		 unsigned int IFMChannels,
+		 unsigned int Input_precision,
+		 unsigned int IFMDim_x,
+		 unsigned int OFMDim_x,
+		 unsigned int SIMD,
+		 unsigned int Stride_x,
+		 typename R>
+void ConvolutionInputGenerator_1D_dws(
+		stream<ap_uint<SIMD*Input_precision> > & in,
+		stream<ap_uint<SIMD*Input_precision> > & out,
+		const unsigned int numReps,
+		R const &r) {
+  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+
+  const unsigned int multiplying_factor = IFMChannels/SIMD;
+  ap_uint<SIMD*Input_precision> inputBuf[IFMDim_x * multiplying_factor];
+#pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
+  memory_resource(inputBuf, r);
+  const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * multiplying_factor);
+  const unsigned int cycles_read_block = IFMDim_x * multiplying_factor;
+  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int baseIter = IFMDim_x * multiplying_factor // Initial buffer
+			                  + MAX(cycles_write_block,cycles_read_block);
+  unsigned int current_line = 0;
+  unsigned int inp = 0, ofm_x = 0, k_x = 0, count_simd =0;
+#pragma HLS reset variable=inp
+  for (unsigned int count_image = 0; count_image < numReps; count_image++) {
+    for (unsigned int i = 0; i < baseIter; i++) {
+#pragma HLS PIPELINE II=1
+      if (inp < IFMDim_x * multiplying_factor) {// Initial buffer of ConvKernelDim lines
+        ap_uint<SIMD*Input_precision> inElem;
+        inElem = in.read();
+	      inputBuf[current_line] = inElem;
+        current_line++;
+        inp++;
+      }
+      else {
+            unsigned int current_line_in_block = (ofm_x*Stride_x + k_x)*multiplying_factor + count_simd;
+            ap_uint<SIMD*Input_precision> outElem = inputBuf[current_line_in_block];
+            out.write(outElem);
+            k_x++;
+            if (k_x == ConvKernelDim_x) {
+                k_x = 0;
+                count_simd++;
+                if (count_simd == multiplying_factor) {
+                    count_simd=0;
+                    ofm_x ++;
+                    if (ofm_x == OFMDim_x) {
+                        ofm_x = 0;
+                        inp = 0;
+                    }
+                }
+            }
+      } // End else
+    } // End base_iter
+  } // End image
+}
+
+/**
+ * \brief Sliding Window unit that produces output vectors for feeding
+ * a Matrix_Vector_Activate_Batch, implementing the im2col algorithm. To be used for single dimensional feature maps
+ *
+ * \tparam ConvKernelDim_x    	Dimension of the convolutional kernel - x axis
+ * \tparam IFMChannels      	Number of Input Feature Maps
+ * \tparam Input_precision  	Number bits per pixel
+ * \tparam IFMDim_x          	Width of the Input Feature Map
+ * \tparam OFMDim_x           	Width of the Output Feature Map
+ * \tparam SIMD             	Number of input columns computed in parallel
+ * \tparam Stride_x           	Stride of the convolutional kernel - x axis
+ * \tparam Dilation_x          Dilation of the convolutional kernel - x axis
+ * \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
+ *
+ * \param in                	Input stream
+ * \param out               	Output stream
+ * \param numReps           	Number of time the function has to be repeatedly executed (e.g. number of images)
+ * \param r			  			Resource type for the hardware implementation of the memory block
+ */
+template<unsigned int ConvKernelDim_x,
+		 unsigned int IFMChannels,
+		 unsigned int Input_precision,
+		 unsigned int IFMDim_x,
+		 unsigned int OFMDim_x,
+		 unsigned int SIMD,
+		 unsigned int Stride_x,
+                 unsigned int Dilation_x,
+		 typename R>
+void ConvolutionInputGenerator_1D_dilated_dws(
+		stream<ap_uint<SIMD*Input_precision> > & in,
+		stream<ap_uint<SIMD*Input_precision> > & out,
+		const unsigned int numReps,
+		R const &r) {
+  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+
+  const unsigned int multiplying_factor = IFMChannels/SIMD;
+  ap_uint<SIMD*Input_precision> inputBuf[IFMDim_x * multiplying_factor];
+#pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
+  memory_resource(inputBuf, r);
+  const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * multiplying_factor);
+  const unsigned int cycles_read_block = IFMDim_x * multiplying_factor;
+  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int baseIter = IFMDim_x * multiplying_factor // Initial buffer
+			                  + MAX(cycles_write_block,cycles_read_block);
+  unsigned int current_line = 0;
+  unsigned int inp = 0, ofm_x = 0, k_x = 0, count_simd =0;
+#pragma HLS reset variable=inp
+  for (unsigned int count_image = 0; count_image < numReps; count_image++) {
+    for (unsigned int i = 0; i < baseIter; i++) {
+#pragma HLS PIPELINE II=1
+      if (inp < IFMDim_x * multiplying_factor) {// Initial buffer of ConvKernelDim lines
+        ap_uint<SIMD*Input_precision> inElem;
+        inElem = in.read();
+	      inputBuf[current_line] = inElem;
+        current_line++;
+        inp++;
+      }
+      else {
+            unsigned int current_line_in_block = (ofm_x*Stride_x + k_x*Dilation_x)*multiplying_factor + count_simd;
+            ap_uint<SIMD*Input_precision> outElem = inputBuf[current_line_in_block];
+            out.write(outElem);
+            k_x++;
+            if (k_x == ConvKernelDim_x) {
+                k_x = 0;
+                count_simd++;
+                if (count_simd == multiplying_factor) {
+                    count_simd=0;
+                    ofm_x ++;
+                    if (ofm_x == OFMDim_x) {
+                        ofm_x = 0;
+                        inp = 0;
+                    }
+                }
+            }
+      } // End else
+    } // End base_iter
+  } // End image
+}
 
 
 #endif

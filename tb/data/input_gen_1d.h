@@ -30,14 +30,14 @@
  *
  ******************************************************************************/
 
-#define SIMD1 2
-#define KERNEL_DIM_x 1
-#define KERNEL_DIM_y 3
-#define IFM_Channels1 2
-#define IFMDim_x 1
-#define IFMDim_y 34
-#define OFMDim_x 1
-#define OFMDim_y 32
+#define SIMD1 1
+#define KERNEL_DIM_x 3
+#define KERNEL_DIM_y 1
+#define IFM_Channels1 3
+#define IFMDim_x 10
+#define IFMDim_y 1
+#define OFMDim_x 8
+#define OFMDim_y 1
 #define STRIDE_x 1
 #define STRIDE_y 1
 #define INPUT_PRECISION1 8
