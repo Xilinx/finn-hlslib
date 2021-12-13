@@ -51,11 +51,10 @@ void Testbench(stream<ap_uint<SIMD1*INPUT_PRECISION1> > & in, stream<ap_uint<SIM
 {
 #pragma HLS DATAFLOW
 
-	ConvolutionInputGenerator_1D<KERNEL_DIM_x,
+	ConvolutionInputGenerator_1D_lowbuffer<KERNEL_DIM_x,
 	IFM_Channels1,
 	INPUT_PRECISION1,
 	IFMDim_x,
 	OFMDim_x,
-	SIMD1,
-	STRIDE_x>(in, out, 1, ap_resource_dflt());
+	SIMD1>(in, out, 1, ap_resource_dflt());
 }

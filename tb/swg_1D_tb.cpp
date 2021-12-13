@@ -71,7 +71,7 @@ int main()
 			for(unsigned int y = 0; y < IFMDim_y; y++) {
 				input_channel = 0;
 				for(unsigned int c = 0; c < IFM_Channels1; c++) {
-					ap_int<INPUT_PRECISION1> input = (ap_int<INPUT_PRECISION1>)(counter+11);
+					ap_int<INPUT_PRECISION1> input = (ap_int<INPUT_PRECISION1>)(counter);
 					IMAGE[n_image][x][y][c]= input;
 					input_channel = input_channel >> INPUT_PRECISION1;
 					input_channel(IFM_Channels1*INPUT_PRECISION1-1,(IFM_Channels1-1)*INPUT_PRECISION1)=input;
@@ -82,7 +82,7 @@ int main()
 		}
 	}
 	StreamingDataWidthConverter_Batch<IFM_Channels1*INPUT_PRECISION1, SIMD1*INPUT_PRECISION1, IFMDim_x>(input_stream, in_simd, 1);
-	Testbench(in_simd, out_simd);//, MAX_IMAGES);
+	Testbench(in_simd, out_simd);
 	StreamingDataWidthConverter_Batch<SIMD1*INPUT_PRECISION1, IFM_Channels1*INPUT_PRECISION1, KERNEL_DIM_x*OFMDim_x*IFM_Channels1/SIMD1>(out_simd, output_stream, 1);
 
 	ap_int<INPUT_PRECISION1> out_chan;
