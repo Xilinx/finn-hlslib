@@ -77,49 +77,49 @@ namespace comp{
   template<typename input_type_1 = void, typename input_type_2 = void, typename result_type = void>
     struct max;
 
-  template<typename input_type>
+  template<typename input_type_1, typename input_type_2>
     struct greater : public binary_function<input_type_1, input_type_2, ap_uint<1>> {
       ap_uint<1>
       operator()(const input_type_1& a, const input_type_2& b) const
       { return a > b; }
     };
 
-  template<typename input_type>
+  template<typename input_type_1, typename input_type_2>
     struct less : public binary_function<input_type_1, input_type_2, ap_uint<1>> {
       ap_uint<1>
       operator()(const input_type_1& a, const input_type_2& b) const
       { return a < b; }
     };
 
-  template<typename input_type>
+  template<typename input_type_1, typename input_type_2>
     struct greater_equal : public binary_function<input_type_1, input_type_2, ap_uint<1>> {
       ap_uint<1>
       operator()(const input_type_1& a, const input_type_2& b) const
       { return a >= b; }
     };
 
-  template<typename input_type>
+  template<typename input_type_1, typename input_type_2>
     struct less_equal : public binary_function<input_type_1, input_type_2, ap_uint<1>> {
       ap_uint<1>
       operator()(const input_type_1& a, const input_type_2& b) const
       { return a <= b; }
     };
 	
-  template<typename input_type>
+  template<typename input_type_1, typename input_type_2, typename result_type>
     struct add : public binary_function<input_type_1, input_type_2, result_type> {
       result_type
       operator()(const input_type_1& a, const input_type_2& b) const
       { return a + b; }
     };
 
-  template<typename input_type>
+  template<typename input_type_1, typename input_type_2, typename result_type>
     struct mul : public binary_function<input_type_1, input_type_2, result_type> {
       result_type
       operator()(const input_type_1& a, const input_type_2& b) const
       { return a * b; }
     };
 
-  template<typename input_type>
+  template<typename input_type_1, typename input_type_2, typename result_type>
     struct max : public binary_function<input_type_1, input_type_2, result_type> {
       result_type
       operator()(const input_type_1& a, const input_type_2& b) const
