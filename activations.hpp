@@ -74,6 +74,9 @@ namespace comp{
   template<typename input_type_1 = void, typename input_type_2 = void, typename result_type = void>
     struct mul;	
 
+  template<typename input_type_1 = void, typename input_type_2 = void, typename result_type = void>
+    struct max;
+
   template<typename input_type>
     struct greater : public binary_function<input_type_1, input_type_2, ap_uint<1>> {
       ap_uint<1>
@@ -114,6 +117,13 @@ namespace comp{
       result_type
       operator()(const input_type_1& a, const input_type_2& b) const
       { return a * b; }
+    };
+
+  template<typename input_type>
+    struct max : public binary_function<input_type_1, input_type_2, result_type> {
+      result_type
+      operator()(const input_type_1& a, const input_type_2& b) const
+      { return a > b ? a : b; }
     };
 }
 
@@ -225,7 +235,7 @@ public:
  */
 
 template<unsigned NF, unsigned PE,
-   typename TI, typename TP, typename TR, typename Fxn = std::multiplies<TR>>
+   typename TI, typename TP, typename TR, typename Fxn = comp::mul<TI, TP, TR>>
 class ChannelWiseOperation {
 public:
   TP parameters[PE][NF];
