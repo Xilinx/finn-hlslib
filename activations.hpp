@@ -56,46 +56,75 @@
 
 namespace comp{
 
-  template<typename input_type = void>
+  template<typename input_type_1 = void, typename input_type_2 = void>
     struct greater;
 
-  template<typename input_type = void>
+  template<typename input_type_1 = void, typename input_type_2 = void>
     struct less;
 
-  template<typename input_type = void>
+  template<typename input_type_1 = void, typename input_type_2 = void>
     struct greater_equal;
 
-  template<typename input_type = void>
-    struct less_equal;	
+  template<typename input_type_1 = void, typename input_type_2 = void>
+    struct less_equal;
+
+  template<typename input_type_1 = void, typename input_type_2 = void, typename result_type = void>
+    struct add;	
+
+  template<typename input_type_1 = void, typename input_type_2 = void, typename result_type = void>
+    struct mul;	
+
+  template<typename input_type_1 = void, typename input_type_2 = void, typename result_type = void>
+    struct max;
 
   template<typename input_type>
-    struct greater : public binary_function<input_type, input_type, ap_uint<1>> {
+    struct greater : public binary_function<input_type_1, input_type_2, ap_uint<1>> {
       ap_uint<1>
-      operator()(const input_type& a, const input_type& b) const
+      operator()(const input_type_1& a, const input_type_2& b) const
       { return a > b; }
     };
 
   template<typename input_type>
-    struct less : public binary_function<input_type, input_type, ap_uint<1>> {
+    struct less : public binary_function<input_type_1, input_type_2, ap_uint<1>> {
       ap_uint<1>
-      operator()(const input_type& a, const input_type& b) const
+      operator()(const input_type_1& a, const input_type_2& b) const
       { return a < b; }
     };
 
   template<typename input_type>
-    struct greater_equal : public binary_function<input_type, input_type, ap_uint<1>> {
+    struct greater_equal : public binary_function<input_type_1, input_type_2, ap_uint<1>> {
       ap_uint<1>
-      operator()(const input_type& a, const input_type& b) const
+      operator()(const input_type_1& a, const input_type_2& b) const
       { return a >= b; }
     };
 
   template<typename input_type>
-    struct less_equal : public binary_function<input_type, input_type, ap_uint<1>> {
+    struct less_equal : public binary_function<input_type_1, input_type_2, ap_uint<1>> {
       ap_uint<1>
-      operator()(const input_type& a, const input_type& b) const
+      operator()(const input_type_1& a, const input_type_2& b) const
       { return a <= b; }
     };
 	
+  template<typename input_type>
+    struct add : public binary_function<input_type_1, input_type_2, result_type> {
+      result_type
+      operator()(const input_type_1& a, const input_type_2& b) const
+      { return a + b; }
+    };
+
+  template<typename input_type>
+    struct mul : public binary_function<input_type_1, input_type_2, result_type> {
+      result_type
+      operator()(const input_type_1& a, const input_type_2& b) const
+      { return a * b; }
+    };
+
+  template<typename input_type>
+    struct max : public binary_function<input_type_1, input_type_2, result_type> {
+      result_type
+      operator()(const input_type_1& a, const input_type_2& b) const
+      { return a > b ? a : b; }
+    };
 }
 
 /**
@@ -140,7 +169,7 @@ public:
  * The default comparison returns true if the threshold value is
  * smaller than the passed accumulator value.
  */
-template<typename TA, typename Compare = comp::less<TA>>
+template<typename TA, typename Compare = comp::less<TA, TA>>
 class ThresholdActivation : public Activation<TA, bool> {
   TA const  m_threshold;
 public:
@@ -166,7 +195,7 @@ public:
  * the indexed row is smaller than the passed accumulator value.
  */
 template<unsigned NF, unsigned PE, unsigned NumTH, 
-	 typename TA, typename TR, int ActVal = 0, typename Compare = comp::less<TA>>
+	 typename TA, typename TR, int ActVal = 0, typename Compare = comp::less<TA, TA>>
 class ThresholdsActivation {
 public:
   TA m_thresholds[PE][NF][NumTH];
@@ -206,7 +235,7 @@ public:
  */
 
 template<unsigned NF, unsigned PE,
-   typename TI, typename TP, typename TR, typename Fxn = std::multiplies<TR>>
+   typename TI, typename TP, typename TR, typename Fxn = comp::mul<TI, TP, TR>>
 class ChannelWiseOperation {
 public:
   TP parameters[PE][NF];
@@ -320,7 +349,7 @@ void Thresholding_Stream_Batch(hls::stream<TI> &in,
   // alternatively: number of vertical matrix chunks
   unsigned const NF = NumChannels / PE;
 
-  ThresholdsActivation<1, PE, NumSteps, TT, TO, ActVal, comp::less_equal<TT>> internal_thr;
+  ThresholdsActivation<1, PE, NumSteps, TT, TO, ActVal, comp::less_equal<TT, TT>> internal_thr;
   #pragma HLS ARRAY_PARTITION variable=internal_thr.m_thresholds complete dim=0
 
   // everything merged into a common iteration space (one "big" loop instead

@@ -108,7 +108,7 @@ T init(void) const {
 */
   T pool(T const &input, T const &accu) const{
 #pragma HLS inline
-    return std::max(input,accu);
+    return comp::max<T, T, T>(input,accu);
   }
 /*!
  * \brief activate: compute the output of the max pooling algorithm
@@ -142,7 +142,7 @@ public:
 */
   TA pool(TA const &input, TA const &accu) const{
 #pragma HLS inline
-    return std::plus<TA>()(input,accu);
+    return comp::add<TA, TA, TA>()(input,accu);
   }
 /*!
  * \brief activate: compute the output of the avg pooling algorithm
@@ -176,7 +176,7 @@ public:
 */
   TA pool(TA const &input, TA const &accu) const{
 #pragma HLS inline
-    return std::plus<TA>()(input,accu);
+    return comp::add<TA, TA, TA>()(input,accu);
   }
 /*!
  * \brief activate: compute the output of the max pooling algorithm

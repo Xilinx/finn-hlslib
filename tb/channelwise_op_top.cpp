@@ -67,7 +67,7 @@ void Testbench_channelwise_op(stream<ap_uint<IFM_Channels*INPUT_BITS> > & in,
 
     // [add] 
     ChannelWiseOperation<FOLD, PE,BIPO_OUT_TYPE, ADD_PARAM_TYPE, ADD_OUT_TYPE, 
-            std::plus<ADD_OUT_TYPE> > add_params = {.parameters = ADD_INIT};
+            comp::add<ADD_PARAM_TYPE, ADD_PARAM_TYPE, ADD_OUT_TYPE> > add_params = {.parameters = ADD_INIT};
     
     stream<ap_uint<PE*ADD_OUT_BITS>>  add_out;
     Thresholding_Batch< IFMDim, IFM_Channels, PE,
@@ -77,7 +77,7 @@ void Testbench_channelwise_op(stream<ap_uint<IFM_Channels*INPUT_BITS> > & in,
 
     // [mult] 
     ChannelWiseOperation<FOLD, PE,ADD_OUT_TYPE, MULT_PARAM_TYPE, MULT_OUT_TYPE, 
-            std::multiplies<MULT_OUT_TYPE> > mult_params= {.parameters = MULT_INIT};
+            comp::mul<MULT_PARAM_TYPE, MULT_PARAM_TYPE, MULT_OUT_TYPE> > mult_params= {.parameters = MULT_INIT};
     
     stream<ap_uint<PE*MULT_OUT_BITS>>  mul_out;
     Thresholding_Batch< IFMDim, IFM_Channels, PE,
