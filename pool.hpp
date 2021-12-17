@@ -108,7 +108,7 @@ T init(void) const {
 */
   T pool(T const &input, T const &accu) const{
 #pragma HLS inline
-    return comp::max<T, T, T>(input,accu);
+    return comp::max<T, T, T>()(input,accu);
   }
 /*!
  * \brief activate: compute the output of the max pooling algorithm
