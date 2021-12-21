@@ -1783,7 +1783,6 @@ void ConvolutionInputGenerator_1D_dilated_dws(
   const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * multiplying_factor);
   const unsigned int cycles_read_block = IFMDim_x * multiplying_factor;
   ap_uint<SIMD*Input_precision> inputBuf[cycles_read_block];
-#pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
   memory_resource(inputBuf, r);
   const unsigned int baseIter = cycles_read_block // Initial buffer
 			                  + cycles_write_block;
