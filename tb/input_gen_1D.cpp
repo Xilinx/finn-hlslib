@@ -56,5 +56,6 @@ void Testbench(stream<ap_uint<SIMD1*INPUT_PRECISION1> > & in, stream<ap_uint<SIM
 	INPUT_PRECISION1,
 	IFMDim_x,
 	OFMDim_x,
+	STRIDE_x,
 	SIMD1>(in, out, 1, ap_resource_dflt());
 }

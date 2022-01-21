@@ -1861,7 +1861,7 @@ void ConvolutionInputGenerator_1D_lowbuffer(
 	constexpr unsigned  SIMD_COUNT  = IFMChannels / SIMD;
 	constexpr unsigned  BUFFER_SIZE = (ConvKernelDim_x-1) * SIMD_COUNT;
 	constexpr unsigned  OUTPUT_SIZE = OFMDim_x * ConvKernelDim_x * SIMD_COUNT;
-	constexpr unsigned  NUM_OF_INPUTS = IFMDim_x*SIMD_COUNT;
+	constexpr unsigned  INPUT_SIZE = IFMDim_x*SIMD_COUNT;
 	constexpr unsigned  WINDOW_SIZE = ConvKernelDim_x*SIMD_COUNT;
 
 	ap_uint<SIMD*Input_precision>  buffer[BUFFER_SIZE];
@@ -1881,14 +1881,19 @@ void ConvolutionInputGenerator_1D_lowbuffer(
 				out.write(buffer[rp]);
 				if(++offset == WINDOW_SIZE){
 					offset = 0;
-					rp = rp+SIMD_COUNT*(Stride_x-1);
+					rp += 1+SIMD_COUNT*(Stride_x-1);
+					if(rp >= BUFFER_SIZE)  rp -= BUFFER_SIZE;
 				}
-				if(++rp >= BUFFER_SIZE)  rp -= BUFFER_SIZE;
+				else{
+					if(++rp >= BUFFER_SIZE)  rp -= BUFFER_SIZE;
+				}
 				if(++ocnt >= WINDOW_SIZE)  ocnt = 0;
 			}
-			if(we && ++inp_count<=NUM_OF_INPUTS) {			
-				buffer[wp] = in.read();
-				if(++wp == BUFFER_SIZE)  wp = 0;
+			if(we) {
+				if (++inp_count<=INPUT_SIZE){
+					buffer[wp] = in.read();
+					if(++wp == BUFFER_SIZE)  wp = 0;
+				}
 			}
 		}
 	}
