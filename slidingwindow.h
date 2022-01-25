@@ -1830,6 +1830,7 @@ void ConvolutionInputGenerator_1D_dilated_dws(
  * \tparam Input_precision  	Number bits per pixel
  * \tparam IFMDim_x          	Width of the Input Feature Map
  * \tparam OFMDim_x           	Width of the Output Feature Map
+ * \tparam Stride_x           	Stride of the convolutional kernel - x axis
  * \tparam SIMD             	Number of input columns computed in parallel
  * \tparam R          	  		Datatype for the resource used for FPGA implementation of the SWG  - safely deducible from the parameters
  *
@@ -1838,73 +1839,66 @@ void ConvolutionInputGenerator_1D_dilated_dws(
  * \param numReps           	Number of time the function has to be repeatedly executed (e.g. number of images)
  * \param r			  			Resource type for the hardware implementation of the memory block
  */
-template<unsigned int ConvKernelDim_x,
-		 unsigned int IFMChannels,
-		 unsigned int Input_precision,
-		 unsigned int IFMDim_x,
-		 unsigned int OFMDim_x,
-		 unsigned int SIMD,
-		 typename R>
+template<
+	unsigned  ConvKernelDim_x,
+	unsigned  IFMChannels,
+	unsigned  Input_precision,
+	unsigned  IFMDim_x,
+	unsigned  OFMDim_x,
+	unsigned  Stride_x,
+	unsigned  SIMD,
+	typename  R		// Memory resource selector
+>
 void ConvolutionInputGenerator_1D_lowbuffer(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
-		const unsigned int numReps,
-		R const &r) {
-	CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
-	const unsigned int multiplying_factor = IFMChannels/SIMD;
-	const unsigned int buffer_size = ConvKernelDim_x * multiplying_factor;
-	ap_uint<SIMD*Input_precision> inputBuf[buffer_size];
-#pragma HLS ARRAY_PARTITION variable=inputBuf complete
-	memory_resource(inputBuf, r);
-	const unsigned int cycles_read_block = multiplying_factor*(ConvKernelDim_x-1)-(ConvKernelDim_x-1);
-	const unsigned int baseIter = cycles_read_block + (OFMDim_x * buffer_size);
-	const unsigned int num_of_inputs = IFMDim_x * multiplying_factor;
-	unsigned int inp = 0, index_write=0, index_read = 0, j = 0, internal_counter = 0;
-	for (unsigned int count_image = 0; count_image < numReps; count_image++) {
-		for (unsigned int i = 0; i < baseIter; i++) {
-			#pragma HLS PIPELINE II=1
-			if (inp < cycles_read_block) {// Initial buffer of ConvKernelDim lines
-				ap_uint<SIMD*Input_precision> inElem;
-				inElem = in.read();
-				inputBuf[inp] = inElem;
-				inp++;
-				index_write++;
+	hls::stream<ap_uint<SIMD*Input_precision>> &in,
+	hls::stream<ap_uint<SIMD*Input_precision>> &out,
+	unsigned const  numReps,
+	R const &r
+) {
+	static_assert((IFMChannels % SIMD) == 0, "SIMD parallelism must divide the number of IFM channels");
+	static_assert(OFMDim_x == ((IFMDim_x - ConvKernelDim_x) / Stride_x + 1), "Unexpected OFM dimension");
+
+	constexpr unsigned  SIMD_COUNT  = IFMChannels / SIMD;
+	constexpr unsigned  BUFFER_SIZE = (ConvKernelDim_x - 1) * SIMD_COUNT;
+	constexpr unsigned  OUTPUT_SIZE = OFMDim_x * ConvKernelDim_x * SIMD_COUNT;
+	constexpr unsigned  INPUT_SIZE = IFMDim_x * SIMD_COUNT;
+	constexpr unsigned  WINDOW_SIZE = ConvKernelDim_x * SIMD_COUNT;
+	constexpr unsigned  OCNT_INITIAL = BUFFER_SIZE + (Stride_x - 1);
+
+	ap_uint<SIMD*Input_precision>  buffer[BUFFER_SIZE];
+	memory_resource(buffer, r);
+
+	for(unsigned  count_image = 0; count_image < numReps; count_image++) {
+		signed  ocnt = OCNT_INITIAL < WINDOW_SIZE ? OCNT_INITIAL : -1;
+		unsigned  wp = 0;
+		unsigned  rp = 0;
+		unsigned  offset = 0;
+		unsigned  inp_count = 0;
+		for(unsigned  i = 0; i < 1+OUTPUT_SIZE; i++) {
+#pragma HLS PIPELINE II=1
+			bool const  re = i > 0;
+			bool const  we = (i < WINDOW_SIZE) || (ocnt < SIMD_COUNT * Stride_x);
+			if(re) {
+				out.write(buffer[rp]);
+				if(++offset == WINDOW_SIZE){
+					offset = 0;
+					rp += 1 + SIMD_COUNT * (Stride_x - 1);
+					if(rp >= BUFFER_SIZE)  rp -= BUFFER_SIZE;
+				}
+				else{ // Explicit else-block required to work around bug in RTL simulation
+					if(++rp >= BUFFER_SIZE)  rp -= BUFFER_SIZE;
+				}
+				if(++ocnt == WINDOW_SIZE)  ocnt = 0;
 			}
-			else { // Read & write & update
-				// Read & write input buffer
-				if (inp < num_of_inputs){
-					if (inp < buffer_size || internal_counter >= buffer_size-multiplying_factor){
-						ap_uint<SIMD*Input_precision> inElem;
-						inElem = in.read();
-						index_write = index_write < buffer_size ? index_write : index_write - buffer_size;
-						inputBuf[index_write] = inElem;
-						inp++;
-						index_write++;
-						internal_counter = internal_counter < buffer_size-1 ? internal_counter+1 : 0;
-					}
-					else{
-						internal_counter++;
-					}
+			if(we) {
+				if (++inp_count <= INPUT_SIZE){
+					buffer[wp] = in.read();
+					if(++wp == BUFFER_SIZE)  wp = 0;
 				}
-
-				// Write output
-				ap_uint<SIMD*Input_precision> outElem = inputBuf[index_read];
-				out.write(outElem);
-
-				// Update read index pointer
-				if (j < buffer_size-1){
-					index_read++;
-          			j++;
-				}
-				else{
-					index_read = index_read + (multiplying_factor+1);
-          			j=0;
-				}
-				index_read = index_read < buffer_size ? index_read : index_read - buffer_size;
-				}
-		} // End base_iter
-	} // End count_image
-} // End generator
+			}
+		}
+	}
+}
 
 /**
  * \brief Sliding Window unit that produces output vectors for feeding
