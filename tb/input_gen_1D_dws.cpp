@@ -45,17 +45,16 @@
 using namespace hls;
 #include "ap_int.h"
 #include "bnn-library.h"
-#include "data/input_gen_1d.h"
+#include "data/input_gen_1d_dws.h"
 
 void Testbench(stream<ap_uint<SIMD1*INPUT_PRECISION1> > & in, stream<ap_uint<SIMD1*INPUT_PRECISION1> > & out)//, unsigned int numReps)
 {
 #pragma HLS DATAFLOW
 
-	ConvolutionInputGenerator_1D<KERNEL_DIM_x,
+	ConvolutionInputGenerator_1D_dws<KERNEL_DIM_x,
 	IFM_Channels1,
 	INPUT_PRECISION1,
 	IFMDim_x,
 	OFMDim_x,
-	STRIDE_x,
 	SIMD1>(in, out, 1, ap_resource_dflt());
 }
