@@ -1779,19 +1779,19 @@ void ConvolutionInputGenerator_1D_dws_naive(
 		R const &r) {
   CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
 
-  const unsigned int multiplying_factor = IFMChannels / SIMD;
-  const unsigned int cycles_write_block = OFMDim_x * ConvKernelDim_x * multiplying_factor;
-  const unsigned int cycles_read_block = IFMDim_x * multiplying_factor;
+  constexpr unsigned multiplying_factor = IFMChannels / SIMD;
+  constexpr unsigned cycles_write_block = OFMDim_x * ConvKernelDim_x * multiplying_factor;
+  constexpr unsigned cycles_read_block = IFMDim_x * multiplying_factor;
   ap_uint<SIMD*Input_precision> inputBuf[cycles_read_block];
   memory_resource(inputBuf, r);
-  const unsigned int baseIter = cycles_read_block // Initial buffer
+  constexpr unsigned baseIter = cycles_read_block // Initial buffer
 			                  + cycles_write_block;
   unsigned int current_line = 0;
   unsigned int inp = 0, ofm_x = 0, k_x = 0, count_simd =0;
 #pragma HLS reset variable=inp
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
-#pragma HLS PIPELINE II=1 style=frp
+#pragma HLS PIPELINE II=1 style=flp
       if (inp < cycles_read_block) {// Initial buffer of ConvKernelDim lines
         ap_uint<SIMD*Input_precision> inElem;
         inElem = in.read();
@@ -1875,7 +1875,7 @@ void ConvolutionInputGenerator_1D(
 		unsigned  offset = 0;
 		unsigned  inp_count = 0;
 		for(unsigned  i = 0; i < 1+OUTPUT_SIZE; i++) {
-#pragma HLS PIPELINE II=1 style=frp
+#pragma HLS PIPELINE II=1 style=flp
 			bool const  re = i > 0;
 			bool const  we = (i < WINDOW_SIZE) || (ocnt < SIMD_COUNT * Stride_x);
 			if(re) {
@@ -1951,7 +1951,7 @@ void ConvolutionInputGenerator_1D_dws(
 		unsigned  inp_count = 0;
 		unsigned  wcnt = 0;
 		for(unsigned  i = 0; i < 1 + READ_CYCLES + OUTPUT_SIZE; i++) {
-#pragma HLS PIPELINE II=1 style=frp
+#pragma HLS PIPELINE II=1 style=flp
 			bool const  re = i > READ_CYCLES;
 			bool const  we = (i < BUFFER_SIZE) || (ocnt < SIMD_COUNT);
 			if(re) {
@@ -2030,7 +2030,7 @@ void ConvolutionInputGenerator_1D_dws_stride(
 		unsigned  inp_count = 0;
 		unsigned  wcnt = 0;
 		for(unsigned  i = 0; i < 1 + READ_CYCLES + OUTPUT_SIZE; i++) {
-#pragma HLS PIPELINE II=1 style=frp
+#pragma HLS PIPELINE II=1 style=flp
 			bool const  re = i > READ_CYCLES;
 			bool const  we = (i < BUFFER_SIZE) || (ocnt < SIMD_COUNT * Stride_x);
 			if(re) {
