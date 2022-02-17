@@ -249,30 +249,31 @@ void StreamingMaxPool_Precision_1d(stream<ap_uint<PE*ActType::width> > & in,
   constexpr unsigned OUTPUT_SIZE = ImgDim % PoolDim == 0 ? ImgDim / PoolDim : ImgDim / PoolDim + 1;
   // need buffer space for a single maxpooled pixel of the image
   ActType buf[PE_COUNT][PE];
-#pragma HLS ARRAY_PARTITION variable=buf block factor=PE dim=2
+#pragma HLS ARRAY_PARTITION variable=buf complete dim=2
 
-  loop1: for(unsigned int ch = 0; ch < PE_COUNT; ch++){
-      loop2: for(unsigned int p = 0; p < PE; p++){
+  for(unsigned int ch = 0; ch < PE_COUNT; ch++){
+#pragma HLS PIPELINE II=1
+    for(unsigned int p = 0; p < PE; p++){
 #pragma HLS UNROLL
-          buf[ch][p] = min_value; //std::numeric_limits<ActType>::min();
-      }
+        buf[ch][p] = min_value;
+    }
   }
 
   ap_uint<PE*ActType::width> inputData,outputData;
   unsigned input_count = 0;
-  loop3: for (unsigned int xp = 0; xp < OUTPUT_SIZE; xp++) {
+  for (unsigned int xp = 0; xp < OUTPUT_SIZE; xp++) {
     // Change to comparator
-    loop4: for (unsigned int kx = 0; kx < PoolDim; kx++) {
-#pragma HLS PIPELINE II=1
+    for (unsigned int kx = 0; kx < PoolDim; kx++) {
       if (input_count++ < ImgDim){
-        loop5: for (unsigned int ch = 0; ch < PE_COUNT; ch++){
+        for (unsigned int ch = 0; ch < PE_COUNT; ch++){
+#pragma HLS PIPELINE II=1
           inputData = in.read();
-          loop6: for(unsigned int p = 0; p < PE; p++){
+          for(unsigned int p = 0; p < PE; p++){
   #pragma HLS UNROLL
             unsigned const lowBit = p * ActType::width;
             unsigned const highBit = (p+1) * ActType::width -1;
-            ActType channeldata = inputData(highBit, lowBit);
-            ActType oldMax = buf[ch][p];
+            ActType const channeldata = inputData(highBit, lowBit);
+            ActType const oldMax = buf[ch][p];
             if(channeldata > oldMax){
               buf[ch][p] = channeldata;
             }
@@ -280,8 +281,9 @@ void StreamingMaxPool_Precision_1d(stream<ap_uint<PE*ActType::width> > & in,
         }
       }
     }
-    loop7: for(unsigned int ch = 0; ch < PE_COUNT; ch++){
-      loop8: for(unsigned int p = 0; p < PE; p++){
+    for(unsigned int ch = 0; ch < PE_COUNT; ch++){
+#pragma HLS PIPELINE II=1
+      for(unsigned int p = 0; p < PE; p++){
 #pragma HLS UNROLL
         unsigned const lowBit = p * ActType::width;
         unsigned const highBit = (p+1) * ActType::width -1;
