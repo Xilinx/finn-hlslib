@@ -54,5 +54,5 @@ void Testbench_pool(stream<ap_uint<FM_Channels1*PRECISION> > & in, stream<ap_uin
 
 void Testbench_pool_1d(stream<ap_uint<PE1*PRECISION> > & in, stream<ap_uint<PE1*PRECISION> > & out, unsigned int numReps){
 #pragma HLS DATAFLOW
-	StreamingMaxPool_Precision_1d<IFMDim1, KERNEL_DIM, FM_Channels1, PE1, OFMDim1, REMAINDER_SIZE, ap_uint<PRECISION>, 0>(in, out);
+	StreamingMaxPool_Precision_1d<IFMDim1, KERNEL_DIM, FM_Channels1, PE1, OFMDim1, ap_uint<PRECISION>, 0>(in, out);
 }
