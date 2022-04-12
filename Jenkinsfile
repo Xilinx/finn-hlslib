@@ -72,28 +72,28 @@ node {
         stage('Set-up virtual env') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
             echo "${env.FINN_HLS_ROOT}"
-            sh('virtualenv venv; source venv/bin/activate;pip3.7 install -r requirements.txt')
+            sh('virtualenv venv; source venv/bin/activate;pip3 install -r requirements.txt')
         }
         stage('Generate weigths for conv test') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths.py;')
+            sh('source venv/bin/activate; cd tb; python3 gen_weigths.py;')
         }
         stage('Generate weigths for depthwise separable conv test') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_dws.py;')
+            sh('source venv/bin/activate; cd tb; python3 gen_weigths_dws.py;')
         }
 		stage('Generate weigths for non square conv test') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_nonsquare.py;')
+            sh('source venv/bin/activate; cd tb; python3 gen_weigths_nonsquare.py;')
         }
 		stage('Generate weigths for non square conv test') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_weigths_nonsquare_dws.py;')
+            sh('source venv/bin/activate; cd tb; python3 gen_weigths_nonsquare_dws.py;')
         }
 		stage('Generate variables for TMRC test') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_params_stmr.py tmrcheck;')
+            sh('source venv/bin/activate; cd tb; python3 gen_params_stmr.py tmrcheck;')
         }
 		stage('Generate weigths for conv STMR test not injecting errors') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_params_stmr.py no_inj;')
+            sh('source venv/bin/activate; cd tb; python3 gen_params_stmr.py no_inj;')
         }
 		stage('Generate weigths for conv STMR test injecting errors') {
-            sh('source venv/bin/activate; cd tb; python3.7 gen_params_stmr.py inj;')
+            sh('source venv/bin/activate; cd tb; python3 gen_params_stmr.py inj;')
         }
         stage('Run tests CONV3') {
             env.FINN_HLS_ROOT = "${env.WORKSPACE}"
