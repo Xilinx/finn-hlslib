@@ -43,7 +43,7 @@
 #include "ap_int.h"
 #include <iostream>
 #include <string>
-#include "input_gen_dilated.h"
+#include "data/input_gen_dilated.h"
 #include "math.h"
 using namespace hls;
 using namespace std;

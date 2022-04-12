@@ -49,7 +49,7 @@
 #include "weights.hpp"
 #include "bnn-library.h"
 
-#include "pool_config.h"
+#include "data/pool_config.h"
 #include "pool_tb.hpp"
 #include "activations.hpp"
 #include "interpret.hpp"

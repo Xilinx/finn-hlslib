@@ -51,7 +51,7 @@
 #include "weights.hpp"
 #include "bnn-library.h"
 #include "data/memdata.h"
-#include "config.h"
+#include "data/config.h"
 #include "activations.hpp"
 #include "weights.hpp"
 #include "activations.hpp"
