@@ -49,7 +49,7 @@
 #include "weights.hpp"
 #include "bnn-library.h"
 #include "data/memdata-conv-dws.h"
-#include "config-conv-dws.h"
+#include "data/config-conv-dws.h"
 #include "activations.hpp"
 #include "weights.hpp"
 #include "activations.hpp"

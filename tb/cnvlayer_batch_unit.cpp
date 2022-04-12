@@ -10,7 +10,7 @@ using namespace hls;
 #include "mvau.hpp"
 #include "conv.hpp"
 #include "data/memdata.h"
-#include "config.h"
+#include "data/config.h"
 
 // adheres to new config.h
 #define OFD OFMDim1
