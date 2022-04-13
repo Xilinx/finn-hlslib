@@ -51,7 +51,7 @@ using namespace hls;
 #include "mvau.hpp"
 #include "conv.hpp"
 #include "data/memdata-conv-dws.h"
-#include "config-conv-dws.h"
+#include "data/config-conv-dws.h"
 
 void Testbench_conv_dws(stream<ap_uint<FM_Channels1*INPUT_PRECISION> > & in, stream<ap_uint<FM_Channels1*ACTIVATION_PRECISION> > & out, unsigned int numReps){
 #pragma HLS DATAFLOW

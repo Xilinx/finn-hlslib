@@ -51,7 +51,7 @@ using namespace hls;
 #include "mvau.hpp"
 #include "conv.hpp"
 #include "data/memdata.h"
-#include "config.h"
+#include "data/config.h"
 
 void Testbench_conv(stream<ap_uint<IFM_Channels1*INPUT_PRECISION> > & in, stream<ap_uint<OFM_Channels1*ACTIVATION_PRECISION> > & out, unsigned int numReps){
 #pragma HLS DATAFLOW
