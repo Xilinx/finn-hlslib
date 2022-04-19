@@ -30,10 +30,10 @@
  *
  ******************************************************************************/
 
-#define KERNEL_DIM 5
-#define FM_Channels1 10
-#define IFMDim1 42
-#define OFMDim1 9
-#define PRECISION 16
-#define PE1 5
+#define KERNEL_DIM 2
+#define FM_Channels1 16
+#define IFMDim1 16
+#define OFMDim1 8
+#define PRECISION 3
+#define PE1 1
 
