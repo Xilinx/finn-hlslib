@@ -112,7 +112,7 @@ void ConvLayer_Batch(hls::stream<ap_uint<InStreamW>>  &in,
 #pragma HLS INLINE
   unsigned const MatrixW = ConvKernelDim * ConvKernelDim * IFMChannels;
   unsigned const MatrixH = OFMChannels;
-  unsigned const InpPerImage = IFMDim*IFMDim*IFMChannels/InStreamW * TSrcI::width;
+  unsigned const InpPerImage = IFMDim * IFMDim * IFMChannels * TSrcI::width / InStreamW;
   hls::stream<ap_uint<SIMD*TSrcI::width> > wa_in("StreamingConvLayer_Batch.wa_in");
   hls::stream<ap_uint<SIMD*TSrcI::width> > convInp("StreamingConvLayer_Batch.convInp");
   hls::stream<ap_uint<PE*TDstI::width> > mvOut("StreamingConvLayer_Batch.mvOut");
