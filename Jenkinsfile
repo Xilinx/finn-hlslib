@@ -119,15 +119,3 @@ node {
         }
     }
 }
-
-post {
-    success {
-        slackSend channel: '#finn_dev',
-                  color: 'good',
-                  message: "The pipeline ${currentBuild.fullDisplayName} completed successfully."
-    }
-    failure {
-        slackSend channel: '#finn_dev',
-                  message: "The pipeline ${currentBuild.fullDisplayName} failed."
-    }
-}
