@@ -41,3 +41,5 @@
 #define STRIDE_x 1
 #define STRIDE_y 1
 #define INPUT_PRECISION1 16
+#define DILATION_x 1
+#define DILATION_y 1
