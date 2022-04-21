@@ -86,7 +86,7 @@ int main()
 			}
 		}
 	}
-	static	ap_int<WIDTH> W1[OFM_Channels1][KERNEL_DIM][KERNEL_DIM][IFM_Channels1];
+	static	ap_uint<WIDTH> W1[OFM_Channels1][KERNEL_DIM][KERNEL_DIM][IFM_Channels1];
 	// initialize the weights
 	constexpr int TX = (IFM_Channels1*KERNEL_DIM*KERNEL_DIM) / SIMD1;
 	constexpr int TY = OFM_Channels1 / PE1;
