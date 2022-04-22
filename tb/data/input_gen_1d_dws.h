@@ -29,33 +29,12 @@
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ******************************************************************************/
-/******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *           Felix Jentzsch <felix.jentzsch@upb.de>
- *
- *  \file input_gen_1D.cpp
- *
- *  HLS Top function with a single HLS sliding-window generator block unit testing (for 1D convolution)
- *
- *****************************************************************************/
-#define AP_INT_MAX_W 4096
 
-#include <hls_stream.h>
-using namespace hls;
-#include "ap_int.h"
-#include "bnn-library.h"
-#include "data/input_gen_1d.h"
-
-void Testbench(stream<ap_uint<SIMD1*INPUT_PRECISION1> > & in, stream<ap_uint<SIMD1*INPUT_PRECISION1> > & out)//, unsigned int numReps)
-{
-#pragma HLS DATAFLOW
-
-	ConvolutionInputGenerator_1D<KERNEL_DIM_x,
-	IFM_Channels1,
-	INPUT_PRECISION1,
-	IFMDim_x,
-	OFMDim_x,
-	STRIDE_x,
-	SIMD1>(in, out, 1, ap_resource_dflt());
-}
+#define SIMD1 1
+#define KERNEL_DIM_x 5
+#define IFM_Channels1 12
+#define IFMDim_x 20
+#define OFMDim_x 16
+#define STRIDE_x 1
+#define DILATION_x 1
+#define INPUT_PRECISION1 16
