@@ -42,7 +42,7 @@
 #include "ap_int.h"
 #include <iostream>
 #include <string>
-#include "input_gen_kernelstride.h"
+#include "data/input_gen_kernelstride.h"
 #include "math.h"
 using namespace hls;
 using namespace std;

@@ -40,7 +40,7 @@ node {
         'LC_ALL=C',
         'LANG=C',
         "FINN_HLS_ROOT=${env.WORKSPACE}",
-        "HLS_ENV_SRC=/proj/xbuilds/2020.2_released/installs/lin64/Vitis/2020.2/settings64.sh"
+        "HLS_ENV_SRC=/proj/xbuilds/2021.2_released/installs/lin64/Vitis/2021.2/settings64.sh"
     ]){
         parallel firstBranch: {
             stage('Run tests SWG') {
@@ -105,18 +105,14 @@ node {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_label_select.tcl")
             }
         }, twelfthBranch: {
-            stage('Run tests Dilated SWG') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_dilated.tcl")
-            }
-        }, thirteenthBranch: {
             stage('Run tests MMV SWG Kernel Stride') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_kernelstride_mmv.tcl")
             }
-        }, fourteenthBranch: {
+        }, thirteenthBranch: {
             stage('Run tests POOL 1D') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_pool_1d.tcl")
             }
-        }, fifteenthBranch: {
+        }, fourteenthBranch: {
             stage('Run tests UPSAMPLE') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample.tcl")
             }

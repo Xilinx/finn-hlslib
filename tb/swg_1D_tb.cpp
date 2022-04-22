@@ -96,7 +96,7 @@ int main()
 						for(unsigned int chan = 0; chan < IFM_Channels1; chan++) {
 							out_chan(INPUT_PRECISION1-1,0) = outElem((chan + 1)*INPUT_PRECISION1-1,chan*INPUT_PRECISION1);
 							int output_value = (ap_int<INPUT_PRECISION1>) out_chan;
-							expected_value = (ap_int<INPUT_PRECISION1>) IMAGE[n_image][ox*STRIDE_x+kx*1][oy+ky*1][chan];
+							expected_value = (ap_int<INPUT_PRECISION1>) IMAGE[n_image][ox*STRIDE_x+kx*DILATION_x][oy+ky*DILATION_y][chan];
 							if (output_value != expected_value){
 								std::cout << "ERROR: Expected " << expected_value << " actual " <<  output_value << std::endl;
 								std::cout << "Position: OFMDim_x " << ox << " OFMDim_y " << oy <<  " KERNEL_DIM_x " <<  kx << " KERNEL_DIM_y " << ky << " IFM_Channels1 " <<  chan << " Image " << n_image << std::endl;

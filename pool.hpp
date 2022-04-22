@@ -43,7 +43,7 @@
 #ifndef POOL_HPP
 #define POOL_HPP
 
-#include "interpret.hpp"
+#include "activations.hpp"
 
 /*!
  * \brief PoolFunction: General contract for pool functions.
