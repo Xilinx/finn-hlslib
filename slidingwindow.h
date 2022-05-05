@@ -49,10 +49,9 @@
 #ifndef SLIDINGWINDOW_H
 #define SLIDINGWINDOW_H
  
+#include <algorithm>
 #include "utils.hpp"
 
-#define MAX(x, y) (((x) > (y)) ? (x) : (y)) /* \brief Maximum value between x and y*/
-#define MIN(x, y) (((x) > (y)) ? (y) : (x)) /* !< \brief Minimum value between x and y*/
 /**
  * \brief     Memory resource pragma instantiation for the sliding window generator, default resource
  * 
@@ -183,9 +182,9 @@ void ConvolutionInputGenerator(
   memory_resource(inputBuf, r);
   const unsigned int cycles_write_block = (OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor);
   const unsigned int cycles_read_block = Stride * IFMDim * multiplying_factor;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = IFMDim * ConvKernelDim * multiplying_factor// Initial buffer
-			                  + OFMDim * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;	
@@ -318,9 +317,9 @@ void ConvolutionInputGenerator_MMV(
 	memory_resource(inputBuf, r);
 	constexpr unsigned int cycles_write_block = (OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor)/MMV;
 	constexpr unsigned int cycles_read_block = Stride * IFMDim * multiplying_factor;
-	constexpr unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+	constexpr unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
 	const unsigned int baseIter = IFMDim * ConvKernelDim * multiplying_factor// Initial buffer
-			+ OFMDim * MAX(cycles_write_block,cycles_read_block);
+			+ OFMDim * std::max(cycles_write_block,cycles_read_block);
 	unsigned int counter_internal_block = 0;
 	unsigned int current_block_write = 0;
 	unsigned int next_block_write = 0;	
@@ -467,8 +466,8 @@ void ConvolutionInputGenerator_kernel_stride(
     memory_resource(inputBuf, r);
 	const unsigned int cycles_write_block = OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor;
 	const unsigned int cycles_read_block = IFMDim * Stride * multiplying_factor;
-	const unsigned int max_cycles = MAX(cycles_write_block, cycles_read_block);
-	const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+MAX(cycles_write_block,OFMDim);
+	const unsigned int max_cycles = std::max(cycles_write_block, cycles_read_block);
+	const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
 	const unsigned int initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
 	unsigned int counter_internal_block = 0;
 	unsigned int next_block_write = 0;
@@ -625,8 +624,8 @@ void ConvolutionInputGenerator_kernel_stride_MMV(
     memory_resource(inputBuf, r);
 	const unsigned int cycles_write_block = (OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor)/MMV;
 	const unsigned int cycles_read_block = IFMDim * Stride * multiplying_factor;
-	const unsigned int max_cycles = MAX(cycles_write_block, cycles_read_block);
-	const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+MAX(cycles_write_block,OFMDim);
+	const unsigned int max_cycles = std::max(cycles_write_block, cycles_read_block);
+	const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
 	const unsigned int initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
 	unsigned int counter_internal_block = 0;
 	unsigned int next_block_write = 0;
@@ -781,9 +780,9 @@ void ConvolutionInputGenerator_dws(
   memory_resource(inputBuf, r);
   const unsigned int cycles_write_block = (OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor);
   const unsigned int cycles_read_block = Stride * IFMDim * multiplying_factor;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = IFMDim * ConvKernelDim * multiplying_factor// Initial buffer
-			                  + OFMDim * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;	
@@ -911,8 +910,8 @@ void ConvolutionInputGenerator_kernel_stride_dws(
     memory_resource(inputBuf, r);
     const unsigned int cycles_write_block = OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor;
     const unsigned int cycles_read_block = IFMDim * Stride * multiplying_factor;
-    const unsigned int max_cycles = MAX(cycles_write_block, cycles_read_block);
-    const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+MAX(cycles_write_block,OFMDim);
+    const unsigned int max_cycles = std::max(cycles_write_block, cycles_read_block);
+    const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
     const unsigned int initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
     unsigned int counter_internal_block = 0;
     unsigned int next_block_write = 0;
@@ -1069,9 +1068,9 @@ void ConvolutionInputGenerator_dws_MMV(
 	memory_resource(inputBuf, r);
 	constexpr unsigned int cycles_write_block = (OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor)/MMV;
 	constexpr unsigned int cycles_read_block = Stride * IFMDim * multiplying_factor;
-	constexpr unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+	constexpr unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
 	const unsigned int baseIter = IFMDim * ConvKernelDim * multiplying_factor// Initial buffer
-			+ OFMDim * MAX(cycles_write_block,cycles_read_block);
+			+ OFMDim * std::max(cycles_write_block,cycles_read_block);
 	unsigned int counter_internal_block = 0;
 	unsigned int current_block_write = 0;
 	unsigned int next_block_write = 0;	
@@ -1266,9 +1265,9 @@ void ConvolutionInputGenerator_NonSquare(
   memory_resource(inputBuf, r);
   const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * ConvKernelDim_y * multiplying_factor);
   const unsigned int cycles_read_block = Stride_x * IFMDim_x * multiplying_factor;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = IFMDim_x * ConvKernelDim_y * multiplying_factor// Initial buffer
-			                  + OFMDim_y * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;
@@ -1401,9 +1400,9 @@ void ConvolutionInputGenerator_NonSquare_dws(
   memory_resource(inputBuf, r);
   const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * ConvKernelDim_y * multiplying_factor);
   const unsigned int cycles_read_block = Stride_x * IFMDim_x * multiplying_factor;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = IFMDim_x * ConvKernelDim_y * multiplying_factor// Initial buffer
-			                  + OFMDim_y * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;
@@ -1543,9 +1542,9 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
   memory_resource(inputBuf, r);
   const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * ConvKernelDim_y * multiplying_factor);
   const unsigned int cycles_read_block = Stride_x * IFMDim_x * multiplying_factor;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = IFMDim_x * ConvKernelDim_y * Dilation_y  * multiplying_factor// Initial buffer
-			                  + OFMDim_y * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;
@@ -1675,9 +1674,9 @@ void ConvolutionInputGenerator_1D_parallel(
   //memory_resource(inputBuf, r); use reg regardless of setting
   const unsigned int cycles_write_block = 1;
   const unsigned int cycles_read_block = 1;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = ConvKernelDim // Initial buffer
-			                  + OFMDim * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;
   unsigned int read_block = 0;
