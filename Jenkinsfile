@@ -40,7 +40,7 @@ node {
         'LC_ALL=C',
         'LANG=C',
         "FINN_HLS_ROOT=${env.WORKSPACE}",
-        "HLS_ENV_SRC=/proj/xbuilds/2021.2_released/installs/lin64/Vitis/2021.2/settings64.sh"
+        "HLS_ENV_SRC=/proj/xbuilds/2022.1_released/installs/lin64/Vitis/2022.1/settings64.sh"
     ]){
         parallel firstBranch: {
             stage('Run tests SWG') {
