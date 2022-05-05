@@ -66,7 +66,7 @@
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels>
 void StreamingMaxPool(stream<ap_uint<NumChannels> > & in,
         stream<ap_uint<NumChannels> > & out) {
-  CASSERT_DATAFLOW(ImgDim % PoolDim == 0);
+  static_assert(ImgDim % PoolDim == 0);
   // need buffer space for a single maxpooled row of the image
   ap_uint<NumChannels> buf[ImgDim / PoolDim];
   for(unsigned int i = 0; i < ImgDim / PoolDim; i++) {
@@ -139,7 +139,7 @@ template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, ty
         >
 void StreamingMaxPool_Precision(stream<ap_uint<StreamW> > & in,
         stream<ap_uint<StreamW> > & out) {
-  CASSERT_DATAFLOW(ImgDim % PoolDim == 0);
+  static_assert(ImgDim % PoolDim == 0);
   // need buffer space for a single maxpooled row of the image
   ActType buf[ImgDim / PoolDim][NumChannels];
 #pragma HLS ARRAY_PARTITION variable=buf complete dim=2
@@ -245,7 +245,7 @@ template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, un
         >
 void StreamingMaxPool_Precision_1d(stream<ap_uint<PE*ActType::width> > & in,
         stream<ap_uint<PE*ActType::width> > & out) {
-  CASSERT_DATAFLOW(NumChannels % PE == 0);
+  static_assert(NumChannels % PE == 0);
   constexpr unsigned NF = NumChannels / PE;
   constexpr unsigned REMAINDER_PIXELS = ImgDim > PoolDim * OutputSize ? ImgDim - OutputSize * PoolDim : 0;
   
@@ -472,7 +472,7 @@ void LabelSelect_Batch(stream<ap_uint<PECount * In_T::width> > & in,
         stream<Out_T> & out, const unsigned int numReps) { 
 
   const Out_T Out_T_MAX_VAL = (Out_T(-1)<0)? ~(1<<(Out_T::width-1)) : ~(0);
-  CASSERT_DATAFLOW(Out_T_MAX_VAL >= NumClasses-1);
+  static_assert(Out_T_MAX_VAL >= NumClasses-1);
 
   const In_T In_T_MIN_VAL = (In_T(-1)<0)? 1<<(In_T::width-1) : 0;
   ap_uint<PECount * In_T::width> inval;

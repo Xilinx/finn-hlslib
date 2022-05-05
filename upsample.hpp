@@ -64,7 +64,7 @@ void UpsampleNearestNeighbour(
         stream<ap_uint<NumChannels * In_t::width>> & in,
         stream<ap_uint<NumChannels * In_t::width>> & out
 ) {
-  CASSERT_DATAFLOW(OFMDim > IFMDim);
+  static_assert(OFMDim > IFMDim);
 
   constexpr unsigned int scale_factor = OFMDim/IFMDim;
   constexpr unsigned int Padding = OFMDim % IFMDim;

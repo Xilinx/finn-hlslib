@@ -71,7 +71,7 @@ template<unsigned int DataWidth,
 >
 void StreamLimiter(hls::stream<ap_uint<DataWidth> > & in,
 		hls::stream<ap_uint<DataWidth> > & out) {
-  CASSERT_DATAFLOW(NumTotal >= NumAllowed);
+  static_assert(NumTotal >= NumAllowed);
   unsigned int numLeft = NumAllowed;
   for (unsigned int i = 0; i < NumTotal; i++) {
 #pragma HLS PIPELINE II=1
@@ -468,7 +468,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
   if (InWidth > OutWidth) {
     // emit multiple output words per input word read
-    CASSERT_DATAFLOW(InWidth % OutWidth == 0);
+    static_assert(InWidth % OutWidth == 0);
     const unsigned int outPerIn = InWidth / OutWidth;
     const unsigned int totalIters = NumInWords * outPerIn * numReps;
     unsigned int o = 0;
@@ -500,7 +500,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
     }
   } else { // InWidth < OutWidth
     // read multiple input words per output word emitted
-    CASSERT_DATAFLOW(OutWidth % InWidth == 0);
+    static_assert(OutWidth % InWidth == 0);
     const unsigned int inPerOut = OutWidth / InWidth;
     const unsigned int totalIters = NumInWords * numReps;
     unsigned int i = 0;
@@ -543,9 +543,9 @@ template<
 void StreamingDataWidthConverterNoMultiple(
     hls::stream<ap_uint<InWidth> > & in,
     hls::stream<ap_uint<OutWidth> > & out) {
-    CASSERT_DATAFLOW((InWidth % 2) == 0);
-    CASSERT_DATAFLOW((OutWidth % 2) == 0);
-    CASSERT_DATAFLOW(InWidth != OutWidth);
+    static_assert((InWidth % 2) == 0);
+    static_assert((OutWidth % 2) == 0);
+    static_assert(InWidth != OutWidth);
     static unsigned int      offset = 0; 
 
     if (InWidth > OutWidth){
@@ -748,7 +748,7 @@ template <unsigned int NumChannels,
 void AddStreamsLayer_Batch(stream<ap_uint<NumChannels * In1_t::width>> &in1, stream<ap_uint<NumChannels * In2_t::width>> &in2,
                            stream<ap_uint<NumChannels * Out_t::width>> &out, const unsigned int numReps) {
 #pragma HLS INLINE
-  CASSERT_DATAFLOW(NumChannels % PECount == 0);
+  static_assert(NumChannels % PECount == 0);
   stream<ap_uint<PECount * In1_t::width>> in_folded1;
   stream<ap_uint<PECount * In2_t::width>> in_folded2;
   stream<ap_uint<PECount * Out_t::width>> out_folded;
@@ -788,7 +788,7 @@ void MultiChanDataWidthConverter_Batch(
 	const unsigned int numReps) {
 	if (InWidth > OutWidth) {
 		// emit multiple output words per input word read
-        CASSERT_DATAFLOW((InWidth % OutWidth) == 0);
+        static_assert((InWidth % OutWidth) == 0);
 		const unsigned int outPerIn = InWidth / OutWidth;
 		const unsigned int totalIters = NumInWords * outPerIn * numReps;
 		unsigned int o = 0;
@@ -830,7 +830,7 @@ void MultiChanDataWidthConverter_Batch(
 		}
 	} else { // InWidth < OutWidth
 		// read multiple input words per output word emitted
-		CASSERT_DATAFLOW((OutWidth % InWidth) == 0);
+		static_assert((OutWidth % InWidth) == 0);
 		const unsigned int inPerOut = OutWidth / InWidth;
 		const unsigned int totalIters = NumInWords * numReps;
 		unsigned int i = 0;
@@ -997,7 +997,7 @@ template<unsigned W, unsigned N>
  */
 template<unsigned int DataWidth, unsigned int NumTotal>
 void Qdma2Stream_Batch(hls::stream<qdma_axis<DataWidth,0,0,0> > & in, hls::stream<ap_uint<DataWidth> > & out, const unsigned int numReps){
-	//TODO: CASSERT_DATAFLOW to ensure DataWidth is power of 2 between 8 and 512
+	//TODO: static_assert to ensure DataWidth is power of 2 between 8 and 512
 	for (unsigned int image = 0; image < numReps; image++) {
 		for (unsigned int word = 0; word < NumTotal; word++) {
 #pragma HLS PIPELINE II=1
