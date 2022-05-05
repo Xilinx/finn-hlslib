@@ -49,9 +49,6 @@
 #include <iostream>
 #include <string>
 
-using namespace hls;
-using namespace std;
-
 #include "weights.hpp"
 #include "mmv.hpp"			   
 #include "streamtools.h"
