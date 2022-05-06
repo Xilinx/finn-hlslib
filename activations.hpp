@@ -1,5 +1,6 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -53,8 +54,10 @@
 #define ACTIVATIONS_HPP
 
 #include "interpret.hpp"
+#include <functional>
 
 namespace comp{
+  using std::binary_function;
 
   template<typename input_type_1 = void, typename input_type_2 = void>
     struct greater;

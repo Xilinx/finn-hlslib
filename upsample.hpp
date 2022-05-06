@@ -1,5 +1,6 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -60,10 +61,10 @@ template<unsigned int OFMDim,
 	unsigned int NumChannels,
 	typename In_t>
 void UpsampleNearestNeighbour(
-        stream<ap_uint<NumChannels * In_t::width>> & in,
-        stream<ap_uint<NumChannels * In_t::width>> & out
+        hls::stream<ap_uint<NumChannels * In_t::width>> & in,
+        hls::stream<ap_uint<NumChannels * In_t::width>> & out
 ) {
-  CASSERT_DATAFLOW(OFMDim > IFMDim);
+  static_assert(OFMDim > IFMDim);
 
   constexpr unsigned int scale_factor = OFMDim/IFMDim;
   constexpr unsigned int Padding = OFMDim % IFMDim;
@@ -132,8 +133,8 @@ template<unsigned int OFMDim,
 	unsigned int NumChannels,
 	typename In_t>
 void UpsampleNearestNeighbour_Batch(
-        stream<ap_uint<NumChannels * In_t::width>> & in,
-        stream<ap_uint<NumChannels * In_t::width>> & out,
+        hls::stream<ap_uint<NumChannels * In_t::width>> & in,
+        hls::stream<ap_uint<NumChannels * In_t::width>> & out,
 		unsigned int numReps) {
   for (unsigned int rep = 0; rep < numReps; rep++) {
 	UpsampleNearestNeighbour<OFMDim, IFMDim, NumChannels, In_t>(in, out);

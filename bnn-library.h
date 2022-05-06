@@ -1,5 +1,6 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -45,14 +46,9 @@
  *****************************************************************************/
 
 #include <hls_stream.h>
-#include "ap_int.h"
+#include <ap_int.h>
 #include <iostream>
 #include <string>
-
-using namespace hls;
-using namespace std;
-
-#define CASSERT_DATAFLOW(x) {if (!(x)) {std::cout<< "CASSERT_DATAFLOW condition is not met " << endl; exit(-1);	}}
 
 #include "weights.hpp"
 #include "mmv.hpp"			   

@@ -1,5 +1,6 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -49,10 +50,9 @@
 #ifndef SLIDINGWINDOW_H
 #define SLIDINGWINDOW_H
  
+#include <algorithm>
 #include "utils.hpp"
 
-#define MAX(x, y) (((x) > (y)) ? (x) : (y)) /* \brief Maximum value between x and y*/
-#define MIN(x, y) (((x) > (y)) ? (y) : (x)) /* !< \brief Minimum value between x and y*/
 /**
  * \brief     Memory resource pragma instantiation for the sliding window generator, default resource
  * 
@@ -170,12 +170,12 @@ template<unsigned int ConvKernelDim,
 		 unsigned int Stride, 
 		 typename R>  
 void ConvolutionInputGenerator(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
-  CASSERT_DATAFLOW(ConvKernelDim % Stride == 0);
+  static_assert(IFMChannels % SIMD == 0);
+  static_assert(ConvKernelDim % Stride == 0);
   const unsigned int multiplying_factor = IFMChannels/SIMD;
   const unsigned int number_blocks = ConvKernelDim/Stride + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks][Stride * IFMDim * multiplying_factor];
@@ -183,9 +183,9 @@ void ConvolutionInputGenerator(
   memory_resource(inputBuf, r);
   const unsigned int cycles_write_block = (OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor);
   const unsigned int cycles_read_block = Stride * IFMDim * multiplying_factor;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = IFMDim * ConvKernelDim * multiplying_factor// Initial buffer
-			                  + OFMDim * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;	
@@ -300,14 +300,14 @@ template<unsigned int ConvKernelDim,
 		unsigned int MMV, 
 		typename R>   
 void ConvolutionInputGenerator_MMV(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  	CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
-  	CASSERT_DATAFLOW(OFMDim % MMV == 0);
-	CASSERT_DATAFLOW(ConvKernelDim % Stride == 0);
-	CASSERT_DATAFLOW(MMV <= OFMDim);
+	static_assert(IFMChannels % SIMD == 0);
+	static_assert(OFMDim % MMV == 0);
+	static_assert(ConvKernelDim % Stride == 0);
+	static_assert(MMV <= OFMDim);
 	constexpr unsigned int multiplying_factor = IFMChannels/SIMD;
 	constexpr unsigned int number_blocks = ConvKernelDim/Stride + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[MMV][number_blocks][Stride * IFMDim * multiplying_factor];
@@ -318,9 +318,9 @@ void ConvolutionInputGenerator_MMV(
 	memory_resource(inputBuf, r);
 	constexpr unsigned int cycles_write_block = (OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor)/MMV;
 	constexpr unsigned int cycles_read_block = Stride * IFMDim * multiplying_factor;
-	constexpr unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+	constexpr unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
 	const unsigned int baseIter = IFMDim * ConvKernelDim * multiplying_factor// Initial buffer
-			+ OFMDim * MAX(cycles_write_block,cycles_read_block);
+			+ OFMDim * std::max(cycles_write_block,cycles_read_block);
 	unsigned int counter_internal_block = 0;
 	unsigned int current_block_write = 0;
 	unsigned int next_block_write = 0;	
@@ -454,12 +454,12 @@ template<unsigned int ConvKernelDim,
 		 unsigned int Stride, 
 		 typename R>  
 void ConvolutionInputGenerator_kernel_stride(  
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-	CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
-    CASSERT_DATAFLOW(ConvKernelDim % Stride != 0);
+	static_assert(IFMChannels % SIMD == 0);
+    static_assert(ConvKernelDim % Stride != 0);
 	const unsigned int multiplying_factor = IFMChannels/SIMD;
 	const unsigned int number_blocks = ConvKernelDim + Stride ;
 	ap_uint<SIMD*Input_precision> inputBuf[number_blocks][IFMDim * multiplying_factor];
@@ -467,8 +467,8 @@ void ConvolutionInputGenerator_kernel_stride(
     memory_resource(inputBuf, r);
 	const unsigned int cycles_write_block = OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor;
 	const unsigned int cycles_read_block = IFMDim * Stride * multiplying_factor;
-	const unsigned int max_cycles = MAX(cycles_write_block, cycles_read_block);
-	const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+MAX(cycles_write_block,OFMDim);
+	const unsigned int max_cycles = std::max(cycles_write_block, cycles_read_block);
+	const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
 	const unsigned int initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
 	unsigned int counter_internal_block = 0;
 	unsigned int next_block_write = 0;
@@ -606,14 +606,14 @@ template<unsigned int ConvKernelDim,
 		 unsigned int MMV, 
 		 typename R>  
 void ConvolutionInputGenerator_kernel_stride_MMV(  
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-	CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
-    CASSERT_DATAFLOW(ConvKernelDim % Stride != 0);
-	CASSERT_DATAFLOW(OFMDim % MMV == 0);
-	CASSERT_DATAFLOW(MMV <= OFMDim);
+	static_assert(IFMChannels % SIMD == 0);
+	static_assert(ConvKernelDim % Stride != 0);
+	static_assert(OFMDim % MMV == 0);
+	static_assert(MMV <= OFMDim);
 
 	const unsigned int multiplying_factor = IFMChannels/SIMD;
 	const unsigned int number_blocks = ConvKernelDim + Stride ;
@@ -625,8 +625,8 @@ void ConvolutionInputGenerator_kernel_stride_MMV(
     memory_resource(inputBuf, r);
 	const unsigned int cycles_write_block = (OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor)/MMV;
 	const unsigned int cycles_read_block = IFMDim * Stride * multiplying_factor;
-	const unsigned int max_cycles = MAX(cycles_write_block, cycles_read_block);
-	const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+MAX(cycles_write_block,OFMDim);
+	const unsigned int max_cycles = std::max(cycles_write_block, cycles_read_block);
+	const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
 	const unsigned int initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
 	unsigned int counter_internal_block = 0;
 	unsigned int next_block_write = 0;
@@ -768,12 +768,12 @@ template<unsigned int ConvKernelDim,
 		 unsigned int Stride, 
 		 typename R>  
 void ConvolutionInputGenerator_dws(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
-  CASSERT_DATAFLOW(ConvKernelDim % Stride == 0);
+  static_assert(IFMChannels % SIMD == 0);
+  static_assert(ConvKernelDim % Stride == 0);
   const unsigned int multiplying_factor = IFMChannels/SIMD;
   const unsigned int number_blocks = ConvKernelDim/Stride + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks][Stride * IFMDim * multiplying_factor];
@@ -781,9 +781,9 @@ void ConvolutionInputGenerator_dws(
   memory_resource(inputBuf, r);
   const unsigned int cycles_write_block = (OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor);
   const unsigned int cycles_read_block = Stride * IFMDim * multiplying_factor;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = IFMDim * ConvKernelDim * multiplying_factor// Initial buffer
-			                  + OFMDim * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;	
@@ -898,12 +898,12 @@ template<unsigned int ConvKernelDim,
          unsigned int Stride, 
          typename R>  
 void ConvolutionInputGenerator_kernel_stride_dws(  
-    stream<ap_uint<SIMD*Input_precision> > & in,
-    stream<ap_uint<SIMD*Input_precision> > & out,
+    hls::stream<ap_uint<SIMD*Input_precision> > & in,
+    hls::stream<ap_uint<SIMD*Input_precision> > & out,
     const unsigned int numReps,
     R const &r) {
-    CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
-    CASSERT_DATAFLOW(ConvKernelDim % Stride != 0);
+    static_assert(IFMChannels % SIMD == 0);
+    static_assert(ConvKernelDim % Stride != 0);
     const unsigned int multiplying_factor = IFMChannels/SIMD;
     const unsigned int number_blocks = ConvKernelDim + Stride ;
     ap_uint<SIMD*Input_precision> inputBuf[number_blocks][IFMDim * multiplying_factor];
@@ -911,8 +911,8 @@ void ConvolutionInputGenerator_kernel_stride_dws(
     memory_resource(inputBuf, r);
     const unsigned int cycles_write_block = OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor;
     const unsigned int cycles_read_block = IFMDim * Stride * multiplying_factor;
-    const unsigned int max_cycles = MAX(cycles_write_block, cycles_read_block);
-    const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+MAX(cycles_write_block,OFMDim);
+    const unsigned int max_cycles = std::max(cycles_write_block, cycles_read_block);
+    const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
     const unsigned int initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
     unsigned int counter_internal_block = 0;
     unsigned int next_block_write = 0;
@@ -1051,14 +1051,14 @@ template<unsigned int ConvKernelDim,
 		unsigned int MMV, 
 		typename R>   
 void ConvolutionInputGenerator_dws_MMV(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  	CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
-  	CASSERT_DATAFLOW(OFMDim % MMV == 0);
-	CASSERT_DATAFLOW(ConvKernelDim % Stride == 0);
-	CASSERT_DATAFLOW(MMV <= OFMDim);
+	static_assert(IFMChannels % SIMD == 0);
+	static_assert(OFMDim % MMV == 0);
+	static_assert(ConvKernelDim % Stride == 0);
+	static_assert(MMV <= OFMDim);
 	constexpr unsigned int multiplying_factor = IFMChannels/SIMD;
 	constexpr unsigned int number_blocks = ConvKernelDim/Stride + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[MMV][number_blocks][Stride * IFMDim * multiplying_factor];
@@ -1069,9 +1069,9 @@ void ConvolutionInputGenerator_dws_MMV(
 	memory_resource(inputBuf, r);
 	constexpr unsigned int cycles_write_block = (OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor)/MMV;
 	constexpr unsigned int cycles_read_block = Stride * IFMDim * multiplying_factor;
-	constexpr unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+	constexpr unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
 	const unsigned int baseIter = IFMDim * ConvKernelDim * multiplying_factor// Initial buffer
-			+ OFMDim * MAX(cycles_write_block,cycles_read_block);
+			+ OFMDim * std::max(cycles_write_block,cycles_read_block);
 	unsigned int counter_internal_block = 0;
 	unsigned int current_block_write = 0;
 	unsigned int next_block_write = 0;	
@@ -1198,10 +1198,10 @@ template<	unsigned int IFMChannels,
 		unsigned int SIMD,  
 		unsigned int Stride>
 void ConvolutionInputGenerator_kernel1(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out, 
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps) {
-CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+static_assert(IFMChannels % SIMD == 0);
 	for (unsigned int im=0; im<numReps; im++) {
 		for (unsigned int y = 0; y < IFMDim; y++) {
 			for (unsigned int x = 0; x < IFMDim; x++) {
@@ -1253,11 +1253,11 @@ template<unsigned int ConvKernelDim_x,
 		 unsigned int Stride_y,
 		 typename R>
 void ConvolutionInputGenerator_NonSquare(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+  static_assert(IFMChannels % SIMD == 0);
   const unsigned int multiplying_factor = IFMChannels/SIMD;
   const unsigned int number_blocks = ConvKernelDim_y/Stride_y + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks][Stride_x * IFMDim_x * multiplying_factor];
@@ -1266,9 +1266,9 @@ void ConvolutionInputGenerator_NonSquare(
   memory_resource(inputBuf, r);
   const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * ConvKernelDim_y * multiplying_factor);
   const unsigned int cycles_read_block = Stride_x * IFMDim_x * multiplying_factor;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = IFMDim_x * ConvKernelDim_y * multiplying_factor// Initial buffer
-			                  + OFMDim_y * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;
@@ -1388,11 +1388,11 @@ template<unsigned int ConvKernelDim_x,
 		 unsigned int Stride_y,
 		 typename R>
 void ConvolutionInputGenerator_NonSquare_dws(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+  static_assert(IFMChannels % SIMD == 0);
   const unsigned int multiplying_factor = IFMChannels/SIMD;
   const unsigned int number_blocks = ConvKernelDim_y/Stride_y + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks][Stride_x * IFMDim_x * multiplying_factor];
@@ -1401,9 +1401,9 @@ void ConvolutionInputGenerator_NonSquare_dws(
   memory_resource(inputBuf, r);
   const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * ConvKernelDim_y * multiplying_factor);
   const unsigned int cycles_read_block = Stride_x * IFMDim_x * multiplying_factor;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = IFMDim_x * ConvKernelDim_y * multiplying_factor// Initial buffer
-			                  + OFMDim_y * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;
@@ -1528,12 +1528,12 @@ template<unsigned int ConvKernelDim_x,
 		 unsigned int Dilation_y,
 		 typename R>
 void ConvolutionInputGenerator_NonSquare_Dilated(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
-  CASSERT_DATAFLOW(Dilation_y == 1); // Dilation on the Y axes not yet supported, available only for API definition
+  static_assert(IFMChannels % SIMD == 0);
+  static_assert(Dilation_y == 1); // Dilation on the Y axes not yet supported, available only for API definition
 
   const unsigned int multiplying_factor = IFMChannels/SIMD;
   const unsigned int number_blocks = (ConvKernelDim_y*Dilation_y)/Stride_y + 1 ;
@@ -1543,9 +1543,9 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
   memory_resource(inputBuf, r);
   const unsigned int cycles_write_block = (OFMDim_x * ConvKernelDim_x * ConvKernelDim_y * multiplying_factor);
   const unsigned int cycles_read_block = Stride_x * IFMDim_x * multiplying_factor;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = IFMDim_x * ConvKernelDim_y * Dilation_y  * multiplying_factor// Initial buffer
-			                  + OFMDim_y * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;
@@ -1661,13 +1661,13 @@ template<unsigned int ConvKernelDim,
 		 unsigned int SIMD,
 		 typename R>
 void ConvolutionInputGenerator_1D_parallel(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<ConvKernelDim*SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<ConvKernelDim*SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
 
-  CASSERT_DATAFLOW(Stride == 1);
-  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+  static_assert(Stride == 1);
+  static_assert(IFMChannels % SIMD == 0);
   const unsigned int number_blocks = ConvKernelDim + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks];
 
@@ -1675,9 +1675,9 @@ void ConvolutionInputGenerator_1D_parallel(
   //memory_resource(inputBuf, r); use reg regardless of setting
   const unsigned int cycles_write_block = 1;
   const unsigned int cycles_read_block = 1;
-  const unsigned int max_cycles = MAX(cycles_write_block,cycles_read_block);
+  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
   const unsigned int baseIter = ConvKernelDim // Initial buffer
-			                  + OFMDim * MAX(cycles_write_block,cycles_read_block);
+			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
   unsigned int current_block_write = 0;
   unsigned int next_block_write = 0;
   unsigned int read_block = 0;
@@ -1773,11 +1773,11 @@ template<unsigned int ConvKernelDim_x,
 		 unsigned int SIMD,
 		 typename R>
 void ConvolutionInputGenerator_1D_dws_naive(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  CASSERT_DATAFLOW(IFMChannels % SIMD == 0);
+  static_assert(IFMChannels % SIMD == 0);
 
   constexpr unsigned multiplying_factor = IFMChannels / SIMD;
   constexpr unsigned cycles_write_block = OFMDim_x * ConvKernelDim_x * multiplying_factor;

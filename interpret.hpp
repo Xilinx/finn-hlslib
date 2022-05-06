@@ -1,5 +1,6 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -75,7 +76,7 @@ inline int operator*(ap_uint<1> const &a, XnorMul const &b) {
 class Binary {
  public:
   ap_uint<1> const  m_val;
-  Binary(ap_uint<1> const  val) : m_val(val) {
+  explicit Binary(ap_uint<1> const  val) : m_val(val) {
 #pragma HLS inline
   }
 
