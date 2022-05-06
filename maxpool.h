@@ -64,8 +64,8 @@
  *
  */
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels>
-void StreamingMaxPool(stream<ap_uint<NumChannels> > & in,
-        stream<ap_uint<NumChannels> > & out) {
+void StreamingMaxPool(hls::stream<ap_uint<NumChannels> > & in,
+        hls::stream<ap_uint<NumChannels> > & out) {
   static_assert(ImgDim % PoolDim == 0);
   // need buffer space for a single maxpooled row of the image
   ap_uint<NumChannels> buf[ImgDim / PoolDim];
@@ -110,8 +110,8 @@ void StreamingMaxPool(stream<ap_uint<NumChannels> > & in,
  *
  */
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels>
-void StreamingMaxPool_Batch(stream<ap_uint<NumChannels> > & in,
-        stream<ap_uint<NumChannels> > & out, unsigned int numReps) {
+void StreamingMaxPool_Batch(hls::stream<ap_uint<NumChannels> > & in,
+        hls::stream<ap_uint<NumChannels> > & out, unsigned int numReps) {
   for (unsigned int rep = 0; rep < numReps; rep++) {
     StreamingMaxPool<ImgDim, PoolDim, NumChannels>(in, out);
   }
@@ -137,8 +137,8 @@ void StreamingMaxPool_Batch(stream<ap_uint<NumChannels> > & in,
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, typename ActType, int min_value, 
         int StreamW 
         >
-void StreamingMaxPool_Precision(stream<ap_uint<StreamW> > & in,
-        stream<ap_uint<StreamW> > & out) {
+void StreamingMaxPool_Precision(hls::stream<ap_uint<StreamW> > & in,
+        hls::stream<ap_uint<StreamW> > & out) {
   static_assert(ImgDim % PoolDim == 0);
   // need buffer space for a single maxpooled row of the image
   ActType buf[ImgDim / PoolDim][NumChannels];
@@ -204,8 +204,8 @@ void StreamingMaxPool_Precision(stream<ap_uint<StreamW> > & in,
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, typename ActType, int min_value, 
         int InStreamW, int OutStreamW  // safely deducible (stream width must be int though!)
         >
-void StreamingMaxPool_Precision_Batch(stream<ap_uint<InStreamW> > & in,
-        stream<ap_uint<OutStreamW> > & out, unsigned int numReps) {
+void StreamingMaxPool_Precision_Batch(hls::stream<ap_uint<InStreamW> > & in,
+        hls::stream<ap_uint<OutStreamW> > & out, unsigned int numReps) {
 #pragma HLS INLINE
   unsigned const  InpPerImage = ImgDim*ImgDim*NumChannels*ActType::width/InStreamW ;
   unsigned const  OutPerImage = ImgDim*ImgDim / (PoolDim*PoolDim);
@@ -243,8 +243,8 @@ void StreamingMaxPool_Precision_Batch(stream<ap_uint<InStreamW> > & in,
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, unsigned int PE,
         unsigned int OutputSize, typename ActType, int min_value
         >
-void StreamingMaxPool_Precision_1d(stream<ap_uint<PE*ActType::width> > & in,
-        stream<ap_uint<PE*ActType::width> > & out) {
+void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in,
+        hls::stream<ap_uint<PE*ActType::width> > & out) {
   static_assert(NumChannels % PE == 0);
   constexpr unsigned NF = NumChannels / PE;
   constexpr unsigned REMAINDER_PIXELS = ImgDim > PoolDim * OutputSize ? ImgDim - OutputSize * PoolDim : 0;
@@ -325,8 +325,8 @@ void StreamingMaxPool_Precision_1d(stream<ap_uint<PE*ActType::width> > & in,
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, unsigned int PE,
         unsigned int OutputSize, typename ActType, int min_value
         >
-void StreamingMaxPool_Precision_Batch_1d(stream<ap_uint<PE*ActType::width> > & in,
-        stream<ap_uint<PE*ActType::width> > & out, unsigned int numReps) {
+void StreamingMaxPool_Precision_Batch_1d(hls::stream<ap_uint<PE*ActType::width> > & in,
+        hls::stream<ap_uint<PE*ActType::width> > & out, unsigned int numReps) {
 #pragma HLS INLINE
   for (unsigned int rep = 0; rep < numReps; rep++) {
     StreamingMaxPool_Precision_1d<ImgDim, PoolDim, NumChannels, PE, OutputSize,
@@ -356,8 +356,8 @@ template<
         typename ActType,           
         unsigned int PECount,
     int offset = 0>
-void ReLU_Batch(stream<ap_uint<PECount * ActType::width> > & in,
-        stream<ap_uint<PECount * ActType::width> > & out, const unsigned int numReps) {
+void ReLU_Batch(hls::stream<ap_uint<PECount * ActType::width> > & in,
+        hls::stream<ap_uint<PECount * ActType::width> > & out, const unsigned int numReps) {
 
     ap_uint<PECount * ActType::width> thin;
     ap_uint<PECount * ActType::width> thout;
@@ -407,8 +407,8 @@ template<
         typename ActType,           
         unsigned int PECount,      
         typename AccType>
-void AccPool_Batch(stream<ap_uint<PECount * ActType::width> > & in,
-        stream<ap_uint<PECount * AccType::width> > & out, const unsigned int numReps) {
+void AccPool_Batch(hls::stream<ap_uint<PECount * ActType::width> > & in,
+        hls::stream<ap_uint<PECount * AccType::width> > & out, const unsigned int numReps) {
     ap_uint<PECount * ActType::width> thin;
   ap_uint<PECount * AccType::width> accumulators[NumChannels/PECount];
 #pragma HLS RESOURCE variable=accumulators core=RAM_2P_LUTRAM
@@ -468,8 +468,8 @@ template<
     unsigned int NumTop,
         typename In_T,
     typename Out_T>
-void LabelSelect_Batch(stream<ap_uint<PECount * In_T::width> > & in,
-        stream<Out_T> & out, const unsigned int numReps) { 
+void LabelSelect_Batch(hls::stream<ap_uint<PECount * In_T::width> > & in,
+        hls::stream<Out_T> & out, const unsigned int numReps) {
 
   const Out_T Out_T_MAX_VAL = (Out_T(-1)<0)? ~(1<<(Out_T::width-1)) : ~(0);
   static_assert(Out_T_MAX_VAL >= NumClasses-1);

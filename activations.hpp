@@ -54,8 +54,10 @@
 #define ACTIVATIONS_HPP
 
 #include "interpret.hpp"
+#include <functional>
 
 namespace comp{
+  using std::binary_function;
 
   template<typename input_type_1 = void, typename input_type_2 = void>
     struct greater;

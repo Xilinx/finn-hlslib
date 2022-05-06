@@ -169,8 +169,8 @@ template<unsigned int ConvKernelDim,
 		 unsigned int Stride, 
 		 typename R>  
 void ConvolutionInputGenerator(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
   static_assert(IFMChannels % SIMD == 0);
@@ -299,8 +299,8 @@ template<unsigned int ConvKernelDim,
 		unsigned int MMV, 
 		typename R>   
 void ConvolutionInputGenerator_MMV(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
 	static_assert(IFMChannels % SIMD == 0);
@@ -453,8 +453,8 @@ template<unsigned int ConvKernelDim,
 		 unsigned int Stride, 
 		 typename R>  
 void ConvolutionInputGenerator_kernel_stride(  
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
 	static_assert(IFMChannels % SIMD == 0);
@@ -605,8 +605,8 @@ template<unsigned int ConvKernelDim,
 		 unsigned int MMV, 
 		 typename R>  
 void ConvolutionInputGenerator_kernel_stride_MMV(  
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
 	static_assert(IFMChannels % SIMD == 0);
@@ -767,8 +767,8 @@ template<unsigned int ConvKernelDim,
 		 unsigned int Stride, 
 		 typename R>  
 void ConvolutionInputGenerator_dws(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
   static_assert(IFMChannels % SIMD == 0);
@@ -897,8 +897,8 @@ template<unsigned int ConvKernelDim,
          unsigned int Stride, 
          typename R>  
 void ConvolutionInputGenerator_kernel_stride_dws(  
-    stream<ap_uint<SIMD*Input_precision> > & in,
-    stream<ap_uint<SIMD*Input_precision> > & out,
+    hls::stream<ap_uint<SIMD*Input_precision> > & in,
+    hls::stream<ap_uint<SIMD*Input_precision> > & out,
     const unsigned int numReps,
     R const &r) {
     static_assert(IFMChannels % SIMD == 0);
@@ -1050,8 +1050,8 @@ template<unsigned int ConvKernelDim,
 		unsigned int MMV, 
 		typename R>   
 void ConvolutionInputGenerator_dws_MMV(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
 	static_assert(IFMChannels % SIMD == 0);
@@ -1197,8 +1197,8 @@ template<	unsigned int IFMChannels,
 		unsigned int SIMD,  
 		unsigned int Stride>
 void ConvolutionInputGenerator_kernel1(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out, 
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps) {
 static_assert(IFMChannels % SIMD == 0);
 	for (unsigned int im=0; im<numReps; im++) {
@@ -1252,8 +1252,8 @@ template<unsigned int ConvKernelDim_x,
 		 unsigned int Stride_y,
 		 typename R>
 void ConvolutionInputGenerator_NonSquare(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
   static_assert(IFMChannels % SIMD == 0);
@@ -1387,8 +1387,8 @@ template<unsigned int ConvKernelDim_x,
 		 unsigned int Stride_y,
 		 typename R>
 void ConvolutionInputGenerator_NonSquare_dws(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
   static_assert(IFMChannels % SIMD == 0);
@@ -1527,8 +1527,8 @@ template<unsigned int ConvKernelDim_x,
 		 unsigned int Dilation_y,
 		 typename R>
 void ConvolutionInputGenerator_NonSquare_Dilated(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
   static_assert(IFMChannels % SIMD == 0);
@@ -1660,8 +1660,8 @@ template<unsigned int ConvKernelDim,
 		 unsigned int SIMD,
 		 typename R>
 void ConvolutionInputGenerator_1D_parallel(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<ConvKernelDim*SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<ConvKernelDim*SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
 
@@ -1772,8 +1772,8 @@ template<unsigned int ConvKernelDim_x,
 		 unsigned int SIMD,
 		 typename R>
 void ConvolutionInputGenerator_1D_dws_naive(
-		stream<ap_uint<SIMD*Input_precision> > & in,
-		stream<ap_uint<SIMD*Input_precision> > & out,
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
   static_assert(IFMChannels % SIMD == 0);

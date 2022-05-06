@@ -61,8 +61,8 @@ template<unsigned int OFMDim,
 	unsigned int NumChannels,
 	typename In_t>
 void UpsampleNearestNeighbour(
-        stream<ap_uint<NumChannels * In_t::width>> & in,
-        stream<ap_uint<NumChannels * In_t::width>> & out
+        hls::stream<ap_uint<NumChannels * In_t::width>> & in,
+        hls::stream<ap_uint<NumChannels * In_t::width>> & out
 ) {
   static_assert(OFMDim > IFMDim);
 
@@ -133,8 +133,8 @@ template<unsigned int OFMDim,
 	unsigned int NumChannels,
 	typename In_t>
 void UpsampleNearestNeighbour_Batch(
-        stream<ap_uint<NumChannels * In_t::width>> & in,
-        stream<ap_uint<NumChannels * In_t::width>> & out,
+        hls::stream<ap_uint<NumChannels * In_t::width>> & in,
+        hls::stream<ap_uint<NumChannels * In_t::width>> & out,
 		unsigned int numReps) {
   for (unsigned int rep = 0; rep < numReps; rep++) {
 	UpsampleNearestNeighbour<OFMDim, IFMDim, NumChannels, In_t>(in, out);

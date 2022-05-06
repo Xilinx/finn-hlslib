@@ -108,7 +108,7 @@ void Stream2Mem(hls::stream<ap_uint<DataWidth> > & in, ap_uint<DataWidth> * out)
  */
 template<unsigned int DataWidth, unsigned int numBytes>
 void Mem2Stream_Batch_external_wmem(ap_uint<DataWidth> * in,
-        stream<ap_uint<DataWidth> > & out, const unsigned int numReps) {
+        hls::stream<ap_uint<DataWidth> > & out, const unsigned int numReps) {
     unsigned int rep = 0;
     while (rep != numReps) {
         Mem2Stream<DataWidth, numBytes>(&in[0], out);
