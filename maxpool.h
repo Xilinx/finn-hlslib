@@ -449,7 +449,7 @@ void AccPool_Batch(hls::stream<ap_uint<PECount * ActType::width> > & in,
 
 
 /**
- * \brief   LabelSelect_Batch - returns labels of top-5 in stream
+ * \brief   LabelSelect_Batch - returns labels of top-NumTop in stream
  *
  * \tparam NumClasses   Number of classes of the dataset
  * \tparam PECount      Number of inputs to be processed in parallel
@@ -464,52 +464,65 @@ void AccPool_Batch(hls::stream<ap_uint<PECount * ActType::width> > & in,
  */
 
 template<
-        // tensor size parameters
-        unsigned int NumClasses,
-        unsigned int PECount,
+    // tensor size parameters
+    unsigned int NumClasses,
+    unsigned int PECount,
     unsigned int NumTop,
-        typename In_T,
+    typename In_T,
     typename Out_T>
 void LabelSelect_Batch(hls::stream<ap_uint<PECount * In_T::width> > & in,
         hls::stream<Out_T> & out, const unsigned int numReps) {
 
+  // Check that classes, aka. labels / indeces, can be encoded as non-negative outputs
   static_assert(clog2<NumClasses>::value <= Out_T::width - Out_T::sign_flag);
+  static In_T const  In_T_MIN_VAL = (In_T(-1)<0)? 1<<(In_T::width-1) : 0;
 
-  const In_T In_T_MIN_VAL = (In_T(-1)<0)? 1<<(In_T::width-1) : 0;
-  ap_uint<PECount * In_T::width> inval;
-
-  Out_T toplabels[NumTop];
-  #pragma HLS ARRAY_PARTITION variable=toplabels complete dim=1
-
+  // Array of encountered top values
+  //  - maintains topval[i] <= topval[i+1]
+  //  - keeps in alignment with toplabels
   In_T topval[NumTop];
-  #pragma HLS ARRAY_PARTITION variable=topval complete dim=1
+#pragma HLS ARRAY_PARTITION variable=topval complete dim=1
+  Out_T toplabels[NumTop];
+#pragma HLS ARRAY_PARTITION variable=toplabels complete dim=1
 
   for(unsigned int reps=0; reps<numReps; reps++){
     unsigned int idx = 0;
     for(unsigned int topx=0; topx<NumTop; topx++){
-      #pragma HLS UNROLL
-      topval[topx] = In_T_MIN_VAL; 
+#pragma HLS UNROLL
+      topval   [topx] = In_T_MIN_VAL;
+      toplabels[topx] = 0;
     }
     for(unsigned int block=0; block<(NumClasses/PECount); block++){
-      #pragma HLS PIPELINE II=1
-      inval = in.read();
+#pragma HLS PIPELINE II=1
+      ap_uint<PECount * In_T::width> const  inval = in.read();
       for(unsigned int elem=0; elem<PECount; elem++){
-        #pragma HLS UNROLL
-        unsigned int lowBit = elem * In_T::width;
-        unsigned int highBit = (elem+1) * In_T::width - 1;
-        In_T val = inval(highBit,lowBit);
-        for(unsigned int topx=0; topx<NumTop; topx++){
-          #pragma HLS UNROLL
-          if(val > topval[topx]){
-            if(topx==(NumTop-1)){
-              topval[topx] = val;
-              toplabels[topx] = idx;
-            } else if(val > topval[topx+1]){
-              topval[topx] = topval[topx+1];
-              toplabels[topx] = toplabels[topx+1];
-            } else {
-              topval[topx] = val;
-              toplabels[topx] = idx;
+#pragma HLS UNROLL
+        // Extract individual input
+        unsigned const  lowBit = elem * In_T::width;
+        unsigned const  highBit = (elem+1) * In_T::width - 1;
+        In_T const  val = inval(highBit,lowBit);
+
+        // Compare input against all current tops
+        bool  cmp[NumTop+1];
+        for(unsigned  i = 0; i < NumTop; i++) {
+#pragma HLS UNROLL
+          cmp[i] = val > topval[i];
+        }
+        cmp[NumTop] = false;
+
+        // Shift input into top array at the highest index where it is greater
+        for(unsigned  i = 0; i < NumTop; i++) {
+#pragma HLS UNROLL
+          if(cmp[i]) {
+            if(cmp[i+1]) {
+              // Shift
+              topval   [i] = topval   [i+1];
+              toplabels[i] = toplabels[i+1];
+            }
+            else {
+              // Insert
+              topval   [i] = val;
+              toplabels[i] = idx;
             }
           }
         }
@@ -517,6 +530,7 @@ void LabelSelect_Batch(hls::stream<ap_uint<PECount * In_T::width> > & in,
       }
     }
 
+    // Output - index of highest value first
     for(unsigned int topx = 0; topx < NumTop; topx++){
       out.write(toplabels[NumTop - topx - 1]);
     }
