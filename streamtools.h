@@ -786,9 +786,9 @@ void MultiChanDataWidthConverter_Batch(
 	hls::stream<MultiChanData<NumVecs, InWidth> > & in,
 	hls::stream<MultiChanData<NumVecs, OutWidth> > & out,
 	const unsigned int numReps) {
+	static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0));
 	if (InWidth > OutWidth) {
 		// emit multiple output words per input word read
-        static_assert((InWidth % OutWidth) == 0);
 		const unsigned int outPerIn = InWidth / OutWidth;
 		const unsigned int totalIters = NumInWords * outPerIn * numReps;
 		unsigned int o = 0;
@@ -830,7 +830,6 @@ void MultiChanDataWidthConverter_Batch(
 		}
 	} else { // InWidth < OutWidth
 		// read multiple input words per output word emitted
-		static_assert((OutWidth % InWidth) == 0);
 		const unsigned int inPerOut = OutWidth / InWidth;
 		const unsigned int totalIters = NumInWords * numReps;
 		unsigned int i = 0;

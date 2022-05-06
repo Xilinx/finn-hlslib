@@ -49,6 +49,7 @@
 #include <limits>
 
 #include "interpret.hpp"
+#include "utils.hpp"
 
 /**
  * \brief   Max Pool implementation for Binarized values 
@@ -471,8 +472,7 @@ template<
 void LabelSelect_Batch(hls::stream<ap_uint<PECount * In_T::width> > & in,
         hls::stream<Out_T> & out, const unsigned int numReps) {
 
-  const Out_T Out_T_MAX_VAL = (Out_T(-1)<0)? ~(1<<(Out_T::width-1)) : ~(0);
-  static_assert(Out_T_MAX_VAL >= NumClasses-1);
+  static_assert(clog2<NumClasses>::value <= Out_T::width - Out_T::sign_flag);
 
   const In_T In_T_MIN_VAL = (In_T(-1)<0)? 1<<(In_T::width-1) : 0;
   ap_uint<PECount * In_T::width> inval;

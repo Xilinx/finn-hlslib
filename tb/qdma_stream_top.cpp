@@ -5,7 +5,7 @@
 void qdma_conv_top(hls::stream<qdma_axis<128,0,0,0> > & in, hls::stream<qdma_axis<128,0,0,0> > & out){
 #pragma HLS INTERFACE axis port=in
 #pragma HLS INTERFACE axis port=out
-	stream<ap_uint<128> > internal_stream;
+	hls::stream<ap_uint<128>> internal_stream;
 #pragma HLS RESOURCE variable=internal_stream core=FIFO_LUTRAM
 #pragma HLS STREAM variable=internal_stream depth=32
 #pragma HLS DATAFLOW
