@@ -195,7 +195,7 @@ void ConvolutionInputGenerator(
 #pragma HLS reset variable=inp
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       if (inp < IFMDim * ConvKernelDim*multiplying_factor) {// Initial buffer of ConvKernelDim lines	
         ap_uint<SIMD*Input_precision> inElem;
         inElem = in.read();
@@ -330,7 +330,7 @@ void ConvolutionInputGenerator_MMV(
 #pragma HLS reset variable=inp
 	for (unsigned int count_image = 0; count_image < numReps; count_image++) {
 		for (unsigned int i = 0; i < baseIter; i++) {
-	#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 			if (inp < IFMDim * ConvKernelDim*multiplying_factor) // Initial buffer of ConvKernelDim lines
 				{
 				ap_uint<SIMD*Input_precision> inElem;
@@ -487,7 +487,7 @@ for (unsigned int count_image = 0; count_image < numReps; count_image++) {
   #pragma HLS DEPENDENCE variable=current_block_write intra false
   unsigned int read_block = 0;
 		for (unsigned int i = 0; i < baseIter; i++) {
-	#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 			if (inp < initial_buffer_cycles) // Initial buffer of PoolDim lines
 			{
 				ap_uint<SIMD*Input_precision> inElem;
@@ -641,7 +641,7 @@ for (unsigned int count_image = 0; count_image < numReps; count_image++) {
   #pragma HLS DEPENDENCE variable=current_block_write intra false
   unsigned int read_block = 0;
 		for (unsigned int i = 0; i < baseIter; i++) {
-	#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 			if (inp < initial_buffer_cycles) // Initial buffer of PoolDim lines
 			{
 				ap_uint<SIMD*Input_precision> inElem;
@@ -793,7 +793,7 @@ void ConvolutionInputGenerator_dws(
 #pragma HLS reset variable=inp
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       if (inp < IFMDim * ConvKernelDim*multiplying_factor) {// Initial buffer of ConvKernelDim lines	
         ap_uint<SIMD*Input_precision> inElem;
         inElem = in.read();
@@ -929,7 +929,7 @@ void ConvolutionInputGenerator_kernel_stride_dws(
       unsigned int read_block = 0;
       unsigned int current_block_write = 0;
       for (unsigned int i = 0; i < baseIter; i++) {
-      #pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 
       #pragma HLS DEPENDENCE variable=current_block_write intra false
 
@@ -1081,7 +1081,7 @@ void ConvolutionInputGenerator_dws_MMV(
 #pragma HLS reset variable=inp
 	for (unsigned int count_image = 0; count_image < numReps; count_image++) {
 		for (unsigned int i = 0; i < baseIter; i++) {
-	#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 			if (inp < IFMDim * ConvKernelDim*multiplying_factor) // Initial buffer of ConvKernelDim lines
 				{
 				ap_uint<SIMD*Input_precision> inElem;
@@ -1206,7 +1206,7 @@ static_assert(IFMChannels % SIMD == 0);
 		for (unsigned int y = 0; y < IFMDim; y++) {
 			for (unsigned int x = 0; x < IFMDim; x++) {
 				for (unsigned int count_simd =0; count_simd < IFMChannels/SIMD; count_simd++) {
-				#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 					ap_uint<SIMD*Input_precision> inElem = in.read();
 					if ((x%Stride == 0)&&(y%Stride == 0)) {
 						out.write(inElem);
@@ -1278,7 +1278,7 @@ void ConvolutionInputGenerator_NonSquare(
 #pragma HLS reset variable=inp
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       if (inp < IFMDim_x * ConvKernelDim_y *multiplying_factor) {// Initial buffer of ConvKernelDim lines
         ap_uint<SIMD*Input_precision> inElem;
         inElem = in.read();
@@ -1413,7 +1413,7 @@ void ConvolutionInputGenerator_NonSquare_dws(
 #pragma HLS reset variable=inp
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       if (inp < IFMDim_x * ConvKernelDim_y *multiplying_factor) {// Initial buffer of ConvKernelDim lines
         ap_uint<SIMD*Input_precision> inElem;
         inElem = in.read();
@@ -1555,7 +1555,7 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
 #pragma HLS reset variable=inp
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       if (inp < IFMDim_x * ConvKernelDim_y * Dilation_y *multiplying_factor) {// Initial buffer of ConvKernelDim lines
         ap_uint<SIMD*Input_precision> inElem;
         inElem = in.read();
@@ -1685,7 +1685,7 @@ void ConvolutionInputGenerator_1D_parallel(
 #pragma HLS reset variable=inp
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       if (inp < ConvKernelDim) {// Initial buffer of ConvKernelDim lines
         ap_uint<SIMD*Input_precision> inElem;
         inElem = in.read();
@@ -1791,7 +1791,7 @@ void ConvolutionInputGenerator_1D_dws_naive(
 #pragma HLS reset variable=inp
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
-#pragma HLS PIPELINE II=1 style=flp
+#pragma HLS pipeline style=flp II=1
       if (inp < cycles_read_block) {// Initial buffer of ConvKernelDim lines
         ap_uint<SIMD*Input_precision> inElem;
         inElem = in.read();
@@ -1875,7 +1875,7 @@ void ConvolutionInputGenerator_1D(
 		unsigned  offset = 0;
 		unsigned  inp_count = 0;
 		for(unsigned  i = 0; i < 1+OUTPUT_SIZE; i++) {
-#pragma HLS PIPELINE II=1 style=flp
+#pragma HLS pipeline style=flp II=1
 			bool const  re = i > 0;
 			bool const  we = (i < WINDOW_SIZE) || (ocnt < SIMD_COUNT * Stride_x);
 			if(re) {
@@ -1951,7 +1951,7 @@ void ConvolutionInputGenerator_1D_dws(
 		unsigned  inp_count = 0;
 		unsigned  wcnt = 0;
 		for(unsigned  i = 0; i < 1 + READ_CYCLES + OUTPUT_SIZE; i++) {
-#pragma HLS PIPELINE II=1 style=flp
+#pragma HLS pipeline style=flp II=1
 			bool const  re = i > READ_CYCLES;
 			bool const  we = (i < BUFFER_SIZE) || (ocnt < SIMD_COUNT);
 			if(re) {
@@ -2030,7 +2030,7 @@ void ConvolutionInputGenerator_1D_dws_stride(
 		unsigned  inp_count = 0;
 		unsigned  wcnt = 0;
 		for(unsigned  i = 0; i < 1 + READ_CYCLES + OUTPUT_SIZE; i++) {
-#pragma HLS PIPELINE II=1 style=flp
+#pragma HLS pipeline style=flp II=1
 			bool const  re = i > READ_CYCLES;
 			bool const  we = (i < BUFFER_SIZE) || (ocnt < SIMD_COUNT * Stride_x);
 			if(re) {

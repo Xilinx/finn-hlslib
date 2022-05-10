@@ -296,7 +296,7 @@ void Thresholding_Batch(hls::stream<TI> &in,
   // of smaller nested loops) to get the pipelinening the way we want
   for (unsigned i = 0; i < reps * ImgDim * NF; i++)
   {
-    #pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 
     TI inElem;
     inElem = in.read();
@@ -359,7 +359,7 @@ void Thresholding_Stream_Batch(hls::stream<TI> &in,
   // of smaller nested loops) to get the pipelinening the way we want
   for (unsigned i = 0; i < reps * ImgDim * NF; i++)
   {
-    #pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 
     ap_uint<PE*NumSteps*TT::width> packed_thr;
     packed_thr = weight.read();

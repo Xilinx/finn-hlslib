@@ -89,7 +89,7 @@ void TMRCheck(hls::stream<ap_uint<InW*OFMChannels>> &in,
 
     // CheckLoop: iterates over all OFM positions
     for(unsigned int pos = 0; pos < (OFMDim * OFMDim); pos++){
-    #pragma HLS pipeline II=1
+#pragma HLS pipeline style=flp II=1
 
         // Read input stream
         input = in.read();

@@ -79,7 +79,7 @@ void StreamingMaxPool(hls::stream<ap_uint<NumChannels> > & in,
   for (unsigned int yp = 0; yp < ImgDim / PoolDim; yp++) {
     for (unsigned int ky = 0; ky < PoolDim; ky++) {
       for (unsigned int xp = 0; xp < ImgDim / PoolDim; xp++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
         ap_uint<NumChannels> acc = 0;
         for (unsigned int kx = 0; kx < PoolDim; kx++) {
           acc = acc | in.read();
@@ -89,7 +89,7 @@ void StreamingMaxPool(hls::stream<ap_uint<NumChannels> > & in,
       }
     }
     for (unsigned int outpix = 0; outpix < ImgDim / PoolDim; outpix++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       out.write(buf[outpix]);
       // get buffer ready for next use
       buf[outpix] = 0;
@@ -157,7 +157,7 @@ void StreamingMaxPool_Precision(hls::stream<ap_uint<StreamW> > & in,
       for (unsigned int xp = 0; xp < ImgDim / PoolDim; xp++) {
         // Change to comparator 
         for (unsigned int kx = 0; kx < PoolDim; kx++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
           inputData = in.read();
           for(unsigned int ch = 0; ch<NumChannels; ch++){
 #pragma HLS UNROLL                      
@@ -256,7 +256,7 @@ void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in
 #pragma HLS ARRAY_PARTITION variable=buf complete dim=2
 
   for(unsigned int ch = 0; ch < NF; ch++){
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
     for(unsigned int p = 0; p < PE; p++){
 #pragma HLS UNROLL
         buf[ch][p] = min_value;
@@ -270,7 +270,7 @@ void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in
     for (unsigned int kx = 0; kx < PoolDim; kx++) {
       if (input_count++ < ImgDim){
         for (unsigned int ch = 0; ch < NF; ch++){
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
           inputData = in.read();
           for(unsigned int p = 0; p < PE; p++){
 #pragma HLS UNROLL
@@ -286,7 +286,7 @@ void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in
       }
     }
     for(unsigned int ch = 0; ch < NF; ch++){
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       for(unsigned int p = 0; p < PE; p++){
 #pragma HLS UNROLL
         unsigned const lowBit = p * ActType::width;
@@ -300,7 +300,7 @@ void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in
   }
 
   for (unsigned int r = 0; r < REMAINDER_PIXELS*NF; r++){
-#pragma HLS PIPELINE II = 1
+#pragma HLS pipeline style=flp II=1
       inputData = in.read();
   }
 
@@ -368,7 +368,7 @@ void ReLU_Batch(hls::stream<ap_uint<PECount * ActType::width> > & in,
     for(unsigned int reps=0; reps<numReps; reps++){
         for(unsigned int pixel=0; pixel<ImgDim*ImgDim; pixel++){
       for(unsigned int fold=0; fold<NumChannels/PECount; fold++){
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
         thin = in.read();
         for(unsigned int pe=0; pe<PECount; pe++){
         #pragma HLS UNROLL
@@ -419,7 +419,7 @@ void AccPool_Batch(hls::stream<ap_uint<PECount * ActType::width> > & in,
     for(unsigned int reps=0; reps<numReps; reps++){
         for(unsigned int pixel=0; pixel<ImgDim*ImgDim; pixel++){
       for(unsigned int fold=0; fold<NumChannels/PECount; fold++){
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
         thin = in.read();
         ap_uint<PECount * AccType::width> accbank = accumulators[fold];
         for(unsigned int pe=0; pe<PECount; pe++){
@@ -493,7 +493,7 @@ void LabelSelect_Batch(hls::stream<ap_uint<PECount * In_T::width> > & in,
       toplabels[topx] = 0;
     }
     for(unsigned int block=0; block<(NumClasses/PECount); block++){
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       ap_uint<PECount * In_T::width> const  inval = in.read();
       for(unsigned int elem=0; elem<PECount; elem++){
 #pragma HLS UNROLL
@@ -580,7 +580,7 @@ void Pool_batch(hls::stream<TI> &in,
   // everything merged into a common iteration space (one "big" loop instead
   // of smaller nested loops) to get the pipelining the way we want
   for(unsigned  i = 0; i < reps * TOTAL_FOLD; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
     TI  pixel_slice;
     pixel_slice = in.read();
 

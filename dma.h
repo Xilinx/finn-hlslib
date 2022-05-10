@@ -139,7 +139,7 @@ void Mem2Stream(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth> > & out)
   const unsigned int numWords = numBytes / (DataWidth / 8);
   static_assert(numWords != 0);
   for (unsigned int i = 0; i < numWords; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
     ap_uint<DataWidth> e = in[i];
     out.write(e);
   }
@@ -152,7 +152,7 @@ void Stream2Mem(hls::stream<ap_uint<DataWidth> > & in, ap_uint<DataWidth> * out)
   const unsigned int numWords = numBytes / (DataWidth / 8);
   static_assert(numWords != 0);
   for (unsigned int i = 0; i < numWords; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
     ap_uint<DataWidth> e = in.read();
 	out[i] = e;
   }
@@ -222,7 +222,7 @@ template<
 void GenParamStream(TW const &W_in, hls::stream<ap_uint<SIMD * PE * WP>> &paramStreamOut, int const numReps) {
   for (unsigned rep = 0; rep < numReps; rep++) {
     for (unsigned tile = 0; tile < TILES; tile++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 
       ap_uint<SIMD * PE * WP> strMem;
       for (unsigned pe = 0; pe < PE; pe++) {

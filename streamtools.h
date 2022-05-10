@@ -75,7 +75,7 @@ void StreamLimiter(hls::stream<ap_uint<DataWidth> > & in,
   static_assert(NumTotal >= NumAllowed);
   unsigned int numLeft = NumAllowed;
   for (unsigned int i = 0; i < NumTotal; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
     ap_uint<DataWidth> e = in.read();
     if (numLeft > 0) {
       out.write(e);
@@ -158,7 +158,7 @@ void SameResize(hls::stream<ap_uint<NumChannels* In_t::width> > &in,
 
 	for(unsigned int y = 0; y<OutputDim; y++){
 		for(unsigned int x=0; x < OutputDim; x++){
-#pragma HLS PIPELINE II=1				
+#pragma HLS pipeline style=flp II=1
 
 			// Padding Rows
 			if(y < PaddingUp || y >= (OutputDim - PaddingDown)){
@@ -232,7 +232,7 @@ void SameResize_Batch(hls::stream<ap_uint<NumChannels* In_t::width> > &in,
 template<typename InT, typename OutT>
 void StreamingCast(hls::stream<InT> & in, hls::stream<OutT> & out, unsigned int numReps) {
   for(unsigned int i = 0; i < numReps; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
     out.write((OutT) in.read());
   }
 }
@@ -280,7 +280,7 @@ void FMPadding(hls::stream<ap_uint<SIMD* In_t::width> > &in,
 	for(unsigned int y = 0; y<OutputDim; y++){
 		for(unsigned int x=0; x < OutputDim; x++){
 			for(unsigned int simd=0; simd < Folding; simd++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 
 			// Padding Rows
 			if(y < PaddingUp || y >= (OutputDim - PaddingDown)){
@@ -384,7 +384,7 @@ void FMPadding_nonsquare(hls::stream<ap_uint<SIMD* In_t::width> > &in,
 	for(unsigned int y = 0; y<OutputDim_y; y++){
 		for(unsigned int x=0; x < OutputDim_x; x++){
 			for(unsigned int simd=0; simd < Folding; simd++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 
 			// Padding Rows
 			if(y < PaddingUp || y >= (OutputDim_y - PaddingDown)){
@@ -476,7 +476,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
     unsigned int o = 0;
     ap_uint<InWidth> ei = 0;
     for (unsigned int t = 0; t < totalIters; t++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       // read new input word if current out count is zero
       if (o == 0) {
         ei = in.read();
@@ -496,7 +496,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
   } else if (InWidth == OutWidth) {
     // straight-through copy
     for (unsigned int i = 0; i < NumInWords * numReps; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       ap_uint<InWidth> e = in.read();
       out.write(e);
     }
@@ -507,7 +507,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
     unsigned int i = 0;
     ap_uint<OutWidth> eo = 0;
     for (unsigned int t = 0; t < totalIters; t++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
       // read input and shift into output buffer
       ap_uint<InWidth> ei = in.read();
       eo = eo >> InWidth;
@@ -616,7 +616,7 @@ void DuplicateStreams(hls::stream<ap_uint<DataWidth> > & in, hls::stream<ap_uint
 		hls::stream<ap_uint<DataWidth> > & out2) {
 	
 	for (unsigned int i = 0; i < NumTotal; i++) {
-#pragma HLS PIPELINE II=1		
+#pragma HLS pipeline style=flp II=1
 		ap_uint<DataWidth> e = in.read();
 		
 		out1.write(e);
@@ -674,7 +674,7 @@ void AddStreams(hls::stream<ap_uint<NumChannels * In1_t::width>> &in1, hls::stre
                 hls::stream<ap_uint<NumChannels * Out_t::width>> &out) {
 
   for (unsigned int i = 0; i < NumTotal; i++) {
-#pragma HLS PIPELINE II = 1
+#pragma HLS pipeline style=flp II=1
     ap_uint<NumChannels * In1_t::width> e1 = in1.read();
     ap_uint<NumChannels * In2_t::width> e2 = in2.read();
     ap_uint<NumChannels * Out_t::width> e;
@@ -795,7 +795,7 @@ void MultiChanDataWidthConverter_Batch(
 		unsigned int o = 0;
 		MultiChanData<NumVecs, InWidth> ei;
 		for (unsigned int t = 0; t < totalIters; t++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 			// read new input word if current out count is zero
 			if (o == 0)
 				ei = in.read();
@@ -818,7 +818,7 @@ void MultiChanDataWidthConverter_Batch(
 	} else if (InWidth == OutWidth) {
 		// straight-through copy
 		for (unsigned int i = 0; i < NumInWords * numReps; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 			MultiChanData<NumVecs, InWidth> e = in.read();
 			MultiChanData<NumVecs, OutWidth> eo;
 			// we don't support typecasting between templated types, so explicitly
@@ -836,7 +836,7 @@ void MultiChanDataWidthConverter_Batch(
 		unsigned int i = 0;
 		MultiChanData<NumVecs, OutWidth> eo;
 		for (unsigned int t = 0; t < totalIters; t++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 			// read input and shift into output buffer
 			MultiChanData<NumVecs, InWidth> ei = in.read();
 			for(unsigned int v = 0; v < NumVecs; v++) {
@@ -876,7 +876,7 @@ void FlattenMultiChanData(
 	const unsigned int numReps
 ) {
 	for(unsigned int r = 0; r < numReps; r++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 		MultiChanData<NumChannels, DataWidth> e = in.read();
 		ap_uint<NumChannels*DataWidth> o = 0;
 		for(unsigned int v = 0; v < NumChannels; v++) {
@@ -907,7 +907,7 @@ void PackMultiChanData(
 	const unsigned int numReps
 ) {
 	for(unsigned int r = 0; r < numReps; r++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 		ap_uint<NumChannels*DataWidth> e = in.read();
 		MultiChanData<NumChannels, DataWidth> o;
 		for(unsigned int v = 0; v < NumChannels; v++) {
@@ -1000,7 +1000,7 @@ void Qdma2Stream_Batch(hls::stream<qdma_axis<DataWidth,0,0,0> > & in, hls::strea
 	//TODO: static_assert to ensure DataWidth is power of 2 between 8 and 512
 	for (unsigned int image = 0; image < numReps; image++) {
 		for (unsigned int word = 0; word < NumTotal; word++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 			out.write(in.read().get_data());
 		}
 	}
@@ -1023,7 +1023,7 @@ template<unsigned int DataWidth, unsigned int NumTotal>
 void Stream2Qdma_Batch(hls::stream<ap_uint<DataWidth> > & in, hls::stream<qdma_axis<DataWidth,0,0,0> > & out, const unsigned int numReps){
 	for (unsigned int image = 0; image < numReps; image++) {
 		for (unsigned int word = 0; word < NumTotal; word++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 			qdma_axis<DataWidth,0,0,0> temp;
 			temp.set_data(in.read());
 			temp.set_keep(-1);

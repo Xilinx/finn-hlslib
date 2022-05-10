@@ -80,7 +80,7 @@ void UpsampleNearestNeighbour(
   int count_row = -PaddingUp; // Counter used to understand whether reading (and buffering) a row or not - Made in order to avoid modulo operations
   for (unsigned int y = 0; y < OFMDim; y++) {
 	  for (unsigned int x = 0; x < OFMDim; x++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 		bool read_row = (y ==0) || count_row==scale_factor;
 		if ((x < IFMDim) && read_row)
 		{
