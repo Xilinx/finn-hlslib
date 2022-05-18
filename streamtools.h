@@ -461,15 +461,16 @@ void FMPadding_nonsquare_Batch(hls::stream<ap_uint<SIMD* In_t::width> > &in,
  * \param      numReps      Number of times the function has to be called
  *
  */
-template<unsigned int InWidth,		
-		unsigned int OutWidth,		
-		unsigned int NumInWords		
+template<
+	unsigned int InWidth,
+	unsigned int OutWidth,
+	unsigned int NumInWords
 >
 void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
   static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0));
 
-  if (InWidth > OutWidth) {
+  if constexpr (InWidth > OutWidth) {
     // emit multiple output words per input word read
     const unsigned int outPerIn = InWidth / OutWidth;
     const unsigned int totalIters = NumInWords * outPerIn * numReps;
@@ -493,7 +494,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
         o = 0;
       }
     }
-  } else if (InWidth == OutWidth) {
+  } else if constexpr (InWidth == OutWidth) {
     // straight-through copy
     for (unsigned int i = 0; i < NumInWords * numReps; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -538,7 +539,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
  *
  */
 template<
-    unsigned int InWidth,    
+    unsigned int InWidth,
     unsigned int OutWidth
 >
 void StreamingDataWidthConverterNoMultiple(
@@ -549,7 +550,7 @@ void StreamingDataWidthConverterNoMultiple(
     static_assert(InWidth != OutWidth);
     static unsigned int      offset = 0; 
 
-    if (InWidth > OutWidth){
+    if constexpr (InWidth > OutWidth){
      
       static ap_uint<OutWidth> remainder = 0;
       ap_uint<InWidth>  valueIn = in.read();
@@ -788,7 +789,7 @@ void MultiChanDataWidthConverter_Batch(
 	hls::stream<MultiChanData<NumVecs, OutWidth> > & out,
 	const unsigned int numReps) {
 	static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0));
-	if (InWidth > OutWidth) {
+	if constexpr (InWidth > OutWidth) {
 		// emit multiple output words per input word read
 		const unsigned int outPerIn = InWidth / OutWidth;
 		const unsigned int totalIters = NumInWords * outPerIn * numReps;
@@ -815,7 +816,7 @@ void MultiChanDataWidthConverter_Batch(
 				o = 0;
 			}
 		}
-	} else if (InWidth == OutWidth) {
+	} else if constexpr (InWidth == OutWidth) {
 		// straight-through copy
 		for (unsigned int i = 0; i < NumInWords * numReps; i++) {
 #pragma HLS pipeline style=flp II=1

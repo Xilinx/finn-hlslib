@@ -81,7 +81,7 @@ void UpsampleNearestNeighbour(
   for (unsigned int y = 0; y < OFMDim; y++) {
 	  for (unsigned int x = 0; x < OFMDim; x++) {
 #pragma HLS pipeline style=flp II=1
-		bool read_row = (y ==0) || count_row==scale_factor;
+		bool const  read_row = (y ==0) || count_row==scale_factor;
 		if ((x < IFMDim) && read_row)
 		{
 			inData = in.read();
@@ -93,7 +93,6 @@ void UpsampleNearestNeighbour(
 		}
 		else if (x >= (OFMDim - PaddingRight)){
 			outData = RowBuf[IFMDim-1];
-
 		}
 		// Padding Rows
 		else if(y < PaddingUp || y >= (OFMDim - PaddingDown)){
@@ -101,7 +100,6 @@ void UpsampleNearestNeighbour(
 		}
 		// No Padding
 		else{
-
 			outData = RowBuf[(x-PaddingLeft)/scale_factor];
 		}
 		//std::cout << outData << " " ;
