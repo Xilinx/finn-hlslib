@@ -98,7 +98,7 @@ void StreamingFCLayer_Batch(hls::stream<ap_uint<InStreamW>>  &in,
 			    TA const        &activation,
 			    unsigned const   reps,
 				R const &r) {
-#pragma HLS INLINE
+#pragma HLS dataflow disable_start_propagation
   unsigned const  InpPerImage = (MatrixW * TSrcI::width) / InStreamW ;
   unsigned const  OutPerImage = MatrixH / PE;
   hls::stream<ap_uint<SIMD*TSrcI::width> > wa_in("StreamingFCLayer_Batch.wa_in");
