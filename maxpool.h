@@ -474,7 +474,7 @@ void LabelSelect_Batch(hls::stream<ap_uint<PECount * In_T::width> > & in,
         hls::stream<Out_T> & out, const unsigned int numReps) {
 
   // Check that classes, aka. labels / indeces, can be encoded as non-negative outputs
-  static_assert(clog2<NumClasses>::value <= Out_T::width - Out_T::sign_flag);
+  static_assert(clog2(NumClasses) <= Out_T::width - Out_T::sign_flag);
   static In_T const  In_T_MIN_VAL = (In_T(-1)<0)? 1<<(In_T::width-1) : 0;
 
   // Array of encountered top values
