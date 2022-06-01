@@ -64,7 +64,7 @@ void UpsampleNearestNeighbour(
         hls::stream<ap_uint<NumChannels * In_t::width>> & in,
         hls::stream<ap_uint<NumChannels * In_t::width>> & out
 ) {
-  static_assert(OFMDim > IFMDim);
+  static_assert(OFMDim > IFMDim, "");
 
   constexpr unsigned int scale_factor = OFMDim/IFMDim;
   constexpr unsigned int Padding = OFMDim % IFMDim;
