@@ -72,7 +72,7 @@ template<unsigned int DataWidth,
 >
 void StreamLimiter(hls::stream<ap_uint<DataWidth> > & in,
 		hls::stream<ap_uint<DataWidth> > & out) {
-  static_assert(NumTotal >= NumAllowed);
+  static_assert(NumTotal >= NumAllowed, "");
   unsigned int numLeft = NumAllowed;
   for (unsigned int i = 0; i < NumTotal; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -467,7 +467,7 @@ template<unsigned int InWidth,
 >
 void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
-  static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0));
+  static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0), "");
 
   if (InWidth > OutWidth) {
     // emit multiple output words per input word read
@@ -544,9 +544,9 @@ template<
 void StreamingDataWidthConverterNoMultiple(
     hls::stream<ap_uint<InWidth> > & in,
     hls::stream<ap_uint<OutWidth> > & out) {
-    static_assert((InWidth % 2) == 0);
-    static_assert((OutWidth % 2) == 0);
-    static_assert(InWidth != OutWidth);
+    static_assert((InWidth % 2) == 0, "");
+    static_assert((OutWidth % 2) == 0, "");
+    static_assert(InWidth != OutWidth, "");
     static unsigned int      offset = 0; 
 
     if (InWidth > OutWidth){
@@ -749,7 +749,7 @@ template <unsigned int NumChannels,
 void AddStreamsLayer_Batch(hls::stream<ap_uint<NumChannels * In1_t::width>> &in1, hls::stream<ap_uint<NumChannels * In2_t::width>> &in2,
                            hls::stream<ap_uint<NumChannels * Out_t::width>> &out, const unsigned int numReps) {
 #pragma HLS INLINE
-  static_assert(NumChannels % PECount == 0);
+  static_assert(NumChannels % PECount == 0, "");
   hls::stream<ap_uint<PECount * In1_t::width>> in_folded1;
   hls::stream<ap_uint<PECount * In2_t::width>> in_folded2;
   hls::stream<ap_uint<PECount * Out_t::width>> out_folded;
@@ -787,7 +787,7 @@ void MultiChanDataWidthConverter_Batch(
 	hls::stream<MultiChanData<NumVecs, InWidth> > & in,
 	hls::stream<MultiChanData<NumVecs, OutWidth> > & out,
 	const unsigned int numReps) {
-	static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0));
+	static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0), "");
 	if (InWidth > OutWidth) {
 		// emit multiple output words per input word read
 		const unsigned int outPerIn = InWidth / OutWidth;
