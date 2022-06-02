@@ -1202,7 +1202,7 @@ void ConvolutionInputGenerator_kernel1(
 		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps) {
 static_assert(IFMChannels % SIMD == 0);
-constexpr unsigned COUNTER_WIDTH = clog2<Stride-1>::value + 1;
+constexpr unsigned COUNTER_WIDTH = clog2(Stride-1) + 1;
 constexpr unsigned COUNTER_RESET = Stride - 2;
 	l1:for (unsigned int im=0; im<numReps; im++) {
 		ap_int<COUNTER_WIDTH> counter_y = -1;
