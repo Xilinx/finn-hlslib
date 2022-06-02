@@ -940,7 +940,7 @@ template<unsigned W, unsigned N>
   hls::stream<ap_uint<W>> &m_source;
 
  public:
-  WidthAdjustedInputStream(hls::stream<ap_uint<W> >&  source, unsigned const  reps) : m_source(source) {}
+  WidthAdjustedInputStream(hls::stream<ap_uint<W> >&  source, __attribute__((unused)) unsigned const  reps) : m_source(source) {}
   ~WidthAdjustedInputStream() {}
 
  public:
@@ -972,7 +972,7 @@ template<unsigned W, unsigned N>
   hls::stream<ap_uint<W>> &m_target;
 
  public:
-  WidthAdjustedOutputStream(hls::stream<ap_uint<W> >&  target, unsigned const  reps)
+  WidthAdjustedOutputStream(hls::stream<ap_uint<W> >&  target, __attribute__((unused)) unsigned const  reps)
     : m_target(target) {}
   ~WidthAdjustedOutputStream() {}
 
