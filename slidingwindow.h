@@ -1672,7 +1672,7 @@ void ConvolutionInputGenerator_1D_parallel(
 		hls::stream<ap_uint<SIMD*Input_precision> > & in,
 		hls::stream<ap_uint<ConvKernelDim*SIMD*Input_precision> > & out,
 		const unsigned int numReps,
-		R const &r) {
+		__attribute__((unused)) R const &r) {
 
   static_assert(Stride == 1, "");
   static_assert(IFMChannels % SIMD == 0, "");
@@ -1690,7 +1690,6 @@ void ConvolutionInputGenerator_1D_parallel(
   unsigned int next_block_write = 0;
   unsigned int read_block = 0;
   unsigned int inp = 0, ofm_y = 0, k_y = 0;
-#pragma HLS reset variable=inp
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1

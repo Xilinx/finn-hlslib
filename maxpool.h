@@ -413,8 +413,8 @@ void AccPool_Batch(hls::stream<ap_uint<PECount * ActType::width> > & in,
         hls::stream<ap_uint<PECount * AccType::width> > & out, const unsigned int numReps) {
     ap_uint<PECount * ActType::width> thin;
   ap_uint<PECount * AccType::width> accumulators[NumChannels/PECount];
-#pragma HLS BIND_STORAGE variable=accumulators type=RAM_2P impl=LUTRAM
-        
+#pragma HLS bind_storage variable=accumulators type=RAM_2P impl=LUTRAM
+
     //call to thresholding library function
     for(unsigned int reps=0; reps<numReps; reps++){
         for(unsigned int pixel=0; pixel<ImgDim*ImgDim; pixel++){
