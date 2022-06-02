@@ -51,7 +51,6 @@ The library serves as a hardware backend for the FINN project, and it integrates
   library/matrixvector 
   library/dma
   library/maxpool 
-  library/fclayer 
   library/convlayer 
   library/swg
   library/streamtools 
