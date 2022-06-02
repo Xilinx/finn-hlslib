@@ -141,7 +141,7 @@ namespace comp{
 template<typename TA, typename TO>
 class Activation {
 public:
-  TA init(unsigned const  nf, unsigned const  pe) const {
+  TA init(__attribute__((unused)) unsigned const  nf, __attribute__((unused)) unsigned const  pe) const {
 #pragma HLS inline
     return  TA(0);
   }
@@ -159,7 +159,7 @@ public:
 template<typename T>
 class PassThroughActivation : public Activation<T, T> {
 public:
-  T activate(unsigned const  nf, unsigned const  pe, T const &accu) const {
+  T activate(__attribute__((unused)) unsigned const  nf, __attribute__((unused)) unsigned const  pe, T const &accu) const {
 #pragma HLS inline
     return  accu;
   }
@@ -181,7 +181,7 @@ public:
   }
 
 public:
-  bool activate(unsigned const  nf, unsigned const  pe, TA const &accu) const {
+  bool activate(__attribute__((unused)) unsigned const  nf, __attribute__((unused)) unsigned const  pe, TA const &accu) const {
 #pragma HLS inline
     return  Compare()(m_threshold, accu);
   }
@@ -204,7 +204,7 @@ public:
   TA m_thresholds[PE][NF][NumTH];
   
 public:
-  TA init(unsigned const  nf, unsigned const  pe) const {
+  TA init(__attribute__((unused)) unsigned const  nf, __attribute__((unused)) unsigned const  pe) const {
 #pragma HLS inline
     return  TA(0);
   }
@@ -243,7 +243,7 @@ class ChannelWiseOperation {
 public:
   TP parameters[PE][NF];
 public:
-  TI init(unsigned const  nf, unsigned const  pe) const {
+  TI init(__attribute__((unused)) unsigned const  nf, __attribute__((unused)) unsigned const  pe) const {
 #pragma HLS inline
     return  TI(0);
   }

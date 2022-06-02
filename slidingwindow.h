@@ -1664,7 +1664,7 @@ void ConvolutionInputGenerator_1D_parallel(
 		hls::stream<ap_uint<SIMD*Input_precision> > & in,
 		hls::stream<ap_uint<ConvKernelDim*SIMD*Input_precision> > & out,
 		const unsigned int numReps,
-		R const &r) {
+		__attribute__((unused)) R const &r) {
 
   static_assert(Stride == 1, "");
   static_assert(IFMChannels % SIMD == 0, "");
