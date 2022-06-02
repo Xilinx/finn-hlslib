@@ -54,12 +54,9 @@
 #include <cstddef>
 
 //- Static Evaluation of ceil(log2(x)) ---------------------------------------
-template<size_t N> struct clog2 {
-  static unsigned const  value = 1 + ((N&1) == 0? clog2<N/2>::value : clog2<N/2+1>::value);
-};
-template<> struct clog2<0> {};
-template<> struct clog2<1> { static unsigned const  value = 0; };
-template<> struct clog2<2> { static unsigned const  value = 1; };
+constexpr unsigned clog2(size_t  x) {
+  return  x<2? 0 : 1+clog2((x+1)/2);
+}
 
 //- Helpers to get hold of types ---------------------------------------------
 template<typename T> struct first_param {};
