@@ -140,7 +140,7 @@ template<typename TC, typename TD>
 auto mul(TC const &c, TD const &d, ap_resource_dsp const&) -> decltype(c*d) {
 #pragma HLS inline
   decltype(c*d) const  res = c*d;
-#pragma HLS BIND_OP variable=res op=mul impl=DSP48
+#pragma HLS BIND_OP variable=res op=mul impl=dsp
   return  res;
 }
 
