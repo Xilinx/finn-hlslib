@@ -1179,7 +1179,7 @@ void ConvolutionInputGenerator_dws_MMV(
 
 /**
  * \brief Sliding Window for 1x1 kernel with stride!=1
- * 
+ *
  * Basically performs a downsampling of the image removing rows and columns
  *
  * \tparam IFMChannels      Number of Input Feature Maps
@@ -1193,9 +1193,9 @@ void ConvolutionInputGenerator_dws_MMV(
  * \param numReps           Number of time the function has to be repeatedly executed (e.g. number of images)
  */
 template<	unsigned int IFMChannels,
-		unsigned int Input_precision,		
-		unsigned int IFMDim, 	
-		unsigned int SIMD,  
+		unsigned int Input_precision,
+		unsigned int IFMDim,
+		unsigned int SIMD,
 		unsigned int Stride>
 void ConvolutionInputGenerator_kernel1(
 		hls::stream<ap_uint<SIMD*Input_precision> > & in,
@@ -1204,16 +1204,16 @@ void ConvolutionInputGenerator_kernel1(
 static_assert(IFMChannels % SIMD == 0, "");
 constexpr unsigned COUNTER_WIDTH = clog2(Stride-1) + 1;
 constexpr unsigned COUNTER_RESET = Stride - 2;
-	l1:for (unsigned int im=0; im<numReps; im++) {
+	for (unsigned int im=0; im<numReps; im++) {
 		ap_int<COUNTER_WIDTH> counter_y = -1;
-		l2:for (unsigned int y = 0; y < IFMDim; y++) {
+		for (unsigned int y = 0; y < IFMDim; y++) {
 			const bool keep_y = counter_y < 0;
 			counter_y = keep_y ? ap_int<COUNTER_WIDTH>(COUNTER_RESET) : ap_int<COUNTER_WIDTH>(counter_y - 1);
 			ap_int<COUNTER_WIDTH> counter_x = -1;
-			l3:for (unsigned int x = 0; x < IFMDim; x++) {
+			for (unsigned int x = 0; x < IFMDim; x++) {
 				const bool keep_x = counter_x < 0;
 				counter_x = keep_x ? ap_int<COUNTER_WIDTH>(COUNTER_RESET) : ap_int<COUNTER_WIDTH>(counter_x - 1);
-				l4:for (unsigned int count_simd = 0; count_simd < IFMChannels/SIMD; count_simd++) {
+				for (unsigned int count_simd = 0; count_simd < IFMChannels/SIMD; count_simd++) {
 #pragma HLS pipeline style=flp II=1
 					ap_uint<SIMD*Input_precision> inElem = in.read();
 					if (keep_y && keep_x) {
@@ -1222,7 +1222,7 @@ constexpr unsigned COUNTER_RESET = Stride - 2;
 				}
 			}
 		}
-	}		
+	}
 }
 
 
