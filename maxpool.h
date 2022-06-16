@@ -423,17 +423,11 @@ void AccPool_Batch(hls::stream<ap_uint<PECount * ActType::width> > & in,
         thin = in.read();
         ap_uint<PECount * AccType::width> accbank = accumulators[fold];
         for(unsigned int pe=0; pe<PECount; pe++){
-        #pragma HLS UNROLL
+#pragma HLS UNROLL
           // Threshold and assign to right bits of output buffers
-          unsigned int lowBit = pe * ActType::width;
-          unsigned int highBit = (pe+1) * ActType::width - 1;
-          ActType val = thin((pe+1) * ActType::width - 1,pe * ActType::width);
-          AccType acc = accbank((pe+1) * AccType::width - 1,pe * AccType::width);
-          AccType result;
-          if(pixel == 0)
-                  result = val;
-          else
-                  result = val+acc;
+          ActType const  val = thin((pe+1) * ActType::width - 1,pe * ActType::width);
+          AccType const  acc = accbank((pe+1) * AccType::width - 1,pe * AccType::width);
+          AccType const  result = val + (pixel == 0? 0 : acc);
           accbank((pe+1) * AccType::width - 1,pe * AccType::width) = result;
         }
         accumulators[fold] = accbank;     
@@ -569,14 +563,14 @@ void Pool_batch(hls::stream<TI> &in,
                   TA  const &function,
                   int const  reps) {
 
-  unsigned const  NF = Channels / PE;
-  unsigned const  SF = TotalK;
+  constexpr unsigned  NF = Channels / PE;
+  constexpr unsigned  SF = TotalK;
+  constexpr unsigned  TOTAL_FOLD = NF * SF ;
 
   decltype(function.init())  accu[PE];
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
-  unsigned  nf   = 0;
+
   unsigned  sf   = 0;
-  unsigned const TOTAL_FOLD = NF * SF ;
   // everything merged into a common iteration space (one "big" loop instead
   // of smaller nested loops) to get the pipelining the way we want
   for(unsigned  i = 0; i < reps * TOTAL_FOLD; i++) {

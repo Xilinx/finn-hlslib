@@ -188,7 +188,6 @@ void ConvolutionInputGenerator(
 			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;	
   unsigned int current_line = 0;
   unsigned int read_block = 0; 
   unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
@@ -323,7 +322,6 @@ void ConvolutionInputGenerator_MMV(
 			+ OFMDim * std::max(cycles_write_block,cycles_read_block);
 	unsigned int counter_internal_block = 0;
 	unsigned int current_block_write = 0;
-	unsigned int next_block_write = 0;	
 	unsigned int current_line = 0;
 	unsigned int read_block = 0; 
 	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
@@ -474,9 +472,8 @@ void ConvolutionInputGenerator_kernel_stride(
 #pragma HLS DEPENDENCE variable=inputBuf inter false
 #pragma HLS DEPENDENCE variable=inputBuf intra false
 	unsigned int counter_internal_block = 0;
-	unsigned int next_block_write = 0;
 	unsigned int current_line = 0;
-	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, current_k_y = 0, count_simd =0;
+	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
 
 for (unsigned int count_image = 0; count_image < numReps; count_image++) {
   unsigned int floor_block_read = 0, ceil_block_read = number_blocks;
@@ -626,10 +623,9 @@ void ConvolutionInputGenerator_kernel_stride_MMV(
 	const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
 	const unsigned int initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
 	unsigned int counter_internal_block = 0;
-	unsigned int next_block_write = 0;
 	unsigned int current_line = 0;
 
-	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, current_k_y = 0, count_simd =0;
+	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
 
 for (unsigned int count_image = 0; count_image < numReps; count_image++) {
   unsigned int floor_block_read = 0, ceil_block_read = number_blocks;
@@ -782,7 +778,6 @@ void ConvolutionInputGenerator_dws(
 			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;	
   unsigned int current_line = 0;
   unsigned int read_block = 0; 
   unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
@@ -914,9 +909,8 @@ void ConvolutionInputGenerator_kernel_stride_dws(
 #pragma HLS DEPENDENCE variable=inputBuf inter false
 #pragma HLS DEPENDENCE variable=inputBuf intra false
     unsigned int counter_internal_block = 0;
-    unsigned int next_block_write = 0;
     unsigned int current_line = 0;
-    unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, current_k_y = 0, count_simd =0;
+    unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
 
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
       unsigned int floor_block_read = 0, ceil_block_read = number_blocks;
@@ -1068,7 +1062,6 @@ void ConvolutionInputGenerator_dws_MMV(
 			+ OFMDim * std::max(cycles_write_block,cycles_read_block);
 	unsigned int counter_internal_block = 0;
 	unsigned int current_block_write = 0;
-	unsigned int next_block_write = 0;	
 	unsigned int current_line = 0;
 	unsigned int read_block = 0; 
 	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
@@ -1273,7 +1266,6 @@ void ConvolutionInputGenerator_NonSquare(
 			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;
   unsigned int current_line = 0;
   unsigned int read_block = 0;
   unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
@@ -1408,7 +1400,6 @@ void ConvolutionInputGenerator_NonSquare_dws(
 			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;
   unsigned int current_line = 0;
   unsigned int read_block = 0;
   unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
@@ -1550,7 +1541,6 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
 			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;
   unsigned int current_line = 0;
   unsigned int read_block = 0;
   unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
@@ -1670,20 +1660,19 @@ void ConvolutionInputGenerator_1D_parallel(
 
   static_assert(Stride == 1, "");
   static_assert(IFMChannels % SIMD == 0, "");
-  const unsigned int number_blocks = ConvKernelDim + 1 ;
-  ap_uint<SIMD*Input_precision> inputBuf[number_blocks];
+  constexpr unsigned  number_blocks = ConvKernelDim + 1 ;
+  constexpr unsigned  cycles_write_block = 1;
+  constexpr unsigned  cycles_read_block = 1;
+  constexpr unsigned  baseIter = ConvKernelDim // Initial buffer
+			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
 
+  ap_uint<SIMD*Input_precision> inputBuf[number_blocks];
 #pragma HLS ARRAY_PARTITION variable=inputBuf complete
   //memory_resource(inputBuf, r); use reg regardless of setting
-  const unsigned int cycles_write_block = 1;
-  const unsigned int cycles_read_block = 1;
-  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
-  const unsigned int baseIter = ConvKernelDim // Initial buffer
-			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
+
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;
   unsigned int read_block = 0;
-  unsigned int inp = 0, ofm_y = 0, k_y = 0;
+  unsigned int inp = 0, ofm_y = 0;
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
