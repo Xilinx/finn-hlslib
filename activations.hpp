@@ -350,7 +350,7 @@ void Thresholding_Stream_Batch(hls::stream<TI> &in,
   unsigned const NF = NumChannels / PE;
 
   ThresholdsActivation<1, PE, NumSteps, TT, TO, ActVal, comp::less_equal<TT, TT>> internal_thr;
-  #pragma HLS ARRAY_PARTITION variable=internal_thr.m_thresholds complete dim=0
+#pragma HLS ARRAY_PARTITION variable=internal_thr.m_thresholds complete dim=0
 
   // everything merged into a common iteration space (one "big" loop instead
   // of smaller nested loops) to get the pipelinening the way we want
@@ -374,7 +374,7 @@ void Thresholding_Stream_Batch(hls::stream<TI> &in,
       auto const thr_slicer = Slice<TT>()(pe_slicer(pe, 0));
       for (unsigned nt = 0; nt < NumSteps; nt++)
       {
-      #pragma HLS UNROLL
+#pragma HLS UNROLL
         internal_thr.m_thresholds[pe][0][nt] = thr_slicer(nt, 0);
       }
 

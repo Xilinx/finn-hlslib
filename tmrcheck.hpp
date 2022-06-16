@@ -80,7 +80,7 @@ void TMRCheck(hls::stream<ap_uint<InW*OFMChannels>> &in,
               ap_uint<OFMChannels> channel_mask,
               ap_uint<MAX_CH_WIDTH> red_ch_index[NUM_RED]) {
 
-    #pragma HLS ARRAY_PARTITION variable=red_ch_index complete dim=0
+#pragma HLS ARRAY_PARTITION variable=red_ch_index complete dim=0
     ap_uint<InW*OFMChannels> input;
 
     // Number of channels without triplications
@@ -97,11 +97,11 @@ void TMRCheck(hls::stream<ap_uint<InW*OFMChannels>> &in,
         ap_uint<InW*NUM_RED> tmr_out = {0};
         ap_uint<InW*OFMChannelsTMR> out_aux = {0};
         ap_uint<2> numerrors[NUM_RED];
-        #pragma HLS ARRAY_PARTITION variable=numerrors complete dim=0
+#pragma HLS ARRAY_PARTITION variable=numerrors complete dim=0
 
         // Check triplicated channel indexes and store the corresponding data to perform TMR check
         for(unsigned int i = 0; i < NUM_RED; i++){
-        #pragma HLS UNROLL
+#pragma HLS UNROLL
 
             numerrors[i] = 0;
             // TMR CHECK: start
@@ -127,10 +127,10 @@ void TMRCheck(hls::stream<ap_uint<InW*OFMChannels>> &in,
 
         ap_uint<OFMChannels> unitL = 1;
         ap_uint<1> compute[OFMChannels];
-        #pragma HLS ARRAY_PARTITION variable=compute complete dim=0
+#pragma HLS ARRAY_PARTITION variable=compute complete dim=0
         // ChannelLoop: iterates over all OFM channels (including triplications), and outputs either: TMR check output/input/nothing
         for(unsigned int k = 0; k < OFMChannels; k++){
-        #pragma HLS UNROLL
+#pragma HLS UNROLL
             compute[k] = 0;
             // Check if current channel is any of the FIRST triplicated
             for(unsigned int i = 0; i < NUM_RED; i++){

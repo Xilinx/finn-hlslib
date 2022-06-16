@@ -478,7 +478,7 @@ void ConvolutionInputGenerator_kernel_stride(
 for (unsigned int count_image = 0; count_image < numReps; count_image++) {
   unsigned int floor_block_read = 0, ceil_block_read = number_blocks;
   unsigned int current_block_write = 0;
-  #pragma HLS DEPENDENCE variable=current_block_write intra false
+#pragma HLS DEPENDENCE variable=current_block_write intra false
   unsigned int read_block = 0;
 		for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -630,7 +630,7 @@ void ConvolutionInputGenerator_kernel_stride_MMV(
 for (unsigned int count_image = 0; count_image < numReps; count_image++) {
   unsigned int floor_block_read = 0, ceil_block_read = number_blocks;
   unsigned int current_block_write = 0;
-  #pragma HLS DEPENDENCE variable=current_block_write intra false
+#pragma HLS DEPENDENCE variable=current_block_write intra false
   unsigned int read_block = 0;
 		for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -919,7 +919,7 @@ void ConvolutionInputGenerator_kernel_stride_dws(
       for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
 
-      #pragma HLS DEPENDENCE variable=current_block_write intra false
+#pragma HLS DEPENDENCE variable=current_block_write intra false
 
             if (inp < initial_buffer_cycles) // Initial buffer of PoolDim lines
             {
@@ -995,7 +995,7 @@ void ConvolutionInputGenerator_kernel_stride_dws(
                         current_block_write++;
                         if (current_block_write == number_blocks)
                             current_block_write = 0;
-    #pragma HLS DEPENDENCE variable=current_block_write intra false
+#pragma HLS DEPENDENCE variable=current_block_write intra false
                     }
                 }
                 counter_internal_block++; // = (counter_internal_block +1) % max_cycles;
