@@ -54,6 +54,7 @@
 #define ACTIVATIONS_HPP
 
 #include "interpret.hpp"
+#include <hls_stream.h>
 #include <functional>
 
 namespace comp{
@@ -287,19 +288,15 @@ void Thresholding_Batch(hls::stream<TI> &in,
 
   // how many different rows each neuron will compute
   // alternatively: number of vertical matrix chunks
-  unsigned const NF = NumChannels / PE;
-
-  unsigned nf = 0;
-  unsigned tile = 0; // invariant: tile = nf*SF + sf
+  constexpr unsigned  NF = NumChannels / PE;
 
   // everything merged into a common iteration space (one "big" loop instead
   // of smaller nested loops) to get the pipelinening the way we want
-  for (unsigned i = 0; i < reps * ImgDim * NF; i++)
-  {
+  unsigned nf = 0;
+  for (unsigned i = 0; i < reps * ImgDim * NF; i++) {
 #pragma HLS pipeline style=flp II=1
 
-    TI inElem;
-    inElem = in.read();
+    TI const  inElem = in.read();
     auto outElem = TDstI().template operator()<TO>();
     for (unsigned pe = 0; pe < PE; pe++)
     {

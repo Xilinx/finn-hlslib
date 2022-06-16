@@ -54,6 +54,7 @@
 #include <hls_stream.h>
 
 #include "streamtools.h"
+#include "slidingwindow.h"
 #include "mvau.hpp"
 #include "tmrcheck.hpp"
 
