@@ -50,6 +50,7 @@
 #define INTERPRET_HPP
 
 #include <ap_int.h>
+#include <ostream>
 
 /**
  * Thin wrapper around an ap_uint<1> redefining multiplication with
