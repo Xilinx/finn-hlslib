@@ -34,15 +34,15 @@
  #
  #  Authors: Giulio Gambardella <giuliog@xilinx.com>
  #
- # \file test_swg_kernelstride.tcl
+ # \file test_swg_kernelstride_mmv.tcl
  #
  # Tcl script for HLS csim, synthesis and cosim of the sliding window generator block
  # when kernel%stride !=0
  #
 ###############################################################################
 open_project hls-syn-swg-ks-mmv
-add_files input_gen_kernelstride_mmv.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT)" 
-add_files -tb swg_kernelstride_mmv_tb.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT)" 
+add_files input_gen_kernelstride_mmv.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT)" 
+add_files -tb swg_kernelstride_mmv_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT)" 
 set_top Testbench
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}

@@ -40,7 +40,7 @@
  *  Testbench for the sliding window generator HLS block for 1D convolutions
  *
  *****************************************************************************/
-#define AP_INT_MAX_W 4096
+#define AP_INT_MAX_W 8191
 #include <hls_stream.h>
 #include "ap_int.h"
 #include <iostream>

@@ -32,16 +32,16 @@
 ###############################################################################
 ###############################################################################
  #
- #  Authors: Mirza Mrahorovic <mirzamg@xilinx.com>
+ #  Authors: Mirza Mrahorovic <mirzam@xilinx.com>
  #
  # \file test_swg_1D_dws.tcl
  #
- # Tcl script for HLS csim, synthesis and cosim of the sliding window generator block for 1D convolutions
+ # Tcl script for HLS csim, synthesis and cosim of the sliding window generator block for 1D depthwise separable convolutions
  #
 ###############################################################################
-open_project hls-syn-swg-1d
-add_files input_gen_1D_dws.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT)" 
-add_files -tb swg_1D_dws_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT)" 
+open_project hls-syn-swg-1d-dws
+add_files input_gen_1D_dws.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT)"
+add_files -tb swg_1D_dws_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT)"
 set_top Testbench
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}
