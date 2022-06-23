@@ -34,7 +34,7 @@
  #
  #  Authors: Giulio Gambardella <giuliog@xilinx.com>
  #
- # \file test-pool.tcl
+ # \file test_pool.tcl
  #
  # Tcl script for HLS csim, synthesis and cosim of the max pooling layer
  #
