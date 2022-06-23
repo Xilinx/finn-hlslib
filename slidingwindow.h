@@ -72,7 +72,6 @@
  */
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_dflt const&){
-#pragma HLS inline
 #pragma HLS BIND_STORAGE variable=inputBuf type=RAM_2P
 }
 /**
@@ -94,7 +93,6 @@ void memory_resource(T inputBuf, ap_resource_dflt const&){
  */
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_bram const&){
-#pragma HLS inline
 #pragma HLS BIND_STORAGE variable=inputBuf type=RAM_S2P impl=BRAM
 }
 /**
@@ -116,7 +114,6 @@ void memory_resource(T inputBuf, ap_resource_bram const&){
  */
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_uram const&){
-#pragma HLS inline
 #pragma HLS BIND_STORAGE variable=inputBuf type=RAM_S2P impl=URAM
 }
 /**
@@ -138,7 +135,6 @@ void memory_resource(T inputBuf, ap_resource_uram const&){
  */
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_lutram const&){
-#pragma HLS inline
 #pragma HLS BIND_STORAGE variable=inputBuf type=RAM_S2P impl=LUTRAM
 }
 
