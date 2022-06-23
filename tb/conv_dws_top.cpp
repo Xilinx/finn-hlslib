@@ -41,7 +41,7 @@
  *****************************************************************************/
 #include <hls_stream.h>
 using namespace hls;
-#define AP_INT_MAX_W 4096
+#define AP_INT_MAX_W 8191
 #include "ap_int.h"
 #include "bnn-library.h"
 

@@ -46,7 +46,7 @@
 #include <cstring>
 #include <hls_stream.h>
 #include <cstdlib>
-#define AP_INT_MAX_W 16384
+#define AP_INT_MAX_W 8191
 #include "ap_int.h"
 #include "weights.hpp"
 #include "bnn-library.h"
