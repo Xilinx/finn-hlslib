@@ -125,9 +125,9 @@ node {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample.tcl")
             }
         }, eleventhBranch: {
-            stage('CHANNELWISE OP') {
+            /*stage('CHANNELWISE OP') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_channelwise_op.tcl")
-            }
+            }*/
         }, twelfthBranch: {
             stage('TMR CHECK') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_tmrc_stmr.tcl")
