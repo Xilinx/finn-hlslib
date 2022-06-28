@@ -131,15 +131,13 @@ class FixedPointWeights {
    public:
     std::array<WT,SIMD> operator[](unsigned const  pe) const {
 #pragma HLS inline
-      std::array<WT,SIMD> temp;
+      std::array<WT,SIMD>  ret;
 	  for(unsigned int i=0; i<SIMD; i++) {
 #pragma HLS unroll
-        ap_int<WT::width> local_temp;
-        local_temp = m_par.m_weights[pe][m_idx]((i+1)*WT::width-1, i*WT::width);
-        WT value = *reinterpret_cast<WT*>(&local_temp);
-        temp[i] = value;
+        ap_int<WT::width> const  local_temp = m_par.m_weights[pe][m_idx]((i+1)*WT::width-1, i*WT::width);
+        ret[i] = WT(local_temp);
       }
-      return  temp;
+      return  ret;
     }
   };
 
@@ -151,22 +149,20 @@ class FixedPointWeights {
 };
 
 
-template<unsigned SIMD, typename WT, unsigned PE  >
+template<unsigned SIMD, typename WT, unsigned PE>
 class Weights_Tile { 
- public:
+public:
   ap_uint<SIMD*WT::width>  m_weights[PE];
 
-  std::array<WT,SIMD> operator[](unsigned const  pe) const {
+  std::array<WT, SIMD> operator[](unsigned const  pe) const {
 #pragma HLS inline
-    std::array<WT,SIMD> temp;
+    std::array<WT, SIMD>  ret;
     for(unsigned int i=0; i<SIMD; i++) {
 #pragma HLS unroll
-      ap_int<WT::width> local_temp;
-      local_temp = m_weights[pe]((i+1)*WT::width-1, i*WT::width);
-      WT value = *reinterpret_cast<WT*>(&local_temp);
-      temp[i] = value;
+      ap_int<WT::width> const  local_temp = m_weights[pe]((i+1)*WT::width-1, i*WT::width);
+      ret[i] = WT(local_temp);
     }
-    return  temp;
+    return  ret;
   }
 };
 
