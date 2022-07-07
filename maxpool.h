@@ -78,9 +78,9 @@ void StreamingMaxPool(hls::stream<ap_uint<NumChannels> > & in,
   for (unsigned int yp = 0; yp < ImgDim / PoolDim; yp++) {
     for (unsigned int ky = 0; ky < PoolDim; ky++) {
       for (unsigned int xp = 0; xp < ImgDim / PoolDim; xp++) {
-#pragma HLS pipeline style=flp II=1
         ap_uint<NumChannels> acc = 0;
         for (unsigned int kx = 0; kx < PoolDim; kx++) {
+#pragma HLS pipeline style=flp II=1
           acc = acc | in.read();
         }
         // pool with old value in row buffer
