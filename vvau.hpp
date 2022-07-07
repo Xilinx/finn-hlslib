@@ -89,6 +89,8 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
 				  int const  reps,
 				  R const &r) {
 
+  static_assert(SIMD == 1, "SIMD parallelism not yet supported.");
+
   // how many different rows each neuron will compute
   // alternatively: number of vertical matrix chunks
   unsigned const  NF = Channels / PE;
