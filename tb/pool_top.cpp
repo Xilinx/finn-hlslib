@@ -47,10 +47,17 @@ using namespace hls;
 
 #include "data/pool_config.h"
 
+void Testbench_pool_binary(stream<ap_uint<FM_Channels1> > & in, stream<ap_uint<FM_Channels1> > & out, unsigned int numReps){
+#pragma HLS DATAFLOW
+	StreamingMaxPool_Batch<IFMDim1, KERNEL_DIM, FM_Channels1>(in, out, numReps);
+}
+
 void Testbench_pool(stream<ap_uint<FM_Channels1*PRECISION> > & in, stream<ap_uint<FM_Channels1*PRECISION> > & out, unsigned int numReps){
+#pragma HLS DATAFLOW
 	StreamingMaxPool_Precision_Batch<IFMDim1, KERNEL_DIM, FM_Channels1, ap_uint<PRECISION>, 0>(in, out, numReps);
 }
 
-void Testbench_pool_1d(stream<ap_uint<FM_Channels1*PRECISION> > & in, stream<ap_uint<FM_Channels1*PRECISION> > & out, unsigned int numReps){
-	StreamingMaxPool_Precision_Batch_1d<IFMDim1, KERNEL_DIM, FM_Channels1, ap_uint<PRECISION>, 0>(in, out, numReps);
+void Testbench_pool_1d(stream<ap_uint<PE1*PRECISION> > & in, stream<ap_uint<PE1*PRECISION> > & out, unsigned int numReps){
+#pragma HLS DATAFLOW
+	StreamingMaxPool_Precision_1d<IFMDim1, KERNEL_DIM, FM_Channels1, PE1, OFMDim1, ap_uint<PRECISION>, 0>(in, out);
 }

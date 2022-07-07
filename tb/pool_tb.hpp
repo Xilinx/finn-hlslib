@@ -77,10 +77,14 @@ template<int MAX_IMAGE,
 			for(int x=0;x<OFMDim;x++)
 				for(int h=0;h<FMCh;h++){
 					TI tmp = 0;
-					for (int kx=0;kx<kernel;kx++)
-						if(img[n][x*stride+kx][h]>tmp){
-							tmp=img[n][x*stride+kx][h];
+					for (int kx=0;kx<kernel;kx++){
+						unsigned const idx = x*stride+kx;
+						if (idx < IFMDim){
+							if(img[n][idx][h]>tmp){
+								tmp=img[n][idx][h];
+							}
 						}
+					}
 					out[n][x][h] = tmp;
 				}
 	}

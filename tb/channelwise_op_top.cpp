@@ -56,31 +56,31 @@ void Testbench_channelwise_op(stream<ap_uint<IFM_Channels*INPUT_BITS> > & in,
 
 
     // [bipolar mult]
-    ChannelWiseOperation<FOLD, PE,ap_uint<INPUT_BITS>, BIPO_PARAM_TYPE, BIPO_OUT_TYPE, 
+    ChannelWiseOperation<FOLD, PE, ap_uint<INPUT_BITS>, BIPO_PARAM_TYPE, BIPO_OUT_TYPE, 
             per_channel_neg<BIPO_OUT_TYPE> > bipolar_params= {.parameters = BIPOLAR_INIT};
     
     stream<ap_uint<PE*BIPO_OUT_BITS>>  bipolar_out;
-    Thresholding_Batch< IFMDim, IFM_Channels, PE,
+    Thresholding_Batch<IFMDim*IFMDim, IFM_Channels, PE,
         Slice< ap_uint<INPUT_BITS> >, Slice<BIPO_OUT_TYPE> >
         (wa_in, bipolar_out, bipolar_params, numReps);
 
 
     // [add] 
-    ChannelWiseOperation<FOLD, PE,BIPO_OUT_TYPE, ADD_PARAM_TYPE, ADD_OUT_TYPE, 
-            std::plus<ADD_OUT_TYPE> > add_params = {.parameters = ADD_INIT};
+    ChannelWiseOperation<FOLD, PE, BIPO_OUT_TYPE, ADD_PARAM_TYPE, ADD_OUT_TYPE, 
+            comp::add<ADD_PARAM_TYPE, BIPO_OUT_TYPE, ADD_OUT_TYPE> > add_params = {.parameters = ADD_INIT};
     
     stream<ap_uint<PE*ADD_OUT_BITS>>  add_out;
-    Thresholding_Batch< IFMDim, IFM_Channels, PE,
+    Thresholding_Batch<IFMDim*IFMDim, IFM_Channels, PE,
         Slice<BIPO_OUT_TYPE>, Slice<ADD_OUT_TYPE> >
         (bipolar_out, add_out, add_params, numReps);
 
 
     // [mult] 
-    ChannelWiseOperation<FOLD, PE,ADD_OUT_TYPE, MULT_PARAM_TYPE, MULT_OUT_TYPE, 
-            std::multiplies<MULT_OUT_TYPE> > mult_params= {.parameters = MULT_INIT};
+    ChannelWiseOperation<FOLD, PE, ADD_OUT_TYPE, MULT_PARAM_TYPE, MULT_OUT_TYPE, 
+            comp::mul<MULT_PARAM_TYPE, ADD_OUT_TYPE, MULT_OUT_TYPE> > mult_params= {.parameters = MULT_INIT};
     
     stream<ap_uint<PE*MULT_OUT_BITS>>  mul_out;
-    Thresholding_Batch< IFMDim, IFM_Channels, PE,
+    Thresholding_Batch<IFMDim*IFMDim, IFM_Channels, PE,
         Slice<ADD_OUT_TYPE>, Slice<MULT_OUT_TYPE> >
         (add_out, mul_out, mult_params, numReps);
 

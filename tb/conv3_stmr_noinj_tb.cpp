@@ -39,7 +39,7 @@
  *  Testbench for the HLS block which performs conv. using redundancy checks
  *
  *****************************************************************************/
-#define AP_INT_MAX_W 16384
+#define AP_INT_MAX_W 8191
 #include <iostream>
 #include <fstream>
 #include <time.h>

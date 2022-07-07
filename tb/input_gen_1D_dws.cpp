@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2021, Xilinx, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -32,43 +32,29 @@
 /******************************************************************************
  *
  *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *           Felix Jentzsch <felix.jentzsch@upb.de>
  *
- *  \file input_gen_dilated.cpp
+ *  \file input_gen_1D.cpp
  *
- *  HLS Top function with a single HLS sliding-window generator block unit testing (for non-square dilated convolution)
+ *  HLS Top function with a single HLS sliding-window generator block unit testing (for 1D convolution)
  *
  *****************************************************************************/
-#define AP_INT_MAX_W 4096
+#define AP_INT_MAX_W 8191
 
 #include <hls_stream.h>
 using namespace hls;
 #include "ap_int.h"
 #include "bnn-library.h"
-#include "data/input_gen_dilated.h"
+#include "data/input_gen_1d_dws.h"
 
-void Testbench(stream<ap_uint<IFM_Channels*INPUT_PRECISION> > & in, stream<ap_uint<IFM_Channels*INPUT_PRECISION> > & out, unsigned int numReps)
+void Testbench(stream<ap_uint<SIMD1*INPUT_PRECISION1> > & in, stream<ap_uint<SIMD1*INPUT_PRECISION1> > & out)//, unsigned int numReps)
 {
 #pragma HLS DATAFLOW
-	stream<ap_uint<SIMD*INPUT_PRECISION> > in_simd("in_simd");
-	stream<ap_uint<SIMD*INPUT_PRECISION> > out_simd("out_simd");
-	StreamingDataWidthConverter_Batch<IFM_Channels*INPUT_PRECISION, SIMD*INPUT_PRECISION, IFMDim_x*IFMDim_y>(in, in_simd, numReps);
 
-	ConvolutionInputGenerator_NonSquare_Dilated<KERNEL_DIM_x,
-	KERNEL_DIM_y,
-	IFM_Channels,
-	INPUT_PRECISION,
+	ConvolutionInputGenerator_1D_dws<KERNEL_DIM_x,
+	IFM_Channels1,
+	INPUT_PRECISION1,
 	IFMDim_x,
-	IFMDim_y,
 	OFMDim_x,
-	OFMDim_y,
-	SIMD,
-	STRIDE_x,
-	STRIDE_y,
-	DILATION_x,
-	DILATION_y>(in_simd, out_simd, numReps, ap_resource_dflt());
-
-	StreamingDataWidthConverter_Batch<SIMD*INPUT_PRECISION, IFM_Channels*INPUT_PRECISION, KERNEL_DIM_x*KERNEL_DIM_y*OFMDim_x*OFMDim_y*IFM_Channels/SIMD>(out_simd, out, numReps);
-
+	SIMD1>(in, out, 1, ap_resource_dflt());
 }
-
-

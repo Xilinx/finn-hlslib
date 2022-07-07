@@ -29,10 +29,11 @@
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ******************************************************************************/
+
 #define KERNEL_DIM 2
-#define WIDTH 4 
 #define FM_Channels1 16
 #define IFMDim1 16
 #define OFMDim1 8
 #define PRECISION 3
+#define PE1 1
 

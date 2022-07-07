@@ -31,10 +31,9 @@
  ******************************************************************************/
 /******************************************************************************
  *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *           Felix Jentzsch <felix.jentzsch@upb.de>
+ *  Authors: Mirza Mrahorovic <mirzam@xilinx.com>
  *
- *  \file swg_1D_tb.cpp
+ *  \file swg_1D_dws_tb.cpp
  *
  *  Testbench for the sliding window generator HLS block for 1D convolutions
  *
@@ -46,7 +45,7 @@
 #include <string>
 #include "bnn-library.h"
 
-#include "data/input_gen_1d.h"
+#include "data/input_gen_1d_dws.h"
 
 #include "math.h"
 using namespace hls;
@@ -54,7 +53,7 @@ using namespace std;
 
 #define MAX_IMAGES 1
 
-void Testbench(stream<ap_uint<SIMD1*INPUT_PRECISION1> > & in, stream<ap_uint<SIMD1*INPUT_PRECISION1> > & out); //, unsigned int numReps)
+void Testbench(stream<ap_uint<SIMD1*INPUT_PRECISION1> > & in, stream<ap_uint<SIMD1*INPUT_PRECISION1> > & out);
 
 int main()
 {
@@ -63,50 +62,45 @@ int main()
 	stream<ap_uint<SIMD1*INPUT_PRECISION1> > in_simd("in_simd");
 	stream<ap_uint<SIMD1*INPUT_PRECISION1> > out_simd("out_simd");
 
-	static	ap_int<INPUT_PRECISION1> IMAGE[MAX_IMAGES][IFMDim_x][IFMDim_y][IFM_Channels1];
+	static	ap_int<INPUT_PRECISION1> IMAGE[MAX_IMAGES][IFMDim_x][IFM_Channels1];
 	int counter = 0;
-	ap_uint<IFM_Channels1*INPUT_PRECISION1> input_channel = 0;
+	ap_uint<SIMD1*INPUT_PRECISION1> input_channel = 0;
 	for(unsigned int n_image = 0; n_image < MAX_IMAGES; n_image++) {
 		for(unsigned int x = 0; x < IFMDim_x; x++) {
-			for(unsigned int y = 0; y < IFMDim_y; y++) {
-				input_channel = 0;
-				for(unsigned int c = 0; c < IFM_Channels1; c++) {
-					ap_int<INPUT_PRECISION1> input = (ap_int<INPUT_PRECISION1>)(counter);
-					IMAGE[n_image][x][y][c]= input;
-					input_channel = input_channel >> INPUT_PRECISION1;
-					input_channel(IFM_Channels1*INPUT_PRECISION1-1,(IFM_Channels1-1)*INPUT_PRECISION1)=input;
-					counter++;
-				}
-				input_stream.write(input_channel);
-			}
+            for(unsigned int c = 0; c < IFM_Channels1/SIMD1; c++) {
+                input_channel = 0;
+                for(unsigned int s = 0; s < SIMD1; s++){
+                    ap_int<INPUT_PRECISION1> input = (ap_int<INPUT_PRECISION1>)(counter);
+                    IMAGE[n_image][x][c*SIMD1+s]= input;
+                    input_channel = input_channel >> INPUT_PRECISION1;
+                    input_channel(SIMD1*INPUT_PRECISION1-1,(SIMD1-1)*INPUT_PRECISION1)=input;
+                    counter++;
+                }
+                in_simd.write(input_channel);
+            }
 		}
 	}
-	StreamingDataWidthConverter_Batch<IFM_Channels1*INPUT_PRECISION1, SIMD1*INPUT_PRECISION1, IFMDim_x>(input_stream, in_simd, 1);
 	Testbench(in_simd, out_simd);
-	StreamingDataWidthConverter_Batch<SIMD1*INPUT_PRECISION1, IFM_Channels1*INPUT_PRECISION1, KERNEL_DIM_x*OFMDim_x*IFM_Channels1/SIMD1>(out_simd, output_stream, 1);
 
 	ap_int<INPUT_PRECISION1> out_chan;
 	int expected_value;
 	for(unsigned int n_image = 0; n_image < MAX_IMAGES; n_image++) {
 		for(unsigned int ox = 0; ox < OFMDim_x; ox++) {
-			for(unsigned int oy = 0; oy < OFMDim_y; oy++) {
-				for(unsigned int kx = 0; kx < KERNEL_DIM_x; kx++) {
-					for(unsigned int ky = 0; ky < KERNEL_DIM_y; ky++) {
-						ap_uint<INPUT_PRECISION1*IFM_Channels1> outElem = output_stream.read();
-						for(unsigned int chan = 0; chan < IFM_Channels1; chan++) {
-							out_chan(INPUT_PRECISION1-1,0) = outElem((chan + 1)*INPUT_PRECISION1-1,chan*INPUT_PRECISION1);
-							int output_value = (ap_int<INPUT_PRECISION1>) out_chan;
-							expected_value = (ap_int<INPUT_PRECISION1>) IMAGE[n_image][ox*STRIDE_x+kx*DILATION_x][oy+ky*DILATION_y][chan];
-							if (output_value != expected_value){
-								std::cout << "ERROR: Expected " << expected_value << " actual " <<  output_value << std::endl;
-								std::cout << "Position: OFMDim_x " << ox << " OFMDim_y " << oy <<  " KERNEL_DIM_x " <<  kx << " KERNEL_DIM_y " << ky << " IFM_Channels1 " <<  chan << " Image " << n_image << std::endl;
-								return 1;
-							}
-						}
-					}
-				}
-			}
-		}
+            for(unsigned int chan = 0; chan < IFM_Channels1/SIMD1; chan++) {
+                for(unsigned int kx = 0; kx < KERNEL_DIM_x; kx++) {
+                    ap_uint<SIMD1*INPUT_PRECISION1> outElem = out_simd.read();
+                    for(unsigned int s = 0; s < SIMD1; s++){
+                        out_chan(INPUT_PRECISION1-1,0) = outElem((s + 1)*INPUT_PRECISION1-1,s*INPUT_PRECISION1);
+                        expected_value = (ap_int<INPUT_PRECISION1>) IMAGE[n_image][ox*STRIDE_x+kx*DILATION_x][SIMD1*chan+s];
+                        if (out_chan != expected_value){
+                            std::cout << "ERROR: Expected " << expected_value << " actual " <<  out_chan << std::endl;
+                            std::cout << "Position: OFMDim_x " << ox <<  " KERNEL_DIM_x " <<  kx << " IFM_Channels1/SIMD1 " <<  chan << " SIMD " << s << std::endl;
+                            return 1;
+                            }
+                        }
+                }
+            }
+        }
 	}
 
 	return 0;

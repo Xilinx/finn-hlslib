@@ -89,6 +89,8 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
 				  int const  reps,
 				  R const &r) {
 
+  static_assert(SIMD == 1, "SIMD parallelism not yet supported.");
+
   // how many different rows each neuron will compute
   // alternatively: number of vertical matrix chunks
   unsigned const  NF = Channels / PE;
@@ -106,7 +108,7 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
   // of smaller nested loops) to get the pipelinening the way we want
   unsigned const TOTAL_FOLD = NF * SF ;//* Channels/SIMD;
   for(unsigned  i = 0; i < reps * TOTAL_FOLD; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
     TI  inElem;
     inElem = in.read();
     // Threshold Initialisation

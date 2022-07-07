@@ -108,7 +108,7 @@ void Stream2Mem(hls::stream<ap_uint<DataWidth> > & in, ap_uint<DataWidth> * out)
  */
 template<unsigned int DataWidth, unsigned int numBytes>
 void Mem2Stream_Batch_external_wmem(ap_uint<DataWidth> * in,
-        stream<ap_uint<DataWidth> > & out, const unsigned int numReps) {
+        hls::stream<ap_uint<DataWidth> > & out, const unsigned int numReps) {
     unsigned int rep = 0;
     while (rep != numReps) {
         Mem2Stream<DataWidth, numBytes>(&in[0], out);
@@ -134,11 +134,11 @@ void Stream2Mem_Batch(hls::stream<ap_uint<DataWidth> > & in, ap_uint<DataWidth> 
 
 template<unsigned int DataWidth, unsigned int numBytes>
 void Mem2Stream(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth> > & out) {
-  CASSERT_DATAFLOW(DataWidth % 8 == 0);
+  static_assert(DataWidth % 8 == 0, "");
   const unsigned int numWords = numBytes / (DataWidth / 8);
-  CASSERT_DATAFLOW(numWords != 0);
+  static_assert(numWords != 0, "");
   for (unsigned int i = 0; i < numWords; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
     ap_uint<DataWidth> e = in[i];
     out.write(e);
   }
@@ -147,11 +147,11 @@ void Mem2Stream(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth> > & out)
 
 template<unsigned int DataWidth, unsigned int numBytes>
 void Stream2Mem(hls::stream<ap_uint<DataWidth> > & in, ap_uint<DataWidth> * out) {
-  CASSERT_DATAFLOW(DataWidth % 8 == 0);
+  static_assert(DataWidth % 8 == 0, "");
   const unsigned int numWords = numBytes / (DataWidth / 8);
-  CASSERT_DATAFLOW(numWords != 0);
+  static_assert(numWords != 0, "");
   for (unsigned int i = 0; i < numWords; i++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
     ap_uint<DataWidth> e = in.read();
 	out[i] = e;
   }
@@ -221,7 +221,7 @@ template<
 void GenParamStream(TW const &W_in, hls::stream<ap_uint<SIMD * PE * WP>> &paramStreamOut, int const numReps) {
   for (unsigned rep = 0; rep < numReps; rep++) {
     for (unsigned tile = 0; tile < TILES; tile++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS pipeline style=flp II=1
 
       ap_uint<SIMD * PE * WP> strMem;
       for (unsigned pe = 0; pe < PE; pe++) {
