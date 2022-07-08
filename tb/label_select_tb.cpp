@@ -1,6 +1,5 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
- *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -46,7 +45,7 @@
 #include <cstring>
 #include <hls_stream.h>
 #include <cstdlib>
-#define AP_INT_MAX_W 16384
+#define AP_INT_MAX_W 8191
 #include "ap_int.h"
 #include "weights.hpp"
 #include "bnn-library.h"

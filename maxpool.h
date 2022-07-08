@@ -1,6 +1,5 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
- *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -79,9 +78,9 @@ void StreamingMaxPool(hls::stream<ap_uint<NumChannels> > & in,
   for (unsigned int yp = 0; yp < ImgDim / PoolDim; yp++) {
     for (unsigned int ky = 0; ky < PoolDim; ky++) {
       for (unsigned int xp = 0; xp < ImgDim / PoolDim; xp++) {
-#pragma HLS pipeline style=flp II=1
         ap_uint<NumChannels> acc = 0;
         for (unsigned int kx = 0; kx < PoolDim; kx++) {
+#pragma HLS pipeline style=flp II=1
           acc = acc | in.read();
         }
         // pool with old value in row buffer
@@ -427,7 +426,7 @@ void AccPool_Batch(hls::stream<ap_uint<PECount * ActType::width> > & in,
           // Threshold and assign to right bits of output buffers
           ActType const  val = thin((pe+1) * ActType::width - 1,pe * ActType::width);
           AccType const  acc = accbank((pe+1) * AccType::width - 1,pe * AccType::width);
-          AccType const  result = val + (pixel == 0? 0 : acc);
+          AccType const  result = val + (pixel == 0? AccType(0) : acc);
           accbank((pe+1) * AccType::width - 1,pe * AccType::width) = result;
         }
         accumulators[fold] = accbank;     

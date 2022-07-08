@@ -1,6 +1,5 @@
 /******************************************************************************
  *  Copyright (c) 2021, Xilinx, Inc.
- *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -40,7 +39,7 @@
  *  HLS Top function with a single HLS sliding-window generator block unit testing (for 1D convolution)
  *
  *****************************************************************************/
-#define AP_INT_MAX_W 4096
+#define AP_INT_MAX_W 8191
 
 #include <hls_stream.h>
 using namespace hls;

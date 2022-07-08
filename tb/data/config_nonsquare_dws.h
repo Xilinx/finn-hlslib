@@ -1,5 +1,6 @@
 #define KERNEL_DIM_X 3 
 #define KERNEL_DIM_Y 1 
+#define SIMD1 1
 #define PE1 2 
 #define MMV1 2 
 #define WIDTH 4 

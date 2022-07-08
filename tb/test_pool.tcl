@@ -1,6 +1,5 @@
 ##############################################################################
  #  Copyright (c) 2019, Xilinx, Inc.
- #  Copyright (c) 2022, Advanced Micro Devices, Inc.
  #  All rights reserved.
  #
  #  Redistribution and use in source and binary forms, with or without
@@ -34,7 +33,7 @@
  #
  #  Authors: Giulio Gambardella <giuliog@xilinx.com>
  #
- # \file test-pool.tcl
+ # \file test_pool.tcl
  #
  # Tcl script for HLS csim, synthesis and cosim of the max pooling layer
  #

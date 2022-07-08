@@ -1,6 +1,5 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
- *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -63,7 +62,7 @@ void Testbench_conv_nonsquare_dws(stream<ap_uint<FM_Channels1*INPUT_PRECISION> >
   StreamingDataWidthConverter_Batch<FM_Channels1*INPUT_PRECISION, PE1*INPUT_PRECISION, InpPerImage>(in, wa_in, numReps);
   ConvolutionInputGenerator_NonSquare_dws<KERNEL_DIM_X, KERNEL_DIM_Y, FM_Channels1, INPUT_PRECISION, IFMDim1_x, IFMDim1_y,
 			OFMDim1_x, OFMDim1_y, PE1,1,1>(wa_in, convInp, numReps, ap_resource_dflt());
-  Vector_Vector_Activate_Batch<FM_Channels1, KERNEL_DIM_X*KERNEL_DIM_Y, PE1, PE1, MMV1, Slice<ap_uint<INPUT_PRECISION> >, Slice<ap_int<16> >, Identity>
+  Vector_Vector_Activate_Batch<FM_Channels1, KERNEL_DIM_X*KERNEL_DIM_Y, SIMD1, PE1, MMV1, Slice<ap_uint<INPUT_PRECISION> >, Slice<ap_int<16> >, Identity>
 	(static_cast<hls::stream<ap_uint<PE1*INPUT_PRECISION>>&>(convInp),
 	 static_cast<hls::stream<ap_uint<PE1*ACTIVATION_PRECISION>>&>  (mvOut),
 	 PARAM::weights, PassThroughActivation<ap_uint<16>>(), numReps* OFMDim1_x * OFMDim1_y, ap_resource_dsp());
