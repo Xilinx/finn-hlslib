@@ -1,5 +1,5 @@
 # Ignore synthesis files and logs
-/hls-syn/*
-/vivado_hls.log
+/hls-syn*/
+/*_hls.log
 /config.h
 /memdata.h

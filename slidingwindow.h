@@ -1,6 +1,5 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
- *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -72,7 +71,6 @@
  */
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_dflt const&){
-#pragma HLS inline
 #pragma HLS BIND_STORAGE variable=inputBuf type=RAM_2P
 }
 /**
@@ -94,7 +92,6 @@ void memory_resource(T inputBuf, ap_resource_dflt const&){
  */
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_bram const&){
-#pragma HLS inline
 #pragma HLS BIND_STORAGE variable=inputBuf type=RAM_S2P impl=BRAM
 }
 /**
@@ -116,7 +113,6 @@ void memory_resource(T inputBuf, ap_resource_bram const&){
  */
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_uram const&){
-#pragma HLS inline
 #pragma HLS BIND_STORAGE variable=inputBuf type=RAM_S2P impl=URAM
 }
 /**
@@ -138,7 +134,6 @@ void memory_resource(T inputBuf, ap_resource_uram const&){
  */
 template <typename T>
 void memory_resource(T inputBuf, ap_resource_lutram const&){
-#pragma HLS inline
 #pragma HLS BIND_STORAGE variable=inputBuf type=RAM_S2P impl=LUTRAM
 }
 
@@ -174,8 +169,8 @@ void ConvolutionInputGenerator(
 		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  static_assert(IFMChannels % SIMD == 0);
-  static_assert(ConvKernelDim % Stride == 0);
+  static_assert(IFMChannels % SIMD == 0, "");
+  static_assert(ConvKernelDim % Stride == 0, "");
   const unsigned int multiplying_factor = IFMChannels/SIMD;
   const unsigned int number_blocks = ConvKernelDim/Stride + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks][Stride * IFMDim * multiplying_factor];
@@ -188,11 +183,10 @@ void ConvolutionInputGenerator(
 			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;	
   unsigned int current_line = 0;
   unsigned int read_block = 0; 
   unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
-#pragma HLS reset variable=inp
+
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -304,10 +298,10 @@ void ConvolutionInputGenerator_MMV(
 		hls::stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-	static_assert(IFMChannels % SIMD == 0);
-	static_assert(OFMDim % MMV == 0);
-	static_assert(ConvKernelDim % Stride == 0);
-	static_assert(MMV <= OFMDim);
+	static_assert(IFMChannels % SIMD == 0, "");
+	static_assert(OFMDim % MMV == 0, "");
+	static_assert(ConvKernelDim % Stride == 0, "");
+	static_assert(MMV <= OFMDim, "");
 	constexpr unsigned int multiplying_factor = IFMChannels/SIMD;
 	constexpr unsigned int number_blocks = ConvKernelDim/Stride + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[MMV][number_blocks][Stride * IFMDim * multiplying_factor];
@@ -323,11 +317,10 @@ void ConvolutionInputGenerator_MMV(
 			+ OFMDim * std::max(cycles_write_block,cycles_read_block);
 	unsigned int counter_internal_block = 0;
 	unsigned int current_block_write = 0;
-	unsigned int next_block_write = 0;	
 	unsigned int current_line = 0;
 	unsigned int read_block = 0; 
 	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
-#pragma HLS reset variable=inp
+
 	for (unsigned int count_image = 0; count_image < numReps; count_image++) {
 		for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -458,33 +451,29 @@ void ConvolutionInputGenerator_kernel_stride(
 		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-	static_assert(IFMChannels % SIMD == 0);
-    static_assert(ConvKernelDim % Stride != 0);
-	const unsigned int multiplying_factor = IFMChannels/SIMD;
-	const unsigned int number_blocks = ConvKernelDim + Stride ;
+	static_assert(IFMChannels % SIMD == 0, "");
+    static_assert(ConvKernelDim % Stride != 0, "");
+	constexpr unsigned  multiplying_factor = IFMChannels/SIMD;
+	constexpr unsigned  number_blocks = ConvKernelDim + Stride ;
+	constexpr unsigned  cycles_write_block = OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor;
+	constexpr unsigned  cycles_read_block = IFMDim * Stride * multiplying_factor;
+	constexpr unsigned  max_cycles = std::max(cycles_write_block, cycles_read_block);
+	constexpr unsigned  baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
+	constexpr unsigned  initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
+
 	ap_uint<SIMD*Input_precision> inputBuf[number_blocks][IFMDim * multiplying_factor];
+	memory_resource(inputBuf, r);
 #pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
-    memory_resource(inputBuf, r);
-	const unsigned int cycles_write_block = OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor;
-	const unsigned int cycles_read_block = IFMDim * Stride * multiplying_factor;
-	const unsigned int max_cycles = std::max(cycles_write_block, cycles_read_block);
-	const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
-	const unsigned int initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
-	unsigned int counter_internal_block = 0;
-	unsigned int next_block_write = 0;
-	unsigned int current_line = 0;
-
-	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, current_k_y = 0, count_simd =0;
-#pragma HLS RESET variable=inp
-
 #pragma HLS DEPENDENCE variable=inputBuf inter false
 #pragma HLS DEPENDENCE variable=inputBuf intra false
+	unsigned int counter_internal_block = 0;
+	unsigned int current_line = 0;
+	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
 
-// #pragma HLS RESOURCE variable inputBuf core=RAM_2P_LUTRAM
 for (unsigned int count_image = 0; count_image < numReps; count_image++) {
   unsigned int floor_block_read = 0, ceil_block_read = number_blocks;
   unsigned int current_block_write = 0;
-  #pragma HLS DEPENDENCE variable=current_block_write intra false
+#pragma HLS DEPENDENCE variable=current_block_write intra false
   unsigned int read_block = 0;
 		for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -610,10 +599,10 @@ void ConvolutionInputGenerator_kernel_stride_MMV(
 		hls::stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-	static_assert(IFMChannels % SIMD == 0);
-	static_assert(ConvKernelDim % Stride != 0);
-	static_assert(OFMDim % MMV == 0);
-	static_assert(MMV <= OFMDim);
+	static_assert(IFMChannels % SIMD == 0, "");
+	static_assert(ConvKernelDim % Stride != 0, "");
+	static_assert(OFMDim % MMV == 0, "");
+	static_assert(MMV <= OFMDim, "");
 
 	const unsigned int multiplying_factor = IFMChannels/SIMD;
 	const unsigned int number_blocks = ConvKernelDim + Stride ;
@@ -629,16 +618,14 @@ void ConvolutionInputGenerator_kernel_stride_MMV(
 	const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
 	const unsigned int initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
 	unsigned int counter_internal_block = 0;
-	unsigned int next_block_write = 0;
 	unsigned int current_line = 0;
 
-	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, current_k_y = 0, count_simd =0;
-#pragma HLS RESET variable=inp
+	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
 
 for (unsigned int count_image = 0; count_image < numReps; count_image++) {
   unsigned int floor_block_read = 0, ceil_block_read = number_blocks;
   unsigned int current_block_write = 0;
-  #pragma HLS DEPENDENCE variable=current_block_write intra false
+#pragma HLS DEPENDENCE variable=current_block_write intra false
   unsigned int read_block = 0;
 		for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -772,8 +759,8 @@ void ConvolutionInputGenerator_dws(
 		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  static_assert(IFMChannels % SIMD == 0);
-  static_assert(ConvKernelDim % Stride == 0);
+  static_assert(IFMChannels % SIMD == 0, "");
+  static_assert(ConvKernelDim % Stride == 0, "");
   const unsigned int multiplying_factor = IFMChannels/SIMD;
   const unsigned int number_blocks = ConvKernelDim/Stride + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks][Stride * IFMDim * multiplying_factor];
@@ -786,11 +773,10 @@ void ConvolutionInputGenerator_dws(
 			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;	
   unsigned int current_line = 0;
   unsigned int read_block = 0; 
   unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
-#pragma HLS reset variable=inp
+
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -902,28 +888,25 @@ void ConvolutionInputGenerator_kernel_stride_dws(
     hls::stream<ap_uint<SIMD*Input_precision> > & out,
     const unsigned int numReps,
     R const &r) {
-    static_assert(IFMChannels % SIMD == 0);
-    static_assert(ConvKernelDim % Stride != 0);
-    const unsigned int multiplying_factor = IFMChannels/SIMD;
-    const unsigned int number_blocks = ConvKernelDim + Stride ;
+    static_assert(IFMChannels % SIMD == 0, "");
+    static_assert(ConvKernelDim % Stride != 0, "");
+    constexpr unsigned  multiplying_factor = IFMChannels/SIMD;
+    constexpr unsigned  number_blocks = ConvKernelDim + Stride ;
+    constexpr unsigned  cycles_write_block = OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor;
+    constexpr unsigned  cycles_read_block = IFMDim * Stride * multiplying_factor;
+    constexpr unsigned  max_cycles = std::max(cycles_write_block, cycles_read_block);
+    constexpr unsigned  baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
+    constexpr unsigned  initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
+
     ap_uint<SIMD*Input_precision> inputBuf[number_blocks][IFMDim * multiplying_factor];
-#pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
     memory_resource(inputBuf, r);
-    const unsigned int cycles_write_block = OFMDim * ConvKernelDim * ConvKernelDim * multiplying_factor;
-    const unsigned int cycles_read_block = IFMDim * Stride * multiplying_factor;
-    const unsigned int max_cycles = std::max(cycles_write_block, cycles_read_block);
-    const unsigned int baseIter = (IFMDim * ConvKernelDim * multiplying_factor) + (OFMDim-1) * max_cycles+std::max(cycles_write_block,OFMDim);
-    const unsigned int initial_buffer_cycles = (IFMDim * ConvKernelDim * multiplying_factor) ;
-    unsigned int counter_internal_block = 0;
-    unsigned int next_block_write = 0;
-    unsigned int current_line = 0;
-    unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, current_k_y = 0, count_simd =0;
-#pragma HLS RESET variable=inp
-  
+#pragma HLS ARRAY_PARTITION variable=inputBuf complete dim=1
 #pragma HLS DEPENDENCE variable=inputBuf inter false
 #pragma HLS DEPENDENCE variable=inputBuf intra false
+    unsigned int counter_internal_block = 0;
+    unsigned int current_line = 0;
+    unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
 
-// #pragma HLS RESOURCE variable inputBuf core=RAM_2P_LUTRAM
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
       unsigned int floor_block_read = 0, ceil_block_read = number_blocks;
       unsigned int read_block = 0;
@@ -931,7 +914,7 @@ void ConvolutionInputGenerator_kernel_stride_dws(
       for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
 
-      #pragma HLS DEPENDENCE variable=current_block_write intra false
+#pragma HLS DEPENDENCE variable=current_block_write intra false
 
             if (inp < initial_buffer_cycles) // Initial buffer of PoolDim lines
             {
@@ -1007,7 +990,7 @@ void ConvolutionInputGenerator_kernel_stride_dws(
                         current_block_write++;
                         if (current_block_write == number_blocks)
                             current_block_write = 0;
-    #pragma HLS DEPENDENCE variable=current_block_write intra false
+#pragma HLS DEPENDENCE variable=current_block_write intra false
                     }
                 }
                 counter_internal_block++; // = (counter_internal_block +1) % max_cycles;
@@ -1055,10 +1038,10 @@ void ConvolutionInputGenerator_dws_MMV(
 		hls::stream<MultiChanData<MMV, SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-	static_assert(IFMChannels % SIMD == 0);
-	static_assert(OFMDim % MMV == 0);
-	static_assert(ConvKernelDim % Stride == 0);
-	static_assert(MMV <= OFMDim);
+	static_assert(IFMChannels % SIMD == 0, "");
+	static_assert(OFMDim % MMV == 0, "");
+	static_assert(ConvKernelDim % Stride == 0, "");
+	static_assert(MMV <= OFMDim, "");
 	constexpr unsigned int multiplying_factor = IFMChannels/SIMD;
 	constexpr unsigned int number_blocks = ConvKernelDim/Stride + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[MMV][number_blocks][Stride * IFMDim * multiplying_factor];
@@ -1074,11 +1057,10 @@ void ConvolutionInputGenerator_dws_MMV(
 			+ OFMDim * std::max(cycles_write_block,cycles_read_block);
 	unsigned int counter_internal_block = 0;
 	unsigned int current_block_write = 0;
-	unsigned int next_block_write = 0;	
 	unsigned int current_line = 0;
 	unsigned int read_block = 0; 
 	unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
-#pragma HLS reset variable=inp
+
 	for (unsigned int count_image = 0; count_image < numReps; count_image++) {
 		for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -1179,7 +1161,7 @@ void ConvolutionInputGenerator_dws_MMV(
 
 /**
  * \brief Sliding Window for 1x1 kernel with stride!=1
- * 
+ *
  * Basically performs a downsampling of the image removing rows and columns
  *
  * \tparam IFMChannels      Number of Input Feature Maps
@@ -1193,28 +1175,36 @@ void ConvolutionInputGenerator_dws_MMV(
  * \param numReps           Number of time the function has to be repeatedly executed (e.g. number of images)
  */
 template<	unsigned int IFMChannels,
-		unsigned int Input_precision,		
-		unsigned int IFMDim, 	
-		unsigned int SIMD,  
+		unsigned int Input_precision,
+		unsigned int IFMDim,
+		unsigned int SIMD,
 		unsigned int Stride>
 void ConvolutionInputGenerator_kernel1(
 		hls::stream<ap_uint<SIMD*Input_precision> > & in,
 		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps) {
-static_assert(IFMChannels % SIMD == 0);
+static_assert(IFMChannels % SIMD == 0, "");
+constexpr unsigned COUNTER_WIDTH = clog2(Stride-1) + 1;
+constexpr unsigned COUNTER_RESET = Stride - 2;
 	for (unsigned int im=0; im<numReps; im++) {
+		ap_int<COUNTER_WIDTH> counter_y = -1;
 		for (unsigned int y = 0; y < IFMDim; y++) {
+			const bool keep_y = counter_y < 0;
+			counter_y = keep_y ? ap_int<COUNTER_WIDTH>(COUNTER_RESET) : ap_int<COUNTER_WIDTH>(counter_y - 1);
+			ap_int<COUNTER_WIDTH> counter_x = -1;
 			for (unsigned int x = 0; x < IFMDim; x++) {
-				for (unsigned int count_simd =0; count_simd < IFMChannels/SIMD; count_simd++) {
+				const bool keep_x = counter_x < 0;
+				counter_x = keep_x ? ap_int<COUNTER_WIDTH>(COUNTER_RESET) : ap_int<COUNTER_WIDTH>(counter_x - 1);
+				for (unsigned int count_simd = 0; count_simd < IFMChannels/SIMD; count_simd++) {
 #pragma HLS pipeline style=flp II=1
 					ap_uint<SIMD*Input_precision> inElem = in.read();
-					if ((x%Stride == 0)&&(y%Stride == 0)) {
+					if (keep_y && keep_x) {
 						out.write(inElem);
 					}
 				}
 			}
 		}
-	}		
+	}
 }
 
 
@@ -1257,7 +1247,7 @@ void ConvolutionInputGenerator_NonSquare(
 		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  static_assert(IFMChannels % SIMD == 0);
+  static_assert(IFMChannels % SIMD == 0, "");
   const unsigned int multiplying_factor = IFMChannels/SIMD;
   const unsigned int number_blocks = ConvKernelDim_y/Stride_y + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks][Stride_x * IFMDim_x * multiplying_factor];
@@ -1271,11 +1261,10 @@ void ConvolutionInputGenerator_NonSquare(
 			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;
   unsigned int current_line = 0;
   unsigned int read_block = 0;
   unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
-#pragma HLS reset variable=inp
+
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -1392,7 +1381,7 @@ void ConvolutionInputGenerator_NonSquare_dws(
 		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  static_assert(IFMChannels % SIMD == 0);
+  static_assert(IFMChannels % SIMD == 0, "");
   const unsigned int multiplying_factor = IFMChannels/SIMD;
   const unsigned int number_blocks = ConvKernelDim_y/Stride_y + 1 ;
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks][Stride_x * IFMDim_x * multiplying_factor];
@@ -1406,11 +1395,10 @@ void ConvolutionInputGenerator_NonSquare_dws(
 			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;
   unsigned int current_line = 0;
   unsigned int read_block = 0;
   unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
-#pragma HLS reset variable=inp
+
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -1532,8 +1520,8 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
 		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  static_assert(IFMChannels % SIMD == 0);
-  static_assert(Dilation_y == 1); // Dilation on the Y axes not yet supported, available only for API definition
+  static_assert(IFMChannels % SIMD == 0, "");
+  static_assert(Dilation_y == 1, ""); // Dilation on the Y axes not yet supported, available only for API definition
 
   const unsigned int multiplying_factor = IFMChannels/SIMD;
   const unsigned int number_blocks = (ConvKernelDim_y*Dilation_y)/Stride_y + 1 ;
@@ -1548,11 +1536,10 @@ void ConvolutionInputGenerator_NonSquare_Dilated(
 			                  + OFMDim_y * std::max(cycles_write_block,cycles_read_block);
   unsigned int counter_internal_block = 0;
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;
   unsigned int current_line = 0;
   unsigned int read_block = 0;
   unsigned int inp = 0, ofm_y = 0, ofm_x = 0, k_y = 0, k_x = 0, count_simd =0;
-#pragma HLS reset variable=inp
+
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -1664,25 +1651,23 @@ void ConvolutionInputGenerator_1D_parallel(
 		hls::stream<ap_uint<SIMD*Input_precision> > & in,
 		hls::stream<ap_uint<ConvKernelDim*SIMD*Input_precision> > & out,
 		const unsigned int numReps,
-		R const &r) {
+		__attribute__((unused)) R const &r) {
 
-  static_assert(Stride == 1);
-  static_assert(IFMChannels % SIMD == 0);
-  const unsigned int number_blocks = ConvKernelDim + 1 ;
+  static_assert(Stride == 1, "");
+  static_assert(IFMChannels % SIMD == 0, "");
+  constexpr unsigned  number_blocks = ConvKernelDim + 1 ;
+  constexpr unsigned  cycles_write_block = 1;
+  constexpr unsigned  cycles_read_block = 1;
+  constexpr unsigned  baseIter = ConvKernelDim // Initial buffer
+			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
+
   ap_uint<SIMD*Input_precision> inputBuf[number_blocks];
-
 #pragma HLS ARRAY_PARTITION variable=inputBuf complete
   //memory_resource(inputBuf, r); use reg regardless of setting
-  const unsigned int cycles_write_block = 1;
-  const unsigned int cycles_read_block = 1;
-  const unsigned int max_cycles = std::max(cycles_write_block,cycles_read_block);
-  const unsigned int baseIter = ConvKernelDim // Initial buffer
-			                  + OFMDim * std::max(cycles_write_block,cycles_read_block);
+
   unsigned int current_block_write = 0;
-  unsigned int next_block_write = 0;
   unsigned int read_block = 0;
-  unsigned int inp = 0, ofm_y = 0, k_y = 0;
-#pragma HLS reset variable=inp
+  unsigned int inp = 0, ofm_y = 0;
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1
@@ -1777,7 +1762,7 @@ void ConvolutionInputGenerator_1D_dws_naive(
 		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps,
 		R const &r) {
-  static_assert(IFMChannels % SIMD == 0);
+  static_assert(IFMChannels % SIMD == 0, "");
 
   constexpr unsigned multiplying_factor = IFMChannels / SIMD;
   constexpr unsigned cycles_write_block = OFMDim_x * ConvKernelDim_x * multiplying_factor;
@@ -1788,7 +1773,7 @@ void ConvolutionInputGenerator_1D_dws_naive(
 			                  + cycles_write_block;
   unsigned int current_line = 0;
   unsigned int inp = 0, ofm_x = 0, k_x = 0, count_simd =0;
-#pragma HLS reset variable=inp
+
   for (unsigned int count_image = 0; count_image < numReps; count_image++) {
     for (unsigned int i = 0; i < baseIter; i++) {
 #pragma HLS pipeline style=flp II=1

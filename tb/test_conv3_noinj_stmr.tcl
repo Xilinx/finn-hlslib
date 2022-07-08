@@ -1,6 +1,5 @@
 ##############################################################################
  #  Copyright (c) 2021, Xilinx, Inc.
- #  Copyright (c) 2022, Advanced Micro Devices, Inc.
  #  All rights reserved.
  #
  #  Redistribution and use in source and binary forms, with or without
@@ -40,8 +39,8 @@
  #
 ###############################################################################
 open_project hls-syn-conv-noinj-stmr
-add_files conv_stmr_noinj_top.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
-add_files -tb conv3_stmr_noinj_tb.cpp -cflags "-std=c++0x -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+add_files conv_stmr_noinj_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+add_files -tb conv3_stmr_noinj_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
 set_top Testbench_conv_noinj_stmr
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}

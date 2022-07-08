@@ -1,6 +1,5 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
- *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -54,6 +53,7 @@
 #define ACTIVATIONS_HPP
 
 #include "interpret.hpp"
+#include <hls_stream.h>
 #include <functional>
 
 namespace comp{
@@ -141,7 +141,7 @@ namespace comp{
 template<typename TA, typename TO>
 class Activation {
 public:
-  TA init(unsigned const  nf, unsigned const  pe) const {
+  TA init(__attribute__((unused)) unsigned const  nf, __attribute__((unused)) unsigned const  pe) const {
 #pragma HLS inline
     return  TA(0);
   }
@@ -159,7 +159,7 @@ public:
 template<typename T>
 class PassThroughActivation : public Activation<T, T> {
 public:
-  T activate(unsigned const  nf, unsigned const  pe, T const &accu) const {
+  T activate(__attribute__((unused)) unsigned const  nf, __attribute__((unused)) unsigned const  pe, T const &accu) const {
 #pragma HLS inline
     return  accu;
   }
@@ -181,7 +181,7 @@ public:
   }
 
 public:
-  bool activate(unsigned const  nf, unsigned const  pe, TA const &accu) const {
+  bool activate(__attribute__((unused)) unsigned const  nf, __attribute__((unused)) unsigned const  pe, TA const &accu) const {
 #pragma HLS inline
     return  Compare()(m_threshold, accu);
   }
@@ -204,7 +204,7 @@ public:
   TA m_thresholds[PE][NF][NumTH];
   
 public:
-  TA init(unsigned const  nf, unsigned const  pe) const {
+  TA init(__attribute__((unused)) unsigned const  nf, __attribute__((unused)) unsigned const  pe) const {
 #pragma HLS inline
     return  TA(0);
   }
@@ -243,7 +243,7 @@ class ChannelWiseOperation {
 public:
   TP parameters[PE][NF];
 public:
-  TI init(unsigned const  nf, unsigned const  pe) const {
+  TI init(__attribute__((unused)) unsigned const  nf, __attribute__((unused)) unsigned const  pe) const {
 #pragma HLS inline
     return  TI(0);
   }
@@ -287,19 +287,15 @@ void Thresholding_Batch(hls::stream<TI> &in,
 
   // how many different rows each neuron will compute
   // alternatively: number of vertical matrix chunks
-  unsigned const NF = NumChannels / PE;
-
-  unsigned nf = 0;
-  unsigned tile = 0; // invariant: tile = nf*SF + sf
+  constexpr unsigned  NF = NumChannels / PE;
 
   // everything merged into a common iteration space (one "big" loop instead
   // of smaller nested loops) to get the pipelinening the way we want
-  for (unsigned i = 0; i < reps * ImgDim * NF; i++)
-  {
+  unsigned nf = 0;
+  for (unsigned i = 0; i < reps * ImgDim * NF; i++) {
 #pragma HLS pipeline style=flp II=1
 
-    TI inElem;
-    inElem = in.read();
+    TI const  inElem = in.read();
     auto outElem = TDstI().template operator()<TO>();
     for (unsigned pe = 0; pe < PE; pe++)
     {
@@ -353,7 +349,7 @@ void Thresholding_Stream_Batch(hls::stream<TI> &in,
   unsigned const NF = NumChannels / PE;
 
   ThresholdsActivation<1, PE, NumSteps, TT, TO, ActVal, comp::less_equal<TT, TT>> internal_thr;
-  #pragma HLS ARRAY_PARTITION variable=internal_thr.m_thresholds complete dim=0
+#pragma HLS ARRAY_PARTITION variable=internal_thr.m_thresholds complete dim=0
 
   // everything merged into a common iteration space (one "big" loop instead
   // of smaller nested loops) to get the pipelinening the way we want
@@ -377,7 +373,7 @@ void Thresholding_Stream_Batch(hls::stream<TI> &in,
       auto const thr_slicer = Slice<TT>()(pe_slicer(pe, 0));
       for (unsigned nt = 0; nt < NumSteps; nt++)
       {
-      #pragma HLS UNROLL
+#pragma HLS UNROLL
         internal_thr.m_thresholds[pe][0][nt] = thr_slicer(nt, 0);
       }
 

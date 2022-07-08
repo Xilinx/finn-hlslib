@@ -1,6 +1,5 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
- *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -114,7 +113,7 @@ template<typename TC, typename TD>
 auto mul(TC const &c, TD const &d, ap_resource_lut const&) -> decltype(c*d) {
 #pragma HLS inline
   decltype(c*d) const  res = c*d;
-#pragma HLS RESOURCE variable=res core=Mul_LUT
+#pragma HLS BIND_OP variable=res op=mul impl=fabric
   return  res;
 }
 
@@ -140,7 +139,7 @@ template<typename TC, typename TD>
 auto mul(TC const &c, TD const &d, ap_resource_dsp const&) -> decltype(c*d) {
 #pragma HLS inline
   decltype(c*d) const  res = c*d;
-#pragma HLS RESOURCE variable=res core=DSP48
+#pragma HLS BIND_OP variable=res op=mul impl=dsp
   return  res;
 }
 

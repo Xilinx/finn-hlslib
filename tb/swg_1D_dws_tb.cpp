@@ -1,6 +1,5 @@
 /******************************************************************************
  *  Copyright (c) 2021, Xilinx, Inc.
- *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -39,7 +38,7 @@
  *  Testbench for the sliding window generator HLS block for 1D convolutions
  *
  *****************************************************************************/
-#define AP_INT_MAX_W 4096
+#define AP_INT_MAX_W 8191
 #include <hls_stream.h>
 #include "ap_int.h"
 #include <iostream>

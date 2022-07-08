@@ -1,6 +1,5 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
- *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -40,7 +39,7 @@
  *  Testbench for the HLS block which performs conv. using redundancy checks
  *
  *****************************************************************************/
-#define AP_INT_MAX_W 16384
+#define AP_INT_MAX_W 8191
 #include <iostream>
 #include <fstream>
 #include <time.h>

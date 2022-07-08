@@ -1,6 +1,5 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
- *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -58,7 +57,7 @@ using namespace hls;
 #define INPUT_BITS 4
 #define BIPO_OUT_BITS  (INPUT_BITS+1)
 #define ADD_OUT_BITS  (BIPO_OUT_BITS+1)
-#define MULT_OUT_BITS  (ADD_OUT_BITS+2)
+#define MULT_OUT_BITS  (ADD_OUT_BITS+3)
 #define OUTPUT_BITS MULT_OUT_BITS
 
 #define IN_T ap_uint

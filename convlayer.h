@@ -1,6 +1,5 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
- *  Copyright (c) 2022, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -54,6 +53,7 @@
 #include <hls_stream.h>
 
 #include "streamtools.h"
+#include "slidingwindow.h"
 #include "mvau.hpp"
 #include "tmrcheck.hpp"
 
