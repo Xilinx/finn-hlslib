@@ -47,7 +47,7 @@ int main() {
 
 		hls::stream<TI>  src("src");
 		hls::stream<TI>  bypass("bypass");
-		hls::stream<TO>  dst("dst");
+		hls::stream<TO>  dst[2];
 		for(unsigned  k = 0; k < 12; k++) {
 			TI const  max = dist(rnd);
 			src.write(max);
@@ -63,13 +63,21 @@ int main() {
 
 			max_norm_top(src, dst);
 
-			float const  ref_scale = float((1uL<<WO)-1) / max;
+			float const  ref_scale[2] = {
+				float((1uL<<WO)-1) / max,
+				float(NORMAX1)     / max
+			};
 			for(unsigned  i = 0; i < FM_SIZE; i++) {
 				TI const  x = bypass.read();
-				TO const  y = dst.read();
-				float const  ref = ref_scale * x;
-				bool  const  ok  = std::abs(y-ref) < 0.6f;
-				std::cout << std::setw(3) << x << " -> " << std::setw(3) << y << " / " << std::setw(7) << ref << '\t' << (ok? '.' : 'X') << std::endl;
+				std::cout << std::setw(3) << x << " ->";
+				for(unsigned  j = 0; j < 2; j++) {
+					TO const     y   = dst[j].read();
+					float const  ref = ref_scale[j] * x;
+					bool  const  ok  = std::abs(y-ref) < 0.6f;
+					if(!ok)  mismatches++;
+					std::cout <<'\t' << std::setw(3) << y << " / " << std::setw(7) << ref << '\t' << (ok? '.' : 'X');
+				}
+				std::cout << std::endl;
 			}
 			std::cout << "--------------\n" << std::endl;
 		}

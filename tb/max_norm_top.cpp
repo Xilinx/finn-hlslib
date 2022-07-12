@@ -36,11 +36,19 @@
 
 
 void max_norm_top(
-	hls::stream<ap_uint<WI>> &src,
-	hls::stream<ap_uint<WO>> &dst
+	hls::stream<ap_uint<WI>>  &src,
+	hls::stream<ap_uint<WO>> (&dst)[2]
 ) {
 #pragma HLS interface AXIS port=src
-#pragma HLS interface AXIS port=dst
+#pragma HLS interface AXIS port=dst[0]
+#pragma HLS interface AXIS port=dst[1]
 #pragma HLS dataflow disable_start_propagation
-	max_norm<FM_SIZE>(src, dst);
+	hls::stream<ap_uint<WI>>  split[2];
+	for(unsigned  i = 0; i < FM_SIZE; i++) {
+		auto const  x = src.read();
+		split[0].write(x);
+		split[1].write(x);
+	}
+	max_norm<FM_SIZE, NORMAX0>(split[0], dst[0]);
+	max_norm<FM_SIZE, NORMAX1>(split[1], dst[1]);
 }

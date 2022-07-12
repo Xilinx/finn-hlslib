@@ -41,8 +41,11 @@ constexpr unsigned  FM_SIZE = 12;
 constexpr unsigned  WI = 8;
 constexpr unsigned  WO = 6;
 
+constexpr unsigned  NORMAX0 =  0;
+constexpr unsigned  NORMAX1 = 42;
+
 void max_norm_top(
-	hls::stream<ap_uint<WI>> &src,
-	hls::stream<ap_uint<WO>> &dst
+	hls::stream<ap_uint<WI>>  &src,
+	hls::stream<ap_uint<WO>> (&dst)[2]
 );
 #endif

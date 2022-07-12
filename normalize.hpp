@@ -38,6 +38,8 @@
 #include <hls_stream.h>
 #include <functional>
 
+#include "utils.hpp"
+
 /**
  * Subjects a feature map stream [FM_SIZE x CHANNELS] to a channelwise normalization
  * using the coefficients obtained by calling f() CHANNELS times for each input
@@ -86,14 +88,18 @@ void normalize(
  *	x_i -> round( (2^WO-1) * x_i / max{x_j | j=0:FM_SIZE} )
  */
 template<
-	unsigned  FM_SIZE,	// Vector length
-	int  WI,			// Input Precision
-	int  WO				// Output Precision
+	unsigned  FM_SIZE,		// Vector length
+	unsigned  NORMAX = 0,	// Value of normalized maximum: 0 -> 2^WO-1
+	int  WI,				// Input Precision
+	int  WO					// Output Precision
 >
 void max_norm(
 	hls::stream<ap_uint<WI>> &src,
 	hls::stream<ap_uint<WO>> &dst
 ) {
+	static_assert(clog2(1+NORMAX) <= WO, "Specified normalized maximum exceeds output range");
+	static ap_uint<WO> const  MAX { NORMAX? NORMAX : -1u };
+
 #pragma HLS dataflow disable_start_propagation
 	hls::stream<ap_uint<WI>>  buffer;
 #pragma HLS stream variable=buffer depth=FM_SIZE
@@ -110,7 +116,7 @@ void max_norm(
 		[max]() -> ap_uint<WI+WO+1> {
 #pragma HLS inline
 // @todo Force a LUT implementation for low precisions (8 bits and fewer) instead of true division.
-			ap_uint<WI+WO+2> const  d = ap_uint<WI+WO+2>((ap_uint<WO>(-1), ap_uint<WI+2>(0))) / max;
+			ap_uint<WI+WO+2> const  d = ap_uint<WI+WO+2>((MAX, ap_uint<WI+2>(0))) / max;
 			return  d(WI+WO+1, 1) + d[0];
 		},
 		[](ap_uint<WI+WO+1> const &scale, ap_uint<WI> const &x) -> ap_uint<WO> {
