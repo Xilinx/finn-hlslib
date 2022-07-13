@@ -48,6 +48,8 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
+#include <ap_int.h>
+
 #include <iostream>
 #include <fstream>
 #include <cstddef>
