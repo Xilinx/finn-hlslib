@@ -158,15 +158,16 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
 
 
 /**
- * \brief Vector vector activate streaming function
+ * \brief Vector vector activate with streaming weights
  *
  * The function performs the multiplication between a weigth vector and the input activation vector,
  * accumulating the results and then applying an activation function on the accumulated result.
- * It is used to implement depth-wise separable convolution
+ * It is used to implement depth-wise separable convolution. The weights are supplied from a stream
+ * input to facilitate memory-compute decoupling.
  * 
  * \tparam Channels   Number of channels
  * \tparam Kernel_2   Kernel * Kernel dimension (Kernel ^ 2 if square)
- * \tparam SIMD       Number of input columns computed in parallel
+ * \tparam SIMD       Number of input columns computed in parallel, must be set to 1
  * \tparam PE         Number of output rows computed in parallel
  * \tparam MMV        Number of output pixels computed in parallel
  * \tparam TSrcI      DataType of the input activation (as used in the MAC)
@@ -198,6 +199,7 @@ void Vector_Vector_Activate_Stream_Batch(
 	int const  reps,
 	R const &r
 ) {
+	static_assert(SIMD == 1, "SIMD parallelism not yet supported.");
 
 	// how many different rows each neuron will compute
 	// alternatively: number of vertical matrix chunks
@@ -205,7 +207,8 @@ void Vector_Vector_Activate_Stream_Batch(
 
 	// how many synapse groups each row is split into
 	// alternatively: number of horizontal matrix chunks
-	constexpr unsigned  SF = (Channels*Kernel_2) / Channels;
+	// always equal to # kernel pixels since no SIMD
+	constexpr unsigned  SF = Kernel_2;
 	decltype(activation.init(0,0))  accu[MMV][PE];
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
 
