@@ -79,9 +79,15 @@ node {
             stage('ADD') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_add.tcl")
             }
+            stage('MAX_NORM') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_max_norm.tcl")
+            }
         }, fifthBranch: {
             stage('DUP_STREAM') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dup_stream.tcl")
+            }
+            stage('WEIGHT_SPLIT') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_weight_stream_splitter.tcl")
             }
         }, sixthBranch: {
             stage('CONV3') {
