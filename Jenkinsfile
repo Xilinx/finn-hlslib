@@ -124,6 +124,9 @@ node {
             stage('UPSAMPLE') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample.tcl")
             }
+            stage('UPSAMPLE_1D') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample_1d.tcl")
+            }
         }, eleventhBranch: {
             stage('CHANNELWISE OP') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_channelwise_op.tcl")

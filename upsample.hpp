@@ -44,6 +44,10 @@
 #ifndef UPSAMPLE_HPP
 #define UPSAMPLE_HPP
 
+#include <ap_int.h>
+#include <hls_stream.h>
+
+
 /**
  * \brief Upsampling with the Nearest Neighbour algorithm. Works with square feature maps
  *
