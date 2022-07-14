@@ -140,4 +140,39 @@ void UpsampleNearestNeighbour_Batch(
   }
 }
 
+/**
+ * \brief Upsampling a vector with the Nearest Neighbour algorithm.
+ *
+ * \tparam	OFMDim		Output vector length - must be a whole multiple of IFMDim
+ * \tparam	IFMDim		Input vector length
+ * \tparam	NumChannels Channels per element
+ * \tparam	In_t		Per-channel input type
+ *
+ * \param	src	Input stream
+ * \param	dst	Output stream
+ */
+template<
+	unsigned  OFMDim,		// Output vector length - must be a whole multiple of IFMDim
+	unsigned  IFMDim,		// Input vector length
+	unsigned  NumChannels,	// Channels per element
+	typename  In_t			// Per-channel input type
+>
+void UpsampleNearestNeighbour_1D(
+        hls::stream<ap_uint<NumChannels * In_t::width>> &src,
+        hls::stream<ap_uint<NumChannels * In_t::width>> &dst
+) {
+	static_assert(OFMDim % IFMDim == 0, "OFMDim must be a whole multiple of IFMDim.");
+	constexpr unsigned  REPS = OFMDim / IFMDim;
+
+	using  buf_t = ap_uint<NumChannels * In_t::width>;
+	buf_t     buf;
+	unsigned  rep = 0;
+	for(unsigned  i = 0; i < OFMDim; i++) {
+#pragma HLS pipeline II=1 style=flp
+		if(rep == 0)  buf = src.read();
+		dst.write(buf);
+		if(++rep == REPS)  rep = 0;
+	}
+}
+
 #endif
