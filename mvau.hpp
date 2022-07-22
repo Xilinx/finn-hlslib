@@ -55,6 +55,7 @@
 
 #include "mac.hpp"
 #include "interpret.hpp"
+#include "weights.hpp"
 
 /**
  * \brief Matrix vector activate function

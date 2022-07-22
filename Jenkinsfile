@@ -79,9 +79,15 @@ node {
             stage('ADD') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_add.tcl")
             }
+            stage('MAX_NORM') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_max_norm.tcl")
+            }
         }, fifthBranch: {
             stage('DUP_STREAM') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dup_stream.tcl")
+            }
+            stage('WEIGHT_SPLIT') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_weight_stream_splitter.tcl")
             }
         }, sixthBranch: {
             stage('CONV3') {
@@ -123,6 +129,9 @@ node {
         }, tenthBranch: {
             stage('UPSAMPLE') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample.tcl")
+            }
+            stage('UPSAMPLE_1D') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample_1d.tcl")
             }
         }, eleventhBranch: {
             stage('CHANNELWISE OP') {
