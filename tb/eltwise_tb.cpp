@@ -1,15 +1,14 @@
-#include <iostream>
-#include <cmath>
-#include <ctime>
-#include <cstring>
 #include <hls_stream.h>
-#include <cstdlib>
-#include "ap_int.h"
+#include <ap_int.h>
+
+#include <iostream>
+#include <iomanip>
 
 #include "data/eltwise_config.h"
 
+
 using namespace hls;
-using namespace std;
+
 
 void Testbench_Eltwise(int mode, stream<ap_uint<NUM_CHANNELS * INPUT_1_WIDTH> > & in0, stream<ap_uint<NUM_CHANNELS * INPUT_2_WIDTH> > & in1, stream<ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> > & out);
 
@@ -35,12 +34,13 @@ void sw_golden(int mode, ap_uint<NUM_CHANNELS * INPUT_1_WIDTH> val1, ap_uint<NUM
 	}
 }
 
-int main()
-{
-	stream<ap_uint<NUM_CHANNELS * INPUT_1_WIDTH> > input_stream1("input_stream1");
+int main() {
+
+	stream<ap_uint<NUM_CHANNELS * INPUT_1_WIDTH>> input_stream1("input_stream1");
 	stream<ap_uint<NUM_CHANNELS * INPUT_2_WIDTH>> input_stream2("input_stream2");
-	stream<ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> > output_stream("output_stream");
-	static ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> expected[NUM_REPEAT*NUM_WORDS];
+	stream<ap_uint<NUM_CHANNELS * OUTPUT_WIDTH>>  output_stream("output_stream");
+	ap_uint<NUM_CHANNELS * OUTPUT_WIDTH>  expected[NUM_REPEAT*NUM_WORDS];
+
 	for(int mode = 0; mode < 3; mode++) {
 		unsigned int count_out = 0;
 		unsigned int count_in = 0;
@@ -52,19 +52,15 @@ int main()
 			input_stream2.write(value2);		
 		}
 		Testbench_Eltwise(mode, input_stream1, input_stream2, output_stream);
-		for (unsigned int counter = 0; counter < NUM_REPEAT*NUM_WORDS; counter++)
-		{
+		for (unsigned int counter = 0; counter < NUM_REPEAT*NUM_WORDS; counter++) {
 			ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> value = output_stream.read();
-			if(value!= expected[counter])
-			{
-				cout << "ERROR with mode " << mode << " counter " << counter << std::hex << " expected " << expected[counter] << " value " << value << std::dec <<  endl;
-				return(1);
+			if(value!= expected[counter]) {
+				std::cout << "ERROR with mode " << mode << " counter " << counter << std::hex << " expected " << expected[counter] << " value " << value << std::dec << std::endl;
+				return  1;
 			}
 			else {
-				cout << "mode = " << mode << " counter = " << counter << " " << std::hex << value << std::dec << endl;
+				std::cout << "mode = " << mode << " counter = " << counter << " " << std::hex << value << std::dec << std::endl;
 			}
 		}
 	}
 }
-
-
