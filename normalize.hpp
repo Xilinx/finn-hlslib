@@ -85,20 +85,21 @@ void normalize(
  * Quantized maximum normalization over input vectors of length FM_SIZE
  * into the numeric range of the output type `ap_uint<WO>`:
  *
- *	x_i -> round( (2^WO-1) * x_i / max{x_j | j=0:FM_SIZE} )
+ *	x_i -> round( (2^WO-1) * SCALE * x_i / max{x_j | j=0:FM_SIZE} )
  */
 template<
-	unsigned  FM_SIZE,		// Vector length
-	unsigned  NORMAX = 0,	// Value of normalized maximum: 0 -> 2^WO-1
-	int  WI,				// Input Precision
-	int  WO					// Output Precision
+	unsigned  FM_SIZE,	// Vector length
+	int  WI,			// Input Precision
+	int  WO				// Output Precision
 >
 void max_norm(
 	hls::stream<ap_uint<WI>> &src,
-	hls::stream<ap_uint<WO>> &dst
+	hls::stream<ap_uint<WO>> &dst,
+	float const  scale = 1.0f
 ) {
-	static_assert(clog2(1+NORMAX) <= WO, "Specified normalized maximum exceeds output range");
-	static ap_uint<WO> const  MAX { NORMAX? NORMAX : -1u };
+#pragma HLS function_instantiate variable=scale
+//	assert((0.0f < scale) && (scale <= 1.0f));
+	ap_uint<WO+WI+3> const  MAX = (unsigned long)(((1<<WO)-1) * (1<<(WI+3)) * scale + 0.5f);
 
 #pragma HLS dataflow disable_start_propagation
 	hls::stream<ap_uint<WI>>  buffer;
@@ -113,16 +114,17 @@ void max_norm(
 	}
 	normalize<FM_SIZE, 1>(
 		buffer, dst,
-		[max]() -> ap_uint<WI+WO+1> {
+		[MAX, max]() -> ap_uint<WI+WO+2> {
 #pragma HLS inline
 // @todo Force a LUT implementation for low precisions (8 bits and fewer) instead of true division.
-			ap_uint<WI+WO+2> const  d = ap_uint<WI+WO+2>((MAX, ap_uint<WI+2>(0))) / max;
-			return  d(WI+WO+1, 1) + d[0];
+			ap_uint<WI+WO+3> const  d = MAX / max;
+			std::cerr << "MAX: " << MAX << std::endl;
+			return  d(WI+WO+2, 1) + d[0];
 		},
-		[](ap_uint<WI+WO+1> const &scale, ap_uint<WI> const &x) -> ap_uint<WO> {
+		[](ap_uint<WI+WO+2> const &scale, ap_uint<WI> const &x) -> ap_uint<WO> {
 #pragma HLS inline
-			ap_uint<WO+WI+1> const  p = scale*x;
-			return  p(WO+WI, WI+1) + p[WI];
+			ap_uint<WO+WI+2> const  p = scale*x;
+			return  p(WO+WI+1, WI+2) + p[WI+1];
 		}
 	);
 
