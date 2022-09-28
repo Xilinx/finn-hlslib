@@ -36,6 +36,7 @@
 
 #include <ap_int.h>
 #include <hls_stream.h>
+#include <hls_math.h>
 #include <functional>
 
 #include "utils.hpp"
@@ -99,7 +100,7 @@ void max_norm(
 ) {
 #pragma HLS function_instantiate variable=scale
 //	assert((0.0f < scale) && (scale <= 1.0f));
-	ap_uint<WO+WI+3> const  MAX = (unsigned long)(((1<<WO)-1) * (1<<(WI+3)) * scale + 0.5f);
+	float const  MAX = ((1<<WO)-1) * scale;
 
 #pragma HLS dataflow disable_start_propagation
 	hls::stream<ap_uint<WI>>  buffer;
@@ -114,17 +115,16 @@ void max_norm(
 	}
 	normalize<FM_SIZE, 1>(
 		buffer, dst,
-		[MAX, max]() -> ap_uint<WI+WO+2> {
+		[MAX, max]() -> float {
 #pragma HLS inline
-// @todo Force a LUT implementation for low precisions (8 bits and fewer) instead of true division.
-			ap_uint<WI+WO+3> const  d = MAX / max;
+			float const  d = MAX / max;
 			std::cerr << "MAX: " << MAX << std::endl;
-			return  d(WI+WO+2, 1) + d[0];
+			return  d;
 		},
-		[](ap_uint<WI+WO+2> const &scale, ap_uint<WI> const &x) -> ap_uint<WO> {
+		[](float const &scale, ap_uint<WI> const &x) -> ap_uint<WO> {
 #pragma HLS inline
-			ap_uint<WO+WI+2> const  p = scale*x;
-			return  p(WO+WI+1, WI+2) + p[WI+1];
+			float const  p = scale*x;
+			return  ap_uint<WO>(int(rintf(p)));
 		}
 	);
 
