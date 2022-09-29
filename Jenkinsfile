@@ -79,6 +79,9 @@ node {
             stage('ADD') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_add.tcl")
             }
+            stage('ELTWISE') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_eltwise.tcl")
+            }
             stage('MAX_NORM') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_max_norm.tcl")
             }
