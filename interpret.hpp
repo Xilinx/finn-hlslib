@@ -175,11 +175,13 @@ class Recast {
   }
 };
 
+
 template<typename T>
 struct Caster {
 	template<int M>
 	static T cast(ap_int<M> const &arg) { return  T(arg); }
 };
+
 
 template<int W, int I, ap_q_mode Q, ap_o_mode O, int N>
 struct Caster<ap_fixed<W, I, Q, O, N>> {
@@ -188,6 +190,12 @@ struct Caster<ap_fixed<W, I, Q, O, N>> {
     return  ap_fixed<W, I, Q, O, N>(arg);
   }
 }; 
+
+template<>
+struct Caster<float> {
+	template<int M>
+	static float cast(ap_int<M> const &arg) { return  *reinterpret_cast<const float*>(&arg); }
+};
 
 template<typename T, unsigned STRIDE=T::width>
 class Slice {
