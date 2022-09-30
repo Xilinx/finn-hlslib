@@ -39,7 +39,6 @@
 
 #ifndef ELTWISE_HPP
 #define ELTWISE_HPP
-
 #include <hls_stream.h>
 
 
@@ -86,7 +85,8 @@ void StreamingEltwise(
 		auto outElem = SliceOut().template operator()<TStrmOut>();
 		for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS UNROLL
-			outElem(pe, 0, 1) = f(in0_slice_channels(pe, 0), in1_slice_channels(pe, 0));
+			auto res = f(in0_slice_channels(pe, 0), in1_slice_channels(pe, 0));
+			outElem(pe, 0, 1) = *reinterpret_cast<ap_uint<SliceOut::width>*>(&res);
 		}
 		out.write(outElem);
 	}
