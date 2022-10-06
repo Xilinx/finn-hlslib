@@ -85,7 +85,7 @@ void normalize(
  * Quantized maximum normalization over input vectors of length FM_SIZE
  * into the numeric range of the output type `ap_uint<WO>`:
  *
- *	x_i -> round( (2^WO-1) * x_i / max{x_j | j=0:FM_SIZE} )
+ *	x_i -> round( NORMAX * x_i / max{x_j | j=0:FM_SIZE} )
  */
 template<
 	unsigned  FM_SIZE,		// Vector length
@@ -104,6 +104,7 @@ void max_norm(
 	hls::stream<ap_uint<WI>>  buffer;
 #pragma HLS stream variable=buffer depth=FM_SIZE
 
+	// Buffer input and scan it for the maximum
 	ap_uint<WI>  max = 1;	// Prevent division by zero
 	for(unsigned  i = 0; i < FM_SIZE; i++) {
 #pragma HLS pipeline II=1 style=flp
@@ -111,20 +112,15 @@ void max_norm(
 		max = std::max(max, x);
 		buffer.write(x);
 	}
-	normalize<FM_SIZE, 1>(
-		buffer, dst,
-		[max]() -> ap_uint<WI+WO+1> {
-#pragma HLS inline
-// @todo Force a LUT implementation for low precisions (8 bits and fewer) instead of true division.
-			ap_uint<WI+WO+2> const  d = ap_uint<WI+WO+2>((MAX, ap_uint<WI+2>(0))) / max;
-			return  d(WI+WO+1, 1) + d[0];
-		},
-		[](ap_uint<WI+WO+1> const &scale, ap_uint<WI> const &x) -> ap_uint<WO> {
-#pragma HLS inline
-			ap_uint<WO+WI+1> const  p = scale*x;
-			return  p(WO+WI, WI+1) + p[WI];
-		}
-	);
+
+	// Replay buffer normalizing all values
+	for(unsigned  i = 0; i < FM_SIZE; i++) {
+#pragma HLS pipeline II=1 style=flp
+		ap_uint<WO+WI>   const  a = MAX * buffer.read();
+		ap_uint<WO+WI+1> const  b = (a, ap_uint<1>(0));	// div with one fractional binary digit for rounding
+		ap_uint<WO+1>    const  q = b / max;
+		dst.write(q(WO, 1) + q[0]);
+	}
 
 } // max_norm()
 

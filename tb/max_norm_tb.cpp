@@ -73,7 +73,7 @@ int main() {
 				for(unsigned  j = 0; j < 2; j++) {
 					TO const     y   = dst[j].read();
 					float const  ref = ref_scale[j] * x;
-					bool  const  ok  = std::abs(y-ref) < 0.6f;
+					bool  const  ok  = std::abs(y-ref) <= 0.5f;
 					if(!ok)  mismatches++;
 					std::cout <<'\t' << std::setw(3) << y << " / " << std::setw(7) << ref << '\t' << (ok? '.' : 'X');
 				}
