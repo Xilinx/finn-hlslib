@@ -30,7 +30,7 @@
  *
  ******************************************************************************/
 
-node {
+node('finn-build || built-in') {
     def app
     stage('Clone repository') {
         /* Let's make sure we have the repository cloned to our workspace */
