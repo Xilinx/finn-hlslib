@@ -1,5 +1,5 @@
 #define KERNEL_DIM 3 
-#define SIMD1 1
+#define SIMD1 9
 #define PE1 8 
 #define MMV1 1 
 #define WIDTH 4 
