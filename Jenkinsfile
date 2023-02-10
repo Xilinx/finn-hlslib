@@ -30,7 +30,7 @@
  *
  ******************************************************************************/
 
-node {
+node('finn-build || built-in') {
     def app
     stage('Clone repository') {
         /* Let's make sure we have the repository cloned to our workspace */
@@ -40,7 +40,8 @@ node {
         'LC_ALL=C',
         'LANG=C',
         "FINN_HLS_ROOT=${env.WORKSPACE}",
-        "HLS_ENV_SRC=/proj/xbuilds/2022.1_released/installs/lin64/Vitis/2022.1/settings64.sh"
+        "HLS_ENV_SRC=/proj/xbuilds/2022.1_released/installs/lin64/Vitis/2022.1/settings64.sh",
+        "HOME=${env.WORKSPACE}"
     ]){
         parallel firstBranch: {
             stage('SWG') {
@@ -78,6 +79,12 @@ node {
         }, fourthBranch: {
             stage('ADD') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_add.tcl")
+            }
+            stage('ELTWISE') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_eltwise.tcl")
+            }
+            stage('MAX_NORM') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_max_norm.tcl")
             }
         }, fifthBranch: {
             stage('DUP_STREAM') {
@@ -123,6 +130,9 @@ node {
         }, tenthBranch: {
             stage('UPSAMPLE') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample.tcl")
+            }
+            stage('UPSAMPLE_1D') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample_1d.tcl")
             }
         }, eleventhBranch: {
             stage('CHANNELWISE OP') {

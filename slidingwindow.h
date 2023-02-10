@@ -1162,7 +1162,7 @@ void ConvolutionInputGenerator_dws_MMV(
 /**
  * \brief Sliding Window for 1x1 kernel with stride!=1
  *
- * Basically performs a downsampling of the image removing rows and columns
+ * Performs a downsampling of a 2D square image, removing rows and columns
  *
  * \tparam IFMChannels      Number of Input Feature Maps
  * \tparam Input_precision  Number bits per pixel
@@ -1179,7 +1179,57 @@ template<	unsigned int IFMChannels,
 		unsigned int IFMDim,
 		unsigned int SIMD,
 		unsigned int Stride>
-void ConvolutionInputGenerator_kernel1(
+void ConvolutionInputGenerator_2D_kernel1(
+		hls::stream<ap_uint<SIMD*Input_precision> > & in,
+		hls::stream<ap_uint<SIMD*Input_precision> > & out,
+		const unsigned int numReps) {
+static_assert(IFMChannels % SIMD == 0, "");
+constexpr unsigned COUNTER_WIDTH = clog2(Stride-1) + 1;
+constexpr unsigned COUNTER_RESET = Stride - 2;
+constexpr unsigned MULTIPLYING_FACTOR = IFMChannels/SIMD;
+	for (unsigned int im=0; im<numReps; im++) {
+#pragma HLS performance target_ti=IFMDim*IFMDim*IFMChannels/SIMD
+		ap_int<COUNTER_WIDTH> counter_y = -1;
+		for (unsigned int y = 0; y < IFMDim; y++) {
+			const bool keep_y = counter_y < 0;
+			counter_y = keep_y ? ap_int<COUNTER_WIDTH>(COUNTER_RESET) : ap_int<COUNTER_WIDTH>(counter_y - 1);
+			ap_int<COUNTER_WIDTH> counter_x = -1;
+			for (unsigned int x = 0; x < IFMDim; x++) {
+#pragma HLS pipeline style=flp II=IFMChannels/SIMD
+				const bool keep_x = counter_x < 0;
+				counter_x = keep_x ? ap_int<COUNTER_WIDTH>(COUNTER_RESET) : ap_int<COUNTER_WIDTH>(counter_x - 1);
+				for (unsigned int count_simd = 0; count_simd < MULTIPLYING_FACTOR; count_simd++) {
+					ap_uint<SIMD*Input_precision> inElem = in.read();
+					if (keep_y && keep_x) {
+						out.write(inElem);
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * \brief Sliding Window for 1x1 kernel with stride!=1
+ *
+ * Performs a downsampling of 1D data, removing elements at stride
+ *
+ * \tparam IFMChannels      Number of Input Feature Maps
+ * \tparam Input_precision  Number bits per pixel
+ * \tparam IFMDim           Width of the Input Feature Map (assumed 1D)
+ * \tparam SIMD             Number of input columns computed in parallel
+ * \tparam Stride           Stride of the convolutional kernel
+ *
+ * \param in                Input stream
+ * \param out               Output stream
+ * \param numReps           Number of time the function has to be repeatedly executed (e.g. number of images)
+ */
+template<	unsigned int IFMChannels,
+		unsigned int Input_precision,
+		unsigned int IFMDim,
+		unsigned int SIMD,
+		unsigned int Stride>
+void ConvolutionInputGenerator_1D_kernel1(
 		hls::stream<ap_uint<SIMD*Input_precision> > & in,
 		hls::stream<ap_uint<SIMD*Input_precision> > & out,
 		const unsigned int numReps) {
@@ -1187,20 +1237,15 @@ static_assert(IFMChannels % SIMD == 0, "");
 constexpr unsigned COUNTER_WIDTH = clog2(Stride-1) + 1;
 constexpr unsigned COUNTER_RESET = Stride - 2;
 	for (unsigned int im=0; im<numReps; im++) {
-		ap_int<COUNTER_WIDTH> counter_y = -1;
-		for (unsigned int y = 0; y < IFMDim; y++) {
-			const bool keep_y = counter_y < 0;
-			counter_y = keep_y ? ap_int<COUNTER_WIDTH>(COUNTER_RESET) : ap_int<COUNTER_WIDTH>(counter_y - 1);
-			ap_int<COUNTER_WIDTH> counter_x = -1;
-			for (unsigned int x = 0; x < IFMDim; x++) {
-				const bool keep_x = counter_x < 0;
-				counter_x = keep_x ? ap_int<COUNTER_WIDTH>(COUNTER_RESET) : ap_int<COUNTER_WIDTH>(counter_x - 1);
-				for (unsigned int count_simd = 0; count_simd < IFMChannels/SIMD; count_simd++) {
+		ap_int<COUNTER_WIDTH> counter_x = -1;
+		for (unsigned int x = 0; x < IFMDim; x++) {
+			const bool keep_x = counter_x < 0;
+			counter_x = keep_x ? ap_int<COUNTER_WIDTH>(COUNTER_RESET) : ap_int<COUNTER_WIDTH>(counter_x - 1);
+			for (unsigned int count_simd = 0; count_simd < IFMChannels/SIMD; count_simd++) {
 #pragma HLS pipeline style=flp II=1
-					ap_uint<SIMD*Input_precision> inElem = in.read();
-					if (keep_y && keep_x) {
-						out.write(inElem);
-					}
+				ap_uint<SIMD*Input_precision> inElem = in.read();
+				if (keep_x) {
+					out.write(inElem);
 				}
 			}
 		}
