@@ -92,11 +92,11 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
 
   // how many different rows each neuron will compute
   // alternatively: number of vertical matrix chunks
-  unsigned const  NF = Channels / PE;
+  constexpr unsigned  NF = Channels / PE;
 
   // how many synapse groups each row is split into
   // alternatively: number of horizontal matrix chunks
-  unsigned const  SF = Kernel_2 / SIMD;
+  constexpr unsigned  SF = Kernel_2 / SIMD;
   decltype(activation.init(0,0))  accu[MMV][PE];
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
 
@@ -105,7 +105,7 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
   unsigned  tile = 0; // invariant: tile = nf*SF + sf
   // everything merged into a common iteration space (one "big" loop instead
   // of smaller nested loops) to get the pipelinening the way we want
-  unsigned const TOTAL_FOLD = NF * SF ;
+  constexpr unsigned  TOTAL_FOLD = NF * SF ;
   for(unsigned  i = 0; i < reps * TOTAL_FOLD; i++) {
 #pragma HLS pipeline style=flp II=1
     TI  inElem;
