@@ -58,7 +58,7 @@
  * 
  * \tparam Channels   Number of channels
  * \tparam Kernel_2   Kernel * Kernel dimension (Kernel ^ 2 if square)
- * \tparam SIMD       Number of input columns computed in parallel, must be set to 1
+ * \tparam SIMD       Number of input columns computed in parallel
  * \tparam PE         Number of output rows computed in parallel
  * \tparam MMV        Number of output pixels computed in parallel
  * \tparam TSrcI      DataType of the input activation (as used in the MAC)
@@ -89,16 +89,14 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
 				  int const  reps,
 				  R const &r) {
 
-  static_assert(SIMD == 1, "SIMD parallelism not yet supported.");
 
   // how many different rows each neuron will compute
   // alternatively: number of vertical matrix chunks
-  unsigned const  NF = Channels / PE;
+  constexpr unsigned  NF = Channels / PE;
 
   // how many synapse groups each row is split into
   // alternatively: number of horizontal matrix chunks
-  // always equal to # kernel pixels since no SIMD
-  unsigned const  SF = Kernel_2;
+  constexpr unsigned  SF = Kernel_2 / SIMD;
   decltype(activation.init(0,0))  accu[MMV][PE];
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
 
@@ -107,7 +105,7 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
   unsigned  tile = 0; // invariant: tile = nf*SF + sf
   // everything merged into a common iteration space (one "big" loop instead
   // of smaller nested loops) to get the pipelinening the way we want
-  unsigned const TOTAL_FOLD = NF * SF ;//* Channels/SIMD;
+  constexpr unsigned  TOTAL_FOLD = NF * SF ;
   for(unsigned  i = 0; i < reps * TOTAL_FOLD; i++) {
 #pragma HLS pipeline style=flp II=1
     TI  inElem;
@@ -127,9 +125,16 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
     for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS UNROLL
       auto const  wgt = TWeightI()(w[pe]);
+
+      ap_uint<SIMD*TSrcI::width> act_simd= 0;
+      for(unsigned int simd = 0; simd < SIMD; simd++) {
+        act_simd(TSrcI::width*(simd+1)-1, TSrcI::width*simd) = (Slice<ap_uint<PE*TSrcI::width>>()(inElem)(SIMD - simd - 1,0))
+                                                               (TSrcI::width*(pe+1)-1, TSrcI::width*pe);
+      }
+
       for (unsigned mmv = 0; mmv < MMV; mmv++){
-        auto const  act = TSrcI()(inElem, mmv);
-		accu[mmv][pe] += mul(wgt[0], act(pe,mmv), r);
+        auto const  act = TSrcI()(act_simd, mmv);
+        accu[mmv][pe] = mac<SIMD>(accu[mmv][pe], wgt, act, r, mmv);
       }
     }
 
@@ -167,7 +172,7 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
  * 
  * \tparam Channels   Number of channels
  * \tparam Kernel_2   Kernel * Kernel dimension (Kernel ^ 2 if square)
- * \tparam SIMD       Number of input columns computed in parallel, must be set to 1
+ * \tparam SIMD       Number of input columns computed in parallel
  * \tparam PE         Number of output rows computed in parallel
  * \tparam MMV        Number of output pixels computed in parallel
  * \tparam TSrcI      DataType of the input activation (as used in the MAC)
@@ -199,7 +204,6 @@ void Vector_Vector_Activate_Stream_Batch(
 	int const  reps,
 	R const &r
 ) {
-	static_assert(SIMD == 1, "SIMD parallelism not yet supported.");
 
 	// how many different rows each neuron will compute
 	// alternatively: number of vertical matrix chunks
@@ -207,8 +211,7 @@ void Vector_Vector_Activate_Stream_Batch(
 
 	// how many synapse groups each row is split into
 	// alternatively: number of horizontal matrix chunks
-	// always equal to # kernel pixels since no SIMD
-	constexpr unsigned  SF = Kernel_2;
+	constexpr unsigned  SF = Kernel_2 / SIMD;
 	decltype(activation.init(0,0))  accu[MMV][PE];
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
 
@@ -218,7 +221,7 @@ void Vector_Vector_Activate_Stream_Batch(
 	unsigned  tile = 0; // invariant: tile = nf*SF + sf
 	// everything merged into a common iteration space (one "big" loop instead
 	// of smaller nested loops) to get the pipelinening the way we want
-	constexpr unsigned  TOTAL_FOLD = NF * SF ;//* Channels/SIMD;
+	constexpr unsigned  TOTAL_FOLD = NF * SF ;
 	for(unsigned  i = 0; i < reps * TOTAL_FOLD; i++) {
 #pragma HLS pipeline style=flp II=1
 		TI  inElem;
@@ -245,9 +248,16 @@ void Vector_Vector_Activate_Stream_Batch(
 		for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS UNROLL
 			auto const  wgt = TWeightI()(w[pe]);
+
+			ap_uint<SIMD*TSrcI::width> act_simd= 0;
+			for(unsigned int simd = 0; simd < SIMD; simd++) {
+				act_simd(TSrcI::width*(simd+1)-1, TSrcI::width*simd) = (Slice<ap_uint<PE*TSrcI::width>>()(inElem)(SIMD - simd - 1,0))
+																	   (TSrcI::width*(pe+1)-1, TSrcI::width*pe);
+			}
+
 			for(unsigned mmv = 0; mmv < MMV; mmv++) {
-				auto const  act = TSrcI()(inElem, mmv);
-				accu[mmv][pe] += mul(wgt[0], act(pe,mmv), r);
+				auto const  act = TSrcI()(act_simd, mmv);
+        		accu[mmv][pe] = mac<SIMD>(accu[mmv][pe], wgt, act, r, mmv);
 			}
 		}
 
