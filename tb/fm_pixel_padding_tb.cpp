@@ -32,8 +32,8 @@
 #include <ap_int.h>
 #include <hls_stream.h>
 
-#include "bnn-library.h"
-#include "data/fmpp_config.h"
+#include "../bnn-library.h"
+#include "data/config_fmpp.h"
 
 #include <iostream>
 #include <random>
@@ -102,4 +102,5 @@ int main() {
 		std::cerr << "Output stream not empty." << std::endl;
 		return 1;
 	}
+	std::cout << "Successfully passed csim testbench." << std::endl;
 }
