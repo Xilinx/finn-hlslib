@@ -38,7 +38,7 @@ outFileConfig = open("config_deconv2d.h" , "wt")
 
 num_images = 1 # num images
 in_channels = 3 # input channels
-out_channels = 5 # output channels
+out_channels = 4 # output channels
 in_x = in_y = 4 # height/width of inp (assuming square)
 padding = 1 # padding (assuming square)
 stride_x = stride_y = 2 # stride (assuming square)
@@ -51,9 +51,9 @@ assert out_y % in_y == 0, "Need even upsampling factor."
 
 i_precision = 4
 o_precision = 16
+w_precision = 4
 simd = 2
 pe = 2
-w_precision = 4
 # mmv = 1 # todo - figure out what this is
 
 conv_stride = 1 # assuming square
@@ -75,6 +75,8 @@ outFileConfig.write("constexpr unsigned  DeconvPadding = %d;\n" % padding)
 outFileConfig.write("constexpr unsigned  IPrecision = %d;\n" % i_precision)
 outFileConfig.write("constexpr unsigned  OPrecision = %d;\n" % o_precision)
 outFileConfig.write("constexpr unsigned  WPrecision = %d;\n" % w_precision)
+outFileConfig.write("constexpr unsigned  ConvSIMD1 = %d;\n" % simd)
+outFileConfig.write("constexpr unsigned  ConvPE1 = %d;\n" % pe)
 outFileConfig.close()
 
 
