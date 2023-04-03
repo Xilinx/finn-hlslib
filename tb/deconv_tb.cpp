@@ -34,6 +34,7 @@
 #include "../bnn-library.h"
 #include "deconv.hpp"
 #include "data/config_deconv2d.h"
+#include "data/memdata_deconv2d.h"
 
 #include <iostream>
 #include <random>
@@ -51,7 +52,6 @@ int main() {
 	ap_uint<OPrecision>  out_image[DeconvOFDim][DeconvOFDim][DeconvOFMCh];
 	hls::stream<ap_uint<DeconvIFMCh*IPrecision> > input_stream("input_stream");
 	hls::stream<ap_uint<DeconvOFMCh*OPrecision> > output_stream("output_stream");
-	ap_uint<WPrecision>  weights[DeconvIFMCh][DeconvOFMCh][DeconvKernel][DeconvKernel];
 	
 	{ // Feed random input sequence
 		std::random_device rd;
@@ -60,12 +60,15 @@ int main() {
 
 		for(unsigned  y = 0; y < DeconvIFDim; y++) {
 			for(unsigned  x = 0; x < DeconvIFDim; x++) {
+				ap_uint<DeconvIFMCh * IPrecision> input_channel = 0;
 				for(unsigned  c = 0; c < DeconvIFMCh; c++) {
 					ap_uint<IPrecision>  val = dist(rd);
-					input_stream.write(val);
 					inp_image[y][x][c] = val;
+					input_channel = input_channel >> IPrecision;
+					input_channel(DeconvIFMCh * IPrecision - 1, (DeconvIFMCh - 1) * IPrecision) = val;
 					input_counter++;
 				}
+				input_stream.write(input_counter);
 			}
 		}
 		if(input_counter != (DeconvIFDim * DeconvIFDim * DeconvIFMCh)) {
@@ -75,29 +78,46 @@ int main() {
 	}
 	std::cout << "Finished writing to input stream" << std::endl;
 
-	// TODO - create weights
-	// { // Feed random weight sequence
-	// 	std::random_device rd;
-	// 	std::uniform_int_distribution<int> dist(0, (1<<(WEIGHT_PRECISION))-1);
-	// 	unsigned  input_counter = 0;
+	// Create weights
+	static ap_uint<WPrecision>  weights[DeconvIFMCh][DeconvOFMCh][DeconvKernel][DeconvKernel];
+	{
+		unsigned  oc = 0; // output channel counter
+		unsigned  ic = 0; // input channel counter
+		unsigned  kx = 0; // kernel_x counter
+		unsigned  ky = 0; // kernel_y counter
+		constexpr int  xTile = (DeconvIFMCh * DeconvKernel * DeconvKernel) / ConvSIMD1;
+		constexpr int  yTile = DeconvOFMCh / ConvPE1;
+		for (unsigned  oy = 0; oy < yTile; oy++) {
+			for (unsigned ox = 0; ox < xTile; ox++) {
+				for (unsigned pe = 0; pe < ConvPE1; pe++) {
+					for (unsigned simd = 0; simd < ConvSIMD1; simd++) {
+						// need to transpose the weights since weights are for conv2d
+						unsigned  dkx = DeconvKernel - kx - 1;
+						unsigned  dky = DeconvKernel - ky - 1;
+						weights[ic][oc][dkx][dky] = PARAM::weights.weights(oy*xTile + ox)[pe][simd];
+						ic++;
+						if (ic == DeconvIFMCh){
+							ic=0;
+							kx++;
+							if (kx == DeconvKernel){
+								kx=0;
+								ky++;
+								if (ky == DeconvKernel){
+									ky=0;
+									oc++;
+									if (oc == DeconvOFDim){
+										oc=0;
+									}
+								}
+							}
+						}
+					}
+				}
 
-	// 	for(unsigned  y = 0; y < DECONV_INPUT_DIM_Y; y++) {
-	// 		for(unsigned  x = 0; x < DECONV_INPUT_DIM_X; x++) {
-	// 			for(unsigned  c = 0; c < INPUT_CHANNELS; c++) {
-	// 				TI  val = dist(rd);
-	// 				input_stream.write(val);
-	// 				image[y][x][c] = val;
-	// 				input_counter++;
-	// 			}
-	// 		}
-	// 	}
-	// 	if(input_counter != (DECONV_INPUT_DIM_X * DECONV_INPUT_DIM_Y * INPUT_CHANNELS)) {
-	// 		std::cout << "Input stream not fully populated." << std::endl;
-	// 		return 1;
-	// 	}
-	// }
-	std::cout << "Finished writing to input stream" << std::endl;
-
+			}
+		}
+	}
+	std::cout << "Finished writing the weights" << std::endl;
 
 	// TODO - calculate expected outputs from deconvolution
 	std::cout << "Calculating expected output" << std::endl;
