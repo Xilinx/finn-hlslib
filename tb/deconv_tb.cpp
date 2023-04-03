@@ -94,7 +94,7 @@ int main() {
 						// need to transpose the weights since weights are for conv2d
 						unsigned  dkx = DeconvKernel - kx - 1;
 						unsigned  dky = DeconvKernel - ky - 1;
-						weights[ic][oc][dkx][dky] = PARAM::weights.weights(oy*xTile + ox)[pe][simd];
+						weights[ic][oc][kx][ky] = PARAM::weights.weights(oy*xTile + ox)[pe][simd];
 						ic++;
 						if (ic == DeconvIFMCh){
 							ic=0;
@@ -139,24 +139,25 @@ int main() {
 	std::cout << "Finished writing to output stream" << std::endl;
 
 	// Verify correctness
-	// for(unsigned  y = 0; y < OUTPUT_DIM_Y; y++) {
-	// 	for(unsigned  x = 0; x < OUTPUT_DIM_X; x++) {
-	// 		for(unsigned  c = 0; c < CHANNELS; c++) {
-	// 			if(output_stream.empty()) {
-	// 				std::cerr << "Missing outputs." << std::endl;
-	// 				return  1;
-	// 			}
+	for(unsigned  y = 0; y < DeconvOFDim; y++) {
+		for(unsigned  x = 0; x < DeconvOFDim; x++) {
+			for(unsigned  c = 0; c < DeconvOFMCh; c++) {
+				if(output_stream.empty()) {
+					std::cerr << "Missing outputs." << std::endl;
+					return  1;
+				}
 
-	// 			T const  val = output_stream.read();
-	// 			if(expected[y][x][c] != val) {
-	// 				std::cerr << "Output mismatch." << std::endl;
-	// 				return  1;
-	// 			}
-	// 		}
-	// 	}
-	// }
-	// if(!output_stream.empty()) {
-	// 	std::cerr << "Output stream not empty." << std::endl;
-	// 	return 1;
-	// }
+				ap_uint<OPrecision> const  val = output_stream.read();
+				if(out_image[y][x][c] != val) {
+					std::cerr << "Output mismatch." << std::endl;
+					return  1;
+				}
+			}
+		}
+	}
+	std::cout << "Outputs successfully aligns." << std::endl;
+	if(!output_stream.empty()) {
+		std::cerr << "Output stream not empty." << std::endl;
+		return 1;
+	}
 }

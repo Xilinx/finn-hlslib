@@ -36,8 +36,8 @@ using namespace hls;
 #include "../bnn-library.h"
 #include "../weights.hpp"
 #include "../activations.hpp"
-// #include "interpret.hpp"
-// #include "mvau.hpp"
+#include "../interpret.hpp"
+#include "../mvau.hpp"
 #include "data/memdata_deconv2d.h"
 #include "data/config_deconv2d.h"
 
@@ -67,5 +67,5 @@ void test_deconv2d(
 		Slice<ap_uint<IPrecision> >,
 		Slice<ap_uint<OPrecision> >,
 		Identity
-	>(conv_input, dst, PARAM::weights, PassThroughActivation<ap_uint<16>>(), 1, ap_resource_dsp());
+	>(conv_input, dst, PARAM::weights, PassThroughActivation<ap_uint<16> >(), 1, ap_resource_dsp());
 }
