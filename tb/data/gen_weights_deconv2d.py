@@ -52,7 +52,7 @@ assert out_y % in_y == 0, "Need even upsampling factor."
 i_precision = 4
 o_precision = 16
 w_precision = 4
-simd = 2
+simd = in_channels # fully unrolling in channels
 pe = 2
 # mmv = 1 # todo - figure out what this is
 
@@ -77,6 +77,12 @@ outFileConfig.write("constexpr unsigned  OPrecision = %d;\n" % o_precision)
 outFileConfig.write("constexpr unsigned  WPrecision = %d;\n" % w_precision)
 outFileConfig.write("constexpr unsigned  ConvSIMD1 = %d;\n" % simd)
 outFileConfig.write("constexpr unsigned  ConvPE1 = %d;\n" % pe)
+
+fm_out_x = in_x + (in_x - 1) * (stride_x - 1)
+fm_pad_x = out_x // in_x
+outFileConfig.write("constexpr unsigned  FMPadODim = %d;\n" % fm_out_x)
+outFileConfig.write("constexpr unsigned  FMPadStride = %d;\n" % fm_pad_x)
+
 outFileConfig.close()
 
 
