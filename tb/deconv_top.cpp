@@ -56,7 +56,7 @@ void test_deconv2d(
 		IFMCh1, // packing along the channel dim
 		ap_uint<IPrecision> // data type of values
 	>(src, conv_input);
-	// Note - would need to insert padding layer is padding is not 0
+	// Note - would need to insert padding layer if padding is not 0
 	static_assert(ConvPadding1 == 0, "Not testing non-zero padding.");
 	ConvLayer_Batch<
 		ConvKernel1,
