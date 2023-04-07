@@ -33,8 +33,8 @@ outFileWeights = open("memdata_deconv2d.h" , "wt")
 outFileConfig = open("config_deconv2d.h" , "wt")
 
 num_images = 1 # num images
-in_channels = 2 # input channels
-out_channels = 4 # output channels
+in_channels = 1 # input channels
+out_channels = 1 # output channels
 in_dim = 4 # assuming square inputs
 stride = 3 # assuming square stride
 kernel_size = 4 # assuming square kernels
@@ -45,7 +45,7 @@ i_precision = 6
 o_precision = 16
 w_precision = 5
 simd = in_channels # fully unrolling in channels
-pe = 2
+pe = 1
 
 # deconvolution hyperparameters
 outFileConfig.write("constexpr unsigned  IFDim1 = %d;\n" % in_dim)
