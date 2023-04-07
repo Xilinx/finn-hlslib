@@ -27,62 +27,66 @@
 #   OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 #   ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
-import sys
-import random 
-import subprocess
-import numpy as np
+import random
 
 outFileWeights = open("memdata_deconv2d.h" , "wt")
 outFileConfig = open("config_deconv2d.h" , "wt")
 
 num_images = 1 # num images
-in_channels = 3 # input channels
+in_channels = 2 # input channels
 out_channels = 4 # output channels
-in_x = in_y = 4 # height/width of inp (assuming square)
-padding = 1 # padding (assuming square)
-stride_x = stride_y = 2 # stride (assuming square)
-kernel_x = kernel_y = 4 # kernel size (assuming square)
-out_x = stride_x * (in_x - 1) - (2 * padding) + kernel_x
-out_y = stride_y * (in_y - 1) - (2 * padding) + kernel_y
+in_dim = 4 # assuming square inputs
+stride = 3 # assuming square stride
+kernel_size = 4 # assuming square kernels
+padding = 3 # assuming square padidng
+out_dim = stride * (in_dim - 1) + kernel_size - (2 * padding)
 
-assert out_x % in_x == 0, "Need even upsampling factor."
-assert out_y % in_y == 0, "Need even upsampling factor."
-
-i_precision = 4
+i_precision = 6
 o_precision = 16
-w_precision = 4
+w_precision = 5
 simd = in_channels # fully unrolling in channels
 pe = 2
-# mmv = 1 # todo - figure out what this is
 
+# deconvolution hyperparameters
+outFileConfig.write("constexpr unsigned  IFDim1 = %d;\n" % in_dim)
+outFileConfig.write("constexpr unsigned  IFMCh1 = %d;\n" % in_channels)
+outFileConfig.write("constexpr unsigned  OFDim1 = %d;\n" % out_dim)
+outFileConfig.write("constexpr unsigned  OFMCh1 = %d;\n" % out_channels)
+outFileConfig.write("constexpr unsigned  Kernel1 = %d;\n" % kernel_size)
+outFileConfig.write("constexpr unsigned  Stride1 = %d;\n" % stride)
+outFileConfig.write("constexpr unsigned  Padding1 = %d;\n" % padding)
+outFileConfig.write("\n")
+
+# feature map pixel padding hyperparameters
+fm_out_x = in_dim + (in_dim - 1) * (stride - 1)
+fm_pad_x = stride
+outFileConfig.write("constexpr unsigned  FMPadODim1 = %d;\n" % fm_out_x)
+outFileConfig.write("constexpr unsigned  FMPadStride1 = %d;\n" % fm_pad_x)
+outFileConfig.write("constexpr unsigned  FMPadSIMD1 = %d;\n" % simd)
+outFileConfig.write("\n")
+
+# convolution hyperparameters
 conv_stride = 1 # assuming square
-conv_padding = kernel_x - padding - 1 # assuming square
+conv_padding = kernel_size - padding - 1 # assuming square
+assert conv_padding == 0, "not testing additional padding"
+tile = in_channels * kernel_size * kernel_size * out_channels // (simd * pe)
+outFileConfig.write("constexpr unsigned  ConvKernel1 = %d;\n" % kernel_size)
+outFileConfig.write("constexpr unsigned  ConvIFMCh1 = %d;\n" % in_channels)
+# input of direct convolution is the output of the pixel padding
+outFileConfig.write("constexpr unsigned  ConvIFMDim1 = %d;\n" % fm_out_x)
+outFileConfig.write("constexpr unsigned  ConvOFMCh1 = %d;\n" % out_channels)
+outFileConfig.write("constexpr unsigned  ConvOFMDim1 = %d;\n" % out_dim)
+outFileConfig.write("constexpr unsigned  ConvPadding1 = %d;\n" % conv_padding)
+outFileConfig.write("constexpr unsigned  ConvStride1 = %d;\n" % conv_stride)
+outFileConfig.write("constexpr unsigned  ConvSIMD1 = %d;\n" % simd)
+outFileConfig.write("constexpr unsigned  ConvPE1 = %d;\n" % pe)
+outFileConfig.write("\n")
 
-tile = in_channels * kernel_x * kernel_y * out_channels // (simd * pe)
-
-assert in_y == in_x, "Testing square inputs."
-assert out_y == out_x, "Testing square outputs."
-assert kernel_x == kernel_y, "Testing square kernels."
-assert stride_x == stride_y, "Testing square strides."
-outFileConfig.write("constexpr unsigned  DeconvIFDim = %d;\n" % in_x)
-outFileConfig.write("constexpr unsigned  DeconvIFMCh = %d;\n" % in_channels)
-outFileConfig.write("constexpr unsigned  DeconvOFDim = %d;\n" % out_x)
-outFileConfig.write("constexpr unsigned  DeconvOFMCh = %d;\n" % out_channels)
-outFileConfig.write("constexpr unsigned  DeconvKernel = %d;\n" % kernel_x)
-outFileConfig.write("constexpr unsigned  DeconvStride = %d;\n" % stride_x)
-outFileConfig.write("constexpr unsigned  DeconvPadding = %d;\n" % padding)
+# general hyperparameters
 outFileConfig.write("constexpr unsigned  IPrecision = %d;\n" % i_precision)
 outFileConfig.write("constexpr unsigned  OPrecision = %d;\n" % o_precision)
 outFileConfig.write("constexpr unsigned  WPrecision = %d;\n" % w_precision)
-outFileConfig.write("constexpr unsigned  ConvSIMD1 = %d;\n" % simd)
-outFileConfig.write("constexpr unsigned  ConvPE1 = %d;\n" % pe)
-
-fm_out_x = in_x + (in_x - 1) * (stride_x - 1)
-fm_pad_x = out_x // in_x
-outFileConfig.write("constexpr unsigned  FMPadODim = %d;\n" % fm_out_x)
-outFileConfig.write("constexpr unsigned  FMPadStride = %d;\n" % fm_pad_x)
-
+outFileConfig.write("\n")
 outFileConfig.close()
 
 
