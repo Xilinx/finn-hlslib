@@ -60,7 +60,7 @@ int main() {
 
 		for(unsigned  y = 0; y < IFDim1; y++) {
 			for(unsigned  x = 0; x < IFDim1; x++) {
-				ap_uint<IFMCh1 * IPrecision> input_channel = 0;
+				ap_uint<IFMCh1*IPrecision>  input_channel = 0;
 				for(unsigned  c = 0; c < IFMCh1; c++) {
 					ap_uint<IPrecision>  val = dist(rd);
 					inp_image[y][x][c] = val;
