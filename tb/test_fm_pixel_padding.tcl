@@ -35,7 +35,7 @@ add_files -tb fm_pixel_padding_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT
 set_top test_fm_pixel_padding
 open_solution "sol1"
 set_part {xck26-sfvc784-2LVI-i}
-create_clock -period 5 -name default
+create_clock -period 10 -name default
 csim_design
 csynth_design
 # cosim_design
