@@ -32,7 +32,7 @@
 #include <hls_stream.h>
 using namespace hls;
 #include "ap_int.h"
-#include "../bnn-library.h"
+#include "bnn-library.h"
 #include "data/config_fmpp.h"
 
 void test_fm_pixel_padding(

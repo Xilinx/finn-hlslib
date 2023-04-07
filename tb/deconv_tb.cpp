@@ -31,7 +31,7 @@
 #include <ap_int.h>
 #include <hls_stream.h>
 
-#include "../bnn-library.h"
+#include "bnn-library.h"
 #include "deconv.hpp"
 #include "data/config_deconv2d.h"
 #include "data/memdata_deconv2d.h"

@@ -33,11 +33,11 @@
 using namespace hls;
 #include "ap_int.h"
 
-#include "../bnn-library.h"
-#include "../weights.hpp"
-#include "../activations.hpp"
-#include "../interpret.hpp"
-#include "../mvau.hpp"
+#include "bnn-library.h"
+#include "weights.hpp"
+#include "activations.hpp"
+#include "interpret.hpp"
+#include "mvau.hpp"
 #include "data/memdata_deconv2d.h"
 #include "data/config_deconv2d.h"
 
