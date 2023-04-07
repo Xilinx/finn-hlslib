@@ -427,8 +427,7 @@ void FMPadding_Batch(
  * \tparam Stride_x    Stride for each pixel along the width dimension 
  * \tparam Stride_y    Stride for each pixel along the height dimension
  * \tparam NumChannels Number of channels of the input feature map
- * \tparam	NumChannels		Number of channels of the input feature map
- * \tparam	SIMD			Input parallelism 
+ * \tparam SIMD		   Input parallelism 
  * \tparam In_t		   Input datatype
  *
  * @param src          Input stream
@@ -464,6 +463,34 @@ void FMPadding_Pixel_Nonsquare(
 		}
 		if(++ytrig == Stride_y)  ytrig = 0;
 	}
+}
+
+/**
+ * \brief Feature map pixel padding - Pads each pixel in the input feature
+ *        map with zeros. Used as a pre-processing step for the transposed
+ * 		  convolution operation. Expects data in NHWC format, where N=1.
+ *
+ * \tparam OutputDim   Padded width of the output feature map
+ * \tparam Stride      Stride for each pixel along the width dimension
+ * \tparam NumChannels Number of channels of the input feature map
+ * \tparam SIMD		   Input parallelism 
+ * \tparam In_t		   Input datatype
+ *
+ * @param src          Input stream
+ * @param dst 		   Output stream
+ */
+template<
+	unsigned OutputDim,
+	unsigned Stride,
+	unsigned NumChannels,
+	unsigned SIMD,
+	typename In_t
+>
+void FMPadding_Pixel(
+	hls::stream<ap_uint<SIMD*In_t::width>> &src,
+	hls::stream<ap_uint<SIMD*In_t::width>> &dst
+) {
+	FMPadding_Pixel_Nonsquare<OutputDim, OutputDim, Stride, Stride, NumChannels, SIMD, In_t>(src, dst);
 }
 
 /**
