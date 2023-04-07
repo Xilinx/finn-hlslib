@@ -41,31 +41,33 @@ using namespace hls;
 #include "data/memdata_deconv2d.h"
 #include "data/config_deconv2d.h"
 
+constexpr unsigned  numReps = 1;
+
 void test_deconv2d(
-	stream<ap_uint<DeconvIFMCh*IPrecision> > & src,
-	stream<ap_uint<DeconvOFMCh*OPrecision> > & dst
+	stream<ap_uint<IFMCh1*IPrecision> > & src,
+	stream<ap_uint<OFMCh1*OPrecision> > & dst
 ){
 #pragma HLS DATAFLOW
-	stream<ap_uint<DeconvIFMCh*IPrecision> > conv_input("input_stream");
-	FMPadding_Pixel_Nonsquare<
-		FMPadODim, // dimension expected by conv
-		FMPadODim, // dimension expected by conv
-		FMPadStride, // stride along pixel padding
-		FMPadStride, // stride along pixel padding
-		DeconvIFMCh, // num channels expected by conv (input channels)
-		ConvSIMD1, // packing along the channel dim
+	stream<ap_uint<IFMCh1*IPrecision> > conv_input("input_stream");
+	FMPadding_Pixel<
+		FMPadODim1, // dimension expected by direct conv
+		FMPadStride1, // stride along pixel padding
+		IFMCh1, // num channels expected by conv (input channels)
+		IFMCh1, // packing along the channel dim
 		ap_uint<IPrecision> // data type of values
 	>(src, conv_input);
+	// Note - would need to insert padding layer is padding is not 0
+	static_assert(ConvPadding1 == 0, "Not testing non-zero padding.");
 	ConvLayer_Batch<
-		DeconvKernel, // conv and deconv have same kernel size
-		DeconvIFMCh,
-		FMPadODim, // output of fm padding is input of conv
-		DeconvOFMCh,
-		DeconvOFDim,
+		ConvKernel1,
+		ConvIFMCh1,
+		ConvIFMDim1,
+		ConvOFMCh1,
+		ConvOFMDim1,
 		ConvSIMD1,
 		ConvPE1,
 		Slice<ap_uint<IPrecision> >,
 		Slice<ap_uint<OPrecision> >,
 		Identity
-	>(conv_input, dst, PARAM::weights, PassThroughActivation<ap_uint<16> >(), 1, ap_resource_dsp());
+	>(conv_input, dst, PARAM::weights, PassThroughActivation<ap_uint<16> >(), numReps, ap_resource_dsp());
 }

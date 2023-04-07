@@ -41,37 +41,37 @@
 
 
 void test_deconv2d(
-	hls::stream<ap_uint<DeconvIFMCh*IPrecision> > & src,
-	hls::stream<ap_uint<DeconvOFMCh*OPrecision> > & dst
+	hls::stream<ap_uint<IFMCh1*IPrecision> > & src,
+	hls::stream<ap_uint<OFMCh1*OPrecision> > & dst
 );
 
 int main() {
 	std::cout << "Starting testbench for deconvolution" << std::endl;
 
-	ap_uint<IPrecision>  inp_image[DeconvIFDim][DeconvIFDim][DeconvIFMCh];
-	ap_uint<OPrecision>  out_image[DeconvOFDim][DeconvOFDim][DeconvOFMCh];
-	hls::stream<ap_uint<DeconvIFMCh*IPrecision> > input_stream("input_stream");
-	hls::stream<ap_uint<DeconvOFMCh*OPrecision> > output_stream("output_stream");
+	ap_uint<IPrecision>  inp_image[IFDim1][IFDim1][IFMCh1];
+	ap_uint<OPrecision>  ref_image[OFDim1][OFDim1][OFMCh1];
+	hls::stream<ap_uint<IFMCh1*IPrecision> > input_stream("input_stream");
+	hls::stream<ap_uint<OFMCh1*OPrecision> > output_stream("output_stream");
 	
 	{ // Feed random input sequence
 		std::random_device rd;
-		std::uniform_int_distribution<int> dist(0, (1<<(DeconvIFMCh*IPrecision))-1);
+		std::uniform_int_distribution<int> dist(0, (1<<(IFMCh1*IPrecision))-1);
 		unsigned  input_counter = 0;
 
-		for(unsigned  y = 0; y < DeconvIFDim; y++) {
-			for(unsigned  x = 0; x < DeconvIFDim; x++) {
-				ap_uint<DeconvIFMCh * IPrecision> input_channel = 0;
-				for(unsigned  c = 0; c < DeconvIFMCh; c++) {
+		for(unsigned  y = 0; y < IFDim1; y++) {
+			for(unsigned  x = 0; x < IFDim1; x++) {
+				ap_uint<IFMCh1 * IPrecision> input_channel = 0;
+				for(unsigned  c = 0; c < IFMCh1; c++) {
 					ap_uint<IPrecision>  val = dist(rd);
 					inp_image[y][x][c] = val;
 					input_channel = input_channel >> IPrecision;
-					input_channel(DeconvIFMCh * IPrecision - 1, (DeconvIFMCh - 1) * IPrecision) = val;
+					input_channel(IFMCh1 * IPrecision - 1, (IFMCh1 - 1) * IPrecision) = val;
 					input_counter++;
 				}
-				input_stream.write(input_counter);
+				input_stream.write(input_channel);
 			}
 		}
-		if(input_counter != (DeconvIFDim * DeconvIFDim * DeconvIFMCh)) {
+		if(input_counter != (IFDim1 * IFDim1 * IFMCh1)) {
 			std::cout << "Input stream not fully populated." << std::endl;
 			return 1;
 		}
@@ -79,33 +79,33 @@ int main() {
 	std::cout << "Finished writing to input stream" << std::endl;
 
 	// Create weights
-	static ap_uint<WPrecision>  weights[DeconvIFMCh][DeconvOFMCh][DeconvKernel][DeconvKernel];
+	static ap_uint<WPrecision>  weights[IFMCh1][OFMCh1][Kernel1][Kernel1];
 	{
 		unsigned  oc = 0; // output channel counter
 		unsigned  ic = 0; // input channel counter
 		unsigned  kx = 0; // kernel_x counter
 		unsigned  ky = 0; // kernel_y counter
-		constexpr int  xTile = (DeconvIFMCh * DeconvKernel * DeconvKernel) / ConvSIMD1;
-		constexpr int  yTile = DeconvOFMCh / ConvPE1;
+		constexpr int  xTile = (IFDim1 * Kernel1 * Kernel1) / ConvSIMD1;
+		constexpr int  yTile = OFDim1 / ConvPE1;
 		for (unsigned  oy = 0; oy < yTile; oy++) {
 			for (unsigned ox = 0; ox < xTile; ox++) {
 				for (unsigned pe = 0; pe < ConvPE1; pe++) {
 					for (unsigned simd = 0; simd < ConvSIMD1; simd++) {
 						// need to transpose the weights since weights are for conv2d
-						unsigned  dkx = DeconvKernel - kx - 1;
-						unsigned  dky = DeconvKernel - ky - 1;
-						weights[ic][oc][kx][ky] = PARAM::weights.weights(oy*xTile + ox)[pe][simd];
+						unsigned  dkx = Kernel1 - kx - 1;
+						unsigned  dky = Kernel1 - ky - 1;
+						weights[ic][oc][dkx][dky] = PARAM::weights.weights(oy*xTile + ox)[pe][simd];
 						ic++;
-						if (ic == DeconvIFMCh){
+						if (ic == IFMCh1){
 							ic=0;
 							kx++;
-							if (kx == DeconvKernel){
+							if (kx == Kernel1){
 								kx=0;
 								ky++;
-								if (ky == DeconvKernel){
+								if (ky == Kernel1){
 									ky=0;
 									oc++;
-									if (oc == DeconvOFDim){
+									if (oc == OFMCh1){
 										oc=0;
 									}
 								}
@@ -122,42 +122,54 @@ int main() {
 	// TODO - calculate expected outputs from deconvolution
 	std::cout << "Calculating expected output" << std::endl;
 	deconv2d<
-		DeconvIFDim,
-		DeconvIFMCh,
-		DeconvOFDim,
-		DeconvOFMCh,
-		DeconvKernel,
-		DeconvStride,
-		DeconvPadding,
+		IFDim1,
+		IFMCh1,
+		OFDim1,
+		OFMCh1,
+		Kernel1,
+		Stride1,
+		Padding1,
 		ap_uint<IPrecision>,
 		ap_uint<OPrecision>,
 		ap_uint<WPrecision>
-	>(inp_image, weights, out_image);
+	>(inp_image, weights, ref_image);
 
 	// Run top-level function
 	test_deconv2d(input_stream, output_stream);
 	std::cout << "Finished writing to output stream" << std::endl;
 
-	// Verify correctness
-	for(unsigned  y = 0; y < DeconvOFDim; y++) {
-		for(unsigned  x = 0; x < DeconvOFDim; x++) {
-			for(unsigned  c = 0; c < DeconvOFMCh; c++) {
+	{// Verify correctness
+		ap_uint<OPrecision>  val, exp;
+		unsigned int  num_errors = 0;
+		for(unsigned  y = 0; y < OFDim1; y++) {
+			for(unsigned  x = 0; x < OFDim1; x++) {
+
 				if(output_stream.empty()) {
 					std::cerr << "Missing outputs." << std::endl;
 					return  1;
 				}
+				ap_uint<OFMCh1 * OPrecision>  out = output_stream.read();
 
-				ap_uint<OPrecision> const  val = output_stream.read();
-				if(out_image[y][x][c] != val) {
-					std::cerr << "Output mismatch." << std::endl;
-					return  1;
+				for(unsigned  c = 0; c < OFMCh1; c++) {
+					exp = ref_image[y][x][c];
+					val(OPrecision - 1, 0) = out((c + 1)*OPrecision - 1, c * OPrecision);
+					if(exp != val) {
+						std::cout << "Error: Expected["<<y<<"]["<<x<<"]["<<c<<"]="<<exp<<", got "<<val<< std::endl;
+						num_errors++;
+					}
 				}
 			}
 		}
-	}
-	std::cout << "Outputs successfully aligns." << std::endl;
-	if(!output_stream.empty()) {
-		std::cerr << "Output stream not empty." << std::endl;
-		return 1;
+		if(!output_stream.empty()) {
+			std::cerr << "Output stream not empty." << std::endl;
+			return 1;
+		}
+		else if(num_errors == 0) {
+			std::cout << "Outputs successfully aligns." << std::endl;
+		}
+		else {
+			std::cerr << "Error: " << num_errors << " total errors." << std::endl;
+			return 1;
+		}
 	}
 }
