@@ -85,8 +85,8 @@ int main() {
 		unsigned  ic = 0; // input channel counter
 		unsigned  kx = 0; // kernel_x counter
 		unsigned  ky = 0; // kernel_y counter
-		constexpr int  xTile = (IFDim1 * Kernel1 * Kernel1) / ConvSIMD1;
-		constexpr int  yTile = OFDim1 / ConvPE1;
+		constexpr int  xTile = (IFMCh1 * Kernel1 * Kernel1) / ConvSIMD1;
+		constexpr int  yTile = OFMCh1 / ConvPE1;
 		for (unsigned  oy = 0; oy < yTile; oy++) {
 			for (unsigned ox = 0; ox < xTile; ox++) {
 				for (unsigned pe = 0; pe < ConvPE1; pe++) {
@@ -94,7 +94,7 @@ int main() {
 						// need to transpose the weights since weights are for conv2d
 						unsigned  dkx = Kernel1 - kx - 1;
 						unsigned  dky = Kernel1 - ky - 1;
-						weights[ic][oc][dkx][dky] = PARAM::weights.weights(oy*xTile + ox)[pe][simd];
+						weights[ic][oc][dky][dkx] = PARAM::weights.weights(oy*xTile + ox)[pe][simd];
 						ic++;
 						if (ic == IFMCh1){
 							ic=0;
@@ -119,7 +119,16 @@ int main() {
 	}
 	std::cout << "Finished writing the weights" << std::endl;
 
-	// TODO - calculate expected outputs from deconvolution
+	// initialize the output buffer to 0
+	for (unsigned y = 0; y < OFDim1; y++) {
+		for (unsigned x = 0; x < OFDim1; x++) {
+			for (unsigned c = 0; c < OFMCh1; c++) {
+				ref_image[y][x][c] = 0;
+			}
+		}
+	}
+
+	// calculate expected outputs from deconvolution
 	std::cout << "Calculating expected output" << std::endl;
 	deconv2d<
 		IFDim1,
@@ -154,7 +163,7 @@ int main() {
 					exp = ref_image[y][x][c];
 					val(OPrecision - 1, 0) = out((c + 1)*OPrecision - 1, c * OPrecision);
 					if(exp != val) {
-						std::cout << "Error: Expected["<<y<<"]["<<x<<"]["<<c<<"]="<<exp<<", got "<<val<< std::endl;
+						std::cout << "Error: Expected["<<y<<"]["<<x<<"]["<<c<<"]="<<exp<<", got "<<out<< std::endl;
 						num_errors++;
 					}
 				}
