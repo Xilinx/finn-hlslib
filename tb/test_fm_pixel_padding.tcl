@@ -38,5 +38,5 @@ set_part {xck26-sfvc784-2LVI-i}
 create_clock -period 10 -name default
 csim_design
 csynth_design
-# cosim_design
+cosim_design
 exit

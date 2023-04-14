@@ -44,6 +44,7 @@ void test_fm_pixel_padding(
 	hls::stream<ap_uint<SIMD1*INPUT_WIDTH>> &dst
 );
 
+
 int main() {
 	std::cout << "Starting testbench for fm_pixel_padding" << std::endl;
 
@@ -53,10 +54,10 @@ int main() {
 	T  expected[OUTPUT_DIM_Y][OUTPUT_DIM_X][CHANNELS];
 
 	{ // Feed random input sequence
-		std::random_device rd;
+		std::minstd_rand  rd;
 		std::uniform_int_distribution<int> dist(0, (1<<(SIMD1*INPUT_WIDTH))-1);
-		unsigned  input_counter = 0;
 
+		unsigned  input_counter = 0;
 		for(unsigned  y = 0; y < OUTPUT_DIM_Y; y++) {
 			for(unsigned  x = 0; x < OUTPUT_DIM_X; x++) {
 				for(unsigned  c = 0; c < CHANNELS; c++) {
@@ -82,25 +83,31 @@ int main() {
 	std::cout << "Finished writing to output stream" << std::endl;
 
 	// Verify correctness
+	int  ret = 0;
 	for(unsigned  y = 0; y < OUTPUT_DIM_Y; y++) {
 		for(unsigned  x = 0; x < OUTPUT_DIM_X; x++) {
 			for(unsigned  c = 0; c < CHANNELS; c++) {
 				if(output_stream.empty()) {
 					std::cerr << "Missing outputs." << std::endl;
-					return  1;
+					goto  err;
 				}
 
 				T const  val = output_stream.read();
 				if(expected[y][x][c] != val) {
-					std::cerr << "Output mismatch." << std::endl;
-					return  1;
+					std::cerr
+						<< "Output mismatch [" << y << ':' << x << ':' << c << "]: "
+						<< val << " instead of " << expected[y][x][c]
+						<< std::endl;
+					ret = 1;
 				}
 			}
 		}
 	}
 	if(!output_stream.empty()) {
 		std::cerr << "Output stream not empty." << std::endl;
-		return 1;
+err:
+		ret = 1;
 	}
-	std::cout << "Successfully passed csim testbench." << std::endl;
+	if(ret == 0)  std::cout << "Successfully passed csim testbench." << std::endl;
+	return  ret;
 }

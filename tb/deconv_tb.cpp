@@ -54,10 +54,10 @@ int main() {
 	hls::stream<ap_uint<OFMCh1*OPrecision> > output_stream("output_stream");
 	
 	{ // Feed random input sequence
-		std::random_device rd;
+		std::minstd_rand  rd;
 		std::uniform_int_distribution<int> dist(0, (1<<(IFMCh1*IPrecision))-1);
-		unsigned  input_counter = 0;
 
+		unsigned  input_counter = 0;
 		for(unsigned  y = 0; y < IFDim1; y++) {
 			for(unsigned  x = 0; x < IFDim1; x++) {
 				ap_uint<IFMCh1*IPrecision>  input_channel = 0;
