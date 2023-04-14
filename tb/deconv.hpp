@@ -30,6 +30,9 @@
  *
  ******************************************************************************/
 
+#ifndef DECONV_TB_H
+#define DECONV_TB_H
+
 template<
     unsigned IFMDim,
     unsigned IFMCh,
@@ -68,3 +71,5 @@ void deconv2d(
         }
     }
 }
+
+#endif
