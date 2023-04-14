@@ -47,6 +47,9 @@ w_precision = 5
 simd = in_channels # fully unrolling in channels
 pe = 1
 
+outFileConfig.write("#ifndef DECONV_CONFIG_H\n")
+outFileConfig.write("#define DECONV_CONFIG_H\n")
+
 # deconvolution hyperparameters
 outFileConfig.write("constexpr unsigned  IFDim1 = %d;\n" % in_dim)
 outFileConfig.write("constexpr unsigned  IFMCh1 = %d;\n" % in_channels)
@@ -76,7 +79,8 @@ outFileConfig.write("constexpr unsigned  ConvIFMCh1 = %d;\n" % in_channels)
 outFileConfig.write("constexpr unsigned  ConvIFMDim1 = %d;\n" % fm_out_x)
 outFileConfig.write("constexpr unsigned  ConvOFMCh1 = %d;\n" % out_channels)
 outFileConfig.write("constexpr unsigned  ConvOFMDim1 = %d;\n" % out_dim)
-outFileConfig.write("constexpr unsigned  ConvPadding1 = %d;\n" % conv_padding)
+# not testing addition padding node here
+# outFileConfig.write("constexpr unsigned  ConvPadding1 = %d;\n" % conv_padding)
 outFileConfig.write("constexpr unsigned  ConvStride1 = %d;\n" % conv_stride)
 outFileConfig.write("constexpr unsigned  ConvSIMD1 = %d;\n" % simd)
 outFileConfig.write("constexpr unsigned  ConvPE1 = %d;\n" % pe)
@@ -86,6 +90,7 @@ outFileConfig.write("\n")
 outFileConfig.write("constexpr unsigned  IPrecision = %d;\n" % i_precision)
 outFileConfig.write("constexpr unsigned  OPrecision = %d;\n" % o_precision)
 outFileConfig.write("constexpr unsigned  WPrecision = %d;\n" % w_precision)
+outFileConfig.write("#endif\n")
 outFileConfig.write("\n")
 outFileConfig.close()
 
