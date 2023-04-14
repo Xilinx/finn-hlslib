@@ -29,14 +29,14 @@
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ******************************************************************************/
- 
+
 /******************************************************************************
  *
  *  Authors: Giulio Gambardella <giuliog@xilinx.com>
  *
- *  \file 
+ *  \file
  *
- *  This file described the MultiChanData class used for MMV, whenever we exploit 
+ *  This file described the MultiChanData class used for MMV, whenever we exploit
  *  the pixel level of parallelism.
  *
  ******************************************************************************/
@@ -44,7 +44,7 @@
 #ifndef MMVCLASS_H
 #define MMVCLASS_H
 
-#include "hls_stream.h"
+#include <ap_int.h>
 
 template <unsigned int NumChannels, unsigned int DataWidth>
 class MultiChanData {
@@ -53,7 +53,6 @@ public: ap_uint<DataWidth> data[NumChannels];
 #pragma HLS inline
       return  data[mm];
     }
-	
 };
 
 #endif
