@@ -50,7 +50,6 @@ constexpr unsigned  ConvIFMCh1 = 1;
 constexpr unsigned  ConvIFMDim1 = 10;
 constexpr unsigned  ConvOFMCh1 = 1;
 constexpr unsigned  ConvOFMDim1 = 7;
-constexpr unsigned  ConvPadding1 = 0;
 constexpr unsigned  ConvStride1 = 1;
 constexpr unsigned  ConvSIMD1 = 1;
 constexpr unsigned  ConvPE1 = 1;
