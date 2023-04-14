@@ -48,7 +48,8 @@
 #ifndef STREAMTOOLS_H
 #define STREAMTOOLS_H
 
-#include "ap_axi_sdata.h"
+#include <ap_axi_sdata.h>
+#include "mmv.hpp"
 
 /**
  * \brief   Stream limiter - limits the number of stream packets
