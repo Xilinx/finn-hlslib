@@ -418,6 +418,82 @@ void FMPadding_Batch(
 }
 
 /**
+ * \brief Feature map pixel padding - Pads each pixel in the input feature
+ *        map with zeros. Used as a pre-processing step for the transposed
+ * 		  convolution operation. Expects data in NHWC format, where N=1.
+ *
+ * \tparam OutputDim_x Padded width of the output feature map
+ * \tparam OutputDim_y Padded height of the output feature map
+ * \tparam Stride_x    Stride for each pixel along the width dimension 
+ * \tparam Stride_y    Stride for each pixel along the height dimension
+ * \tparam NumChannels Number of channels of the input feature map
+ * \tparam SIMD		   Input parallelism 
+ * \tparam In_t		   Input datatype
+ *
+ * @param src          Input stream
+ * @param dst 		   Output stream
+ */
+template<
+	unsigned OutputDim_x,
+	unsigned OutputDim_y,
+	unsigned Stride_x,
+	unsigned Stride_y,
+	unsigned NumChannels,
+	unsigned SIMD,
+	typename In_t
+>
+void FMPadding_Pixel_Nonsquare(
+	hls::stream<ap_uint<SIMD*In_t::width>> &src,
+	hls::stream<ap_uint<SIMD*In_t::width>> &dst
+) {
+	static_assert(NumChannels % SIMD == 0, "SIMD must divide channel count.");
+	constexpr unsigned  Folding = NumChannels/SIMD;
+
+	int unsigned  ytrig = 0;
+	for(int unsigned  y = 0; y < OutputDim_y; y++) {
+		int unsigned  xtrig = 0;
+		for(int unsigned  x = 0; x < OutputDim_x; x++) {
+			for(int unsigned  sf = 0; sf < Folding; sf++) {
+#pragma HLS pipeline II=1 style=flp
+				ap_uint<SIMD*In_t::width>  value = 0;
+				if((ytrig == 0) && (xtrig == 0))  value = src.read();
+				dst.write(value);
+			}
+			if(++xtrig == Stride_x)  xtrig = 0;
+		}
+		if(++ytrig == Stride_y)  ytrig = 0;
+	}
+}
+
+/**
+ * \brief Feature map pixel padding - Pads each pixel in the input feature
+ *        map with zeros. Used as a pre-processing step for the transposed
+ * 		  convolution operation. Expects data in NHWC format, where N=1.
+ *
+ * \tparam OutputDim   Padded width of the output feature map
+ * \tparam Stride      Stride for each pixel along the width dimension
+ * \tparam NumChannels Number of channels of the input feature map
+ * \tparam SIMD		   Input parallelism 
+ * \tparam In_t		   Input datatype
+ *
+ * @param src          Input stream
+ * @param dst 		   Output stream
+ */
+template<
+	unsigned OutputDim,
+	unsigned Stride,
+	unsigned NumChannels,
+	unsigned SIMD,
+	typename In_t
+>
+void FMPadding_Pixel(
+	hls::stream<ap_uint<SIMD*In_t::width>> &src,
+	hls::stream<ap_uint<SIMD*In_t::width>> &dst
+) {
+	FMPadding_Pixel_Nonsquare<OutputDim, OutputDim, Stride, Stride, NumChannels, SIMD, In_t>(src, dst);
+}
+
+/**
  * \brief   Stream Data Width Converter - Converts the width of the input stream in the output stream
  *
  * Used to upscale or downscale a stream, without any loss of data in the procedure. 
