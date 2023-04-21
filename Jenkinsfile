@@ -30,7 +30,7 @@
  *
  ******************************************************************************/
 
-node {
+node('finn-build || built-in') {
     def app
     stage('Clone repository') {
         /* Let's make sure we have the repository cloned to our workspace */
@@ -141,6 +141,13 @@ node {
         }, twelfthBranch: {
             stage('TMR CHECK') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_tmrc_stmr.tcl")
+            }
+        }, thirteenthBranch: {
+            stage('FM_PIX_PAD') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_fm_pixel_padding.tcl")
+            }
+            stage('DECONV_2D') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_deconv2d.tcl")
             }
         }
     }
