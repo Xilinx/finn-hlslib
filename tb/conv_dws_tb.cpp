@@ -104,7 +104,7 @@ int main()
 	for (unsigned int oy = 0; oy < TY; oy++) {
 		for (unsigned int ox = 0; ox <TX; ox++) {
 			for(int pe=0;pe <PE1;pe++){
-				ap_int<4> quantized_weight = (ap_int<4>) PARAM::weights.weights(kx*KERNEL_DIM + ky)[out_chan_count][0];
+				ap_int<4> quantized_weight = (ap_int<4>) PARAM::weights.weights(0)[out_chan_count][TX-1 - (kx*KERNEL_DIM + ky)];
 				W1[out_chan_count][kx][ky] = quantized_weight;
 				kx++;
 				if (kx==KERNEL_DIM){

@@ -58,9 +58,11 @@ void Testbench_conv_dws(stream<ap_uint<FM_Channels1*INPUT_PRECISION> > & in, str
 	hls::stream<ap_uint<FM_Channels1*ap_uint<INPUT_PRECISION>::width> > resized_stream("resized_stream");
 	hls::stream<ap_uint<PE1*ap_uint<INPUT_PRECISION>::width> > resized_stream_pe("resized_stream_pe");
 	hls::stream<ap_uint<PE1*ap_uint<INPUT_PRECISION>::width> > swg_out("swg_out");
+	hls::stream<ap_uint<PE1*SIMD1*ap_uint<INPUT_PRECISION>::width> > resized_stream_simd("resized_stream_simd");
 	SameResize_Batch<IFMDim1, KERNEL_DIM, STRIDE, FM_Channels1, ap_uint<INPUT_PRECISION> >(in, resized_stream, numReps);
 	StreamingDataWidthConverter_Batch<FM_Channels1*INPUT_PRECISION, PE1*INPUT_PRECISION, (IFMDim1+2)*(IFMDim1+2)>(resized_stream, resized_stream_pe, numReps);
 	ConvolutionInputGenerator_dws<KERNEL_DIM, FM_Channels1, ap_uint<INPUT_PRECISION>::width, IFMDim1+2, OFMDim1, PE1,1>(resized_stream_pe, swg_out, numReps, ap_resource_dflt());
-	Vector_Vector_Activate_Batch<FM_Channels1, KERNEL_DIM*KERNEL_DIM, SIMD1, PE1, MMV1, Slice<ap_uint<INPUT_PRECISION> >, Slice<ap_int<16> >, Identity>(swg_out, out, PARAM::weights, PassThroughActivation<ap_int<16>>(), numReps*OFMDim1*OFMDim1, ap_resource_dsp());
+	StreamingDataWidthConverter_Batch<PE1*INPUT_PRECISION, PE1*SIMD1*INPUT_PRECISION, SIMD1*OFMDim1*OFMDim1>(swg_out, resized_stream_simd, numReps);
+	Vector_Vector_Activate_Batch<FM_Channels1, KERNEL_DIM*KERNEL_DIM, SIMD1, PE1, MMV1, Slice<ap_uint<INPUT_PRECISION> >, Slice<ap_int<16> >, Identity>(resized_stream_simd, out, PARAM::weights, PassThroughActivation<ap_int<16>>(), numReps*OFMDim1*OFMDim1, ap_resource_dsp());
 
 }
