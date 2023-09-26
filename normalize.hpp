@@ -162,4 +162,60 @@ void max_norm(
 
 } // max_norm()
 
+
+template<
+	unsigned  FM_SIZE,
+	typename  TI	// input type must be comparable and convertible to float
+>
+void softmax(
+	hls::stream<TI>    &src,
+	hls::stream<float> &dst
+) {
+	TI  max_val;
+	ap_uint<clog2(FM_SIZE+1)>  max_cnt = 0;
+
+	struct buf_s {
+		TI     xi;
+		float  xx;
+	};
+	hls::stream<buf_s>  buf;
+#pragma HLS stream variable=buf depth=FM_SIZE
+	float  total = 0.0f;
+
+	for(unsigned  i = 0; i < FM_SIZE; i++) {
+#pragma HLS pipeline II=1 style=flp
+		TI const  x = src.read();
+		if((max_cnt == 0) || (max_val < x)) {
+			max_val = x;
+			max_cnt = 1;
+		}
+		else if(max_val == x) {
+			max_cnt++;
+		}
+
+		float const xx = hls::exp(float(x));
+		buf.write(buf_s{ x, xx });
+		total += xx;
+	}
+
+	bool const  ovf = hls::isinf(total);
+	for(unsigned  i = 0; i < FM_SIZE; i++) {
+#pragma HLS pipeline II=1 style=flp
+		buf_s const  x = buf.read();
+
+		float  a;
+		float  d;
+		if(ovf) {
+			a = x.xi == max_val? 1.0f : 0.0f;
+			d = max_cnt;
+		}
+		else {
+			a = x.xx;
+			d = total;
+		}
+		dst.write(a/d);
+	}
+
+} // softmax()
+
 #endif
