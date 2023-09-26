@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2022, Xilinx, Inc.
+ *  Copyright (c) 2023, Xilinx, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,7 @@
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *******************************************************************************
- * @brief	Testbench for MaxNorm layer.
+ * @brief	Testbench for SoftMax layer.
  * @author	Thomas B. Preusser <thomas.preusser@amd.com>
  *******************************************************************************/
 #include "softmax_top.hpp"
