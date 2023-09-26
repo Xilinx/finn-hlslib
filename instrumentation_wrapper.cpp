@@ -41,6 +41,12 @@
  *	This module is currently not integrated with the FINN compiler. It must
  *	be instantiated and integrated with the rest of the system in a manual
  *	process.
+ *
+ * @param PENDING	maximum number of feature maps in the FINN dataflow pipeline
+ * @param ILEN		number of input transactions per IFM
+ * @param OLEN		number of output transactions per OFM
+ * @param TI		type of input payload vector
+ * @param TO		type of output payload vector
  *******************************************************************************/
 
 #include <hls_stream.h>
