@@ -79,7 +79,7 @@ static void move(
 
 template<typename  T>
 static void move(
-	hls::stream<hls::axis<T>> &src,
+	hls::stream<hls::axis<T, 0, 0, 0>> &src,
 	hls::stream<T> &dst
 ) {
 #pragma HLS pipeline II=1 style=flp
