@@ -572,6 +572,71 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 }
 
 /**
+ * \brief   Stream Data Width Converter - Converts the width of the input stream in the output stream
+ *
+ * Used to upscale or downscale a stream, without any loss of data in the procedure. 
+ * For downscaling (InWidth > OutWidth), InWidth has to be a multiple of OutWidth.
+ * For upscaling (InWidth < OutWidth), OutWidth has to be a multiple of InWidth.
+ *
+ * \tparam     InWidth      Width, in number of bits, of the input stream
+ * \tparam     OutWidth     Width, in number of bits, of the output stream 
+ * \tparam     NumInWords   Number of input words to process
+ *
+ * \param      in           Input stream
+ * \param      out          Output stream
+ * \param      numReps      Number of times the function has to be called
+ *
+ */
+template<unsigned int InWidth,		
+		unsigned int OutWidth,
+		unsigned int SIMD,
+		unsigned int PE,
+		unsigned int Channels,
+		unsigned int NF, // Channels / PE
+		unsigned int SF, // Kernel * Kernel / SIMD
+		unsigned int ActWidth,		
+		unsigned int NumInWords		
+>
+void StreamingDataWidthConverter_ParallelWindow_Batch(hls::stream<ap_uint<InWidth> > & in,
+		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
+	static_assert(InWidth > OutWidth, "");
+	static_assert(InWidth % OutWidth == 0, "");
+
+	// emit multiple output words per input word read
+	const unsigned int totalIters = NumInWords * numReps * NF * SF;
+	unsigned int o = 0;
+	unsigned int sf = 0;
+	unsigned int nf = 0;
+	// Resource pragma for ei (256*9*8 =) 18kb (for larger layers)
+	ap_uint<InWidth> ei = 0;
+	for (unsigned int t = 0; t < totalIters; t++) {
+#pragma HLS pipeline style=flp II=1
+		// read new input word if current out count is zero
+		if (o == 0) {
+			ei = in.read();
+		}
+		ap_uint<OutWidth> eo;
+		for (unsigned int s = 0; s < SIMD; s++){
+#pragma HLS unroll
+			unsigned int upper_bound = (s*Channels + sf*Channels*SIMD + nf*PE + PE) * ActWidth;
+			unsigned int lower_bound = (s*Channels + sf*Channels*SIMD + nf*PE) * ActWidth;
+			eo((s+1)*PE*ActWidth-1, s*PE*ActWidth) = ei(upper_bound - 1, lower_bound);
+		}
+		out.write(eo);
+		if (++o == SF*NF)	{
+			o = 0;
+		}
+		if (++sf == SF){
+			if (++nf == NF){
+				nf = 0;
+			}
+			sf = 0;
+		}
+	}
+}
+
+
+/**
  * \brief   Stream Data Width Converter No Multiple - 
  *          Converts the width of the input stream in the output stream for no multiple dimensions
  *
