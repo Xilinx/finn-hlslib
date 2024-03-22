@@ -6,7 +6,7 @@
 
 int main() {
 	hls::stream<hls::vector<TI, SIMD>>  src;
-	hls::stream<TO>  dst;
+	hls::stream<hls::vector<TO, PE>>    dst;
 
 	for(unsigned  h = 0; h < H; h++) {
 		for(unsigned  w = 0; w < W; w++) {
@@ -21,8 +21,13 @@ int main() {
 		if(dst.empty())  timeout++;
 		else {
 			auto const  y = dst.read();
-			std::cout << (cnt%CO == 0? '\t' : ':') << y;
-			if(++cnt == CO*S*(W-K/S+1)) {
+			char  delim = cnt%CO == 0? '\t' : ':';
+			for(unsigned  pe = 0; pe < PE; pe++) {
+				std::cout << delim << std::setw(4) << y[pe];
+				delim = ':';
+			}
+			cnt += PE;
+			if(cnt == CO*S*(W-K/S+1)) {
 				std::cout << std::endl;
 				cnt = 0;
 			}
