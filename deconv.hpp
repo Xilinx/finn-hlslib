@@ -34,7 +34,7 @@ void deconv_weights(
 	hls::stream<TV> &dst
 ) {
 #pragma HLS pipeline II=1 style=flp
-	static_assert(K%S == 0, "Kernel size must be multiple of stride.");
+	static_assert(K%S == 0, "Stride must divide kernel size.");
 	constexpr unsigned  KK = K/S;
 
 	static unsigned  idx = SF*(K+1)*(K-S);
@@ -127,7 +127,6 @@ void deconv_swg(
 	hls::stream<T> &dst
 ) {
 #pragma HLS pipeline II=1 style=flp
-
 	static_assert(K%S == 0, "Stride must divide kernel size.");
 	constexpr unsigned  KK = K/S;
 	constexpr unsigned  ADDR_BITS = clog2(KK*W*SF);
@@ -141,7 +140,7 @@ void deconv_swg(
 #pragma HLS dependence variable=buf inter direction=WAR false
 #pragma HLS dependence variable=buf inter direction=RAW distance=1 true
 	using  ptr_t = ap_int<1+ADDR_BITS>;
-	constexpr unsigned  WP_DEPTH = 4;
+	constexpr unsigned  WP_DEPTH = 4;	// TODO: Why do we need 4? How does this relate to `distance` above?
 	static ptr_t  wp[WP_DEPTH] = { 0, };	// incl. delayed pointers for guarding read progession
 	static ptr_t  rp = 0;
 	static ptr_t  cp = 0;
@@ -321,6 +320,8 @@ void deconv(
 #pragma HLS stream depth=2 variable=wgt
 #pragma HLS stream depth=2 variable=swg
 
+	static_assert(CO%PE   == 0, "PE parallelism must divide output channel count.");
+	static_assert(CI%SIMD == 0, "SIMD parallelism must divide input channel count.");
 	constexpr unsigned  CF = CO/PE;
 	constexpr unsigned  SF = CI/SIMD;
 	deconv_weights<K, S, H, W, CF, SF>(kernel, wgt);
