@@ -144,7 +144,7 @@ void deconv_swg(
 	static ptr_t  wp[WP_DEPTH] = { 0, };	// incl. delayed pointers for guarding read progession
 	static ptr_t  rp = 0;
 	static ptr_t  cp = 0;
-#pragma HLS partition variable=wp complete
+#pragma HLS array_partition variable=wp complete
 #pragma HLS reset variable=wp
 #pragma HLS reset variable=rp
 #pragma HLS reset variable=cp
@@ -154,7 +154,7 @@ void deconv_swg(
 	for(unsigned  h = 0; h < H-KK+1; h++) {
 		for(unsigned  sh = 0; sh < S; sh++) {
 			for(unsigned  w = 0; w < W-KK+1; w++) {
-				for(unsigned  sw = 0; sw < S*CO; sw++) {
+				for(unsigned  sw = 0; sw < S*CF; sw++) {
 					for(unsigned  kh = 0; kh < KK; kh++) {
 						for(unsigned  kw = 0; kw < KK; kw++) {
 							for(unsigned  d = 0; d < SF; d++) {
@@ -200,7 +200,7 @@ void deconv_swg(
 					else {
 						kh = 0;
 						rinc -= KK*W*SF;	// unskip back to beginning of kernel volume
-						if(sw != CO*S-1)  sw++;
+						if(sw != CF*S-1)  sw++;
 						else {
 							sw = 0;
 							rinc += SF;	// advance kernel position horizontally
@@ -251,18 +251,23 @@ void deconv_mvu(
 	hls::stream<hls::vector<TO, PE>>                    &dst
 ) {
 #pragma HLS pipeline II=1 style=flp
-	static hls::vector<TO, PE>  accu = { 0, };
+	static TO  accu[PE] = { 0, };
 	static ap_uint<clog2(N)>  cnt = 0;
 	static bool  push = false;
+#pragma HLS array_partition variable=accu complete
 #pragma HLS reset variable=accu
 #pragma HLS reset variable=cnt
 #pragma HLS reset variable=push
 
 	// Complete marked Output
 	if(push) {
-//std::cout << "-> " << accu << std::endl;
-		dst.write(accu);
-		for(unsigned  pe = 0; pe < PE; pe++)  accu[pe] = 0;
+		hls::vector<TO, PE>  y;
+		for(unsigned  pe = 0; pe < PE; pe++) {
+#pragma HLS unroll
+			y[pe] = accu[pe];
+			accu[pe] = 0;
+		}
+		dst.write(y);
 		push = false;
 	}
 
