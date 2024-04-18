@@ -5,8 +5,6 @@
 #include <hls_stream.h>
 #include <hls_vector.h>
 
-#include <iostream>
-
 
 //===========================================================================
 // Utility
@@ -27,11 +25,13 @@ template<
 	unsigned  W,	// IFM Width
 	unsigned  CF,	// channel fold (CO/PE)
 	unsigned  SF,	// SIMD fold (CI/SIMD)
-	typename  TV	// e.g. hls::vector<hls::vector<TW, SIMD>, PE>
+	unsigned long  PE,
+	unsigned long  SIMD,
+	typename  TW
 >
 void deconv_weights(
-	TV const (&kernel)[CF*K*K*SF],
-	hls::stream<TV> &dst
+	TW const (&kernel)[CF*K*K*SF][PE][SIMD],
+	hls::stream<hls::vector<hls::vector<TW, SIMD>, PE>> &dst
 ) {
 #pragma HLS pipeline II=1 style=flp
 	static_assert(K%S == 0, "Stride must divide kernel size.");
@@ -56,7 +56,17 @@ void deconv_weights(
 #pragma HLS reset variable=ksx
 #pragma HLS reset variable=d
 
-	if(dst.write_nb(kernel[idx])) {
+#pragma HLS array_partition variable=kernel dim=1
+	hls::vector<hls::vector<TW, SIMD>, PE>  v;
+	for(unsigned  i = 0; i < PE; i++) {
+#pragma HLS unroll
+		for(unsigned  j = 0; j < SIMD; j++) {
+#pragma HLS unroll
+			v[i][j] = kernel[idx][i][j];
+		}
+	}
+
+	if(dst.write_nb(v)) {
 
 //std::cout
 //	<< '|' << y << ':' << sy << ':' << x << ':' << sx << ':' << c << ':' << ksy << ':' << ksx << ':' << d
@@ -314,7 +324,7 @@ template<
 	typename  TO
 >
 void deconv(
-	hls::vector<hls::vector<TW, SIMD>, PE> const (&kernel)[(CO/PE)*K*K*(CI/SIMD)],
+	TW const (&kernel)[(CO/PE)*K*K*(CI/SIMD)][PE][SIMD],
 	hls::stream<hls::vector<TI, SIMD>> &src,
 	hls::stream<hls::vector<TO, PE>>   &dst
 ) {
