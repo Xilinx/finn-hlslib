@@ -14,6 +14,97 @@ constexpr unsigned clog2(unsigned  x) {
   return  x<2? 0 : 1+clog2((x+1)/2);
 }
 
+//- Feature Map Cropping ----------------------------------------------------
+template<
+	unsigned  P,	// Cropping to remove from all individual edges
+	unsigned  H,	// IFM Height
+	unsigned  W,	// IFM Width
+	unsigned  C,	// IFM Channel Count
+	unsigned long  SIMD,
+	typename  T
+>
+void crop(
+	hls::stream<hls::vector<T, SIMD>> &src,
+	hls::stream<hls::vector<T, SIMD>> &dst
+) {
+	static_assert(C%SIMD == 0, "SIMD parallelism must divide channel count.");
+
+#pragma HLS pipeline II=1 style=flp
+
+	// Positioning within the Uncropped Input Feature Map
+	static unsigned  h = 0;
+	static unsigned  w = 0;
+	static unsigned  d = 0;
+#pragma HLS reset variable=h
+#pragma HLS reset variable=w
+#pragma HLS reset variable=d
+
+	if(!src.empty()) {
+		auto const  x = src.read();
+		if((P <= w) && (w < W-P) && (P <= h) && (h < H-P))  dst.write(x);
+		if(++d == C/SIMD) {
+			d = 0;
+			if(++w == W) {
+				w = 0;
+				if(++h == H)  h = 0;
+			}
+		}
+	}
+
+} // crop()
+
+template<
+	unsigned  P,	// Padding to all individual edges
+	unsigned  H,	// IFM Height
+	unsigned  W,	// IFM Width
+	unsigned  C,	// IFM Channel Count
+	unsigned long  SIMD,
+	typename  T,
+	typename  TV
+>
+void pad(
+	hls::stream<hls::vector<T, SIMD>> &src,
+	hls::stream<hls::vector<T, SIMD>> &dst,
+	TV const  val
+) {
+	static_assert(C%SIMD == 0, "SIMD parallelism must divide channel count.");
+
+#pragma HLS function_instantiate variable=val
+#pragma HLS pipeline II=1 style=flp
+
+	// Positioning within Padded Output Feature Map
+	static unsigned  h = 0;
+	static unsigned  w = 0;
+	static unsigned  d = 0;
+#pragma HLS reset variable=h
+#pragma HLS reset variable=w
+#pragma HLS reset variable=d
+
+	bool  wr = false;
+	hls::vector<T, SIMD>  y;
+	if((h < P) || (P+H <= h) || (w < P) || (P+W <= w)) {
+		wr = true;
+		for(unsigned  i = 0; i < SIMD; i++) {
+#pragma HLS unroll
+			y[i] = val;
+		}
+	}
+	else {
+		wr = src.read_nb(y);
+	}
+
+	if(wr) {
+		dst.write(y);
+		if(++d == C/SIMD) {
+			d = 0;
+			if(++w == P+W+P) {
+				w = 0;
+				if(++h == P+H+P)  h = 0;
+			}
+		}
+	}
+
+} // pad()
 
 //===========================================================================
 // Deconv Building Blocks
@@ -313,6 +404,7 @@ void deconv_mvu(
 template<
 	unsigned  K,	// kernel Size
 	unsigned  S, 	// stride
+	unsigned  P,	// (de)padding
 	unsigned  H,	// IFM height
 	unsigned  W,	// IFM Width
 	unsigned  CO,	// output channels
@@ -330,18 +422,39 @@ void deconv(
 ) {
 #pragma HLS dataflow disable_start_propagation
 
-	static hls::stream<hls::vector<hls::vector<TW, SIMD>, PE>>  wgt("wgt");
-	static hls::stream<hls::vector<TI, SIMD>>  swg("swg");
-#pragma HLS stream depth=2 variable=wgt
-#pragma HLS stream depth=2 variable=swg
-
+	// Parameter Validation & Fold Derivation
 	static_assert(CO%PE   == 0, "PE parallelism must divide output channel count.");
 	static_assert(CI%SIMD == 0, "SIMD parallelism must divide input channel count.");
 	constexpr unsigned  CF = CO/PE;
 	constexpr unsigned  SF = CI/SIMD;
-	deconv_weights<K, S, H, W, CF, SF>(kernel, wgt);
-	deconv_swg    <K, S, H, W, CF, SF>(src, swg);
-	deconv_mvu  <K/S*K/S*SF, PE, SIMD>(wgt, swg, dst);
+
+	// Padding and cropping values to accommodate P != K-S
+	constexpr unsigned  PADUP = (P >= K-S)? 0 : (K-P-1)/S;
+	constexpr unsigned  CROP  = S*PADUP - ((K-S)-P);
+	constexpr unsigned  H_EFF = PADUP + H + PADUP;
+	constexpr unsigned  W_EFF = PADUP + W + PADUP;
+	constexpr unsigned  HO_EFF = (H_EFF-1)*S + K;
+	constexpr unsigned  WO_EFF = (W_EFF-1)*S + K;
+
+	// Continuous Weight Feed
+	static hls::stream<hls::vector<hls::vector<TW, SIMD>, PE>>  wgt("wgt");
+#pragma HLS stream depth=2 variable=wgt
+	deconv_weights<K, S, H_EFF, W_EFF, CF, SF>(kernel, wgt);
+
+	// Activation Processing Pipeline: pad -> swg -> mvu -> crop
+	static hls::stream<hls::vector<TI, SIMD>>  src_eff("src_eff");
+	static hls::stream<hls::vector<TI, SIMD>>  swg    ("swg");
+	static hls::stream<hls::vector<TO, SIMD>>  dst_eff("dst_eff");
+#pragma HLS stream depth=2 variable=src_eff
+#pragma HLS stream depth=2 variable=swg
+#pragma HLS stream depth=2 variable=dst_eff
+
+	pad<PADUP, H, W, CI>(src, src_eff, 0);
+
+	deconv_swg <K, S, H_EFF, W_EFF, CF, SF>(src_eff, swg);
+	deconv_mvu <K/S*K/S*SF, PE, SIMD>(wgt, swg, dst_eff);
+
+	crop<CROP, HO_EFF, WO_EFF, CO>(dst_eff, dst);
 
 } // deconv()
 

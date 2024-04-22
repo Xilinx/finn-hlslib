@@ -5,12 +5,13 @@
 #include <hls_stream.h>
 #include <hls_vector.h>
 
-constexpr unsigned  K = 4;	// kernel Size
-constexpr unsigned  S = 2; 	// stride
-constexpr unsigned  H = 6;	// IFM height
-constexpr unsigned  W = 6;	// IFM Width
-constexpr unsigned  CI = 1;	// input channels
-constexpr unsigned  CO = 2;	// output channels
+constexpr unsigned  K = 4;		// kernel Size
+constexpr unsigned  S = 2; 		// stride
+constexpr unsigned  P = K-S;	// (de)padding
+constexpr unsigned  H = 6;		// IFM height
+constexpr unsigned  W = 6;		// IFM Width
+constexpr unsigned  CI = 1;		// input channels
+constexpr unsigned  CO = 2;		// output channels
 
 using  TW = ap_uint< 8>;
 using  TI = ap_uint< 4>;

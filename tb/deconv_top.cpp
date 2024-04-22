@@ -12,6 +12,6 @@ void deconv_top(
 
 #pragma HLS dataflow disable_start_propagation
 
-	deconv<K, S, H, W, CO, CI, PE, SIMD>(KERNEL, src, dst);
+	deconv<K, S, P, H, W, CO, CI, PE, SIMD>(KERNEL, src, dst);
 
 } // deconv_top()
