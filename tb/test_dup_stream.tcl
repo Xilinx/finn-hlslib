@@ -38,6 +38,7 @@
  # Tcl script for HLS csim, synthesis and cosim of the duplicate stream layer
  #
 ###############################################################################
+delete_project hls-syn-dup_stream
 open_project hls-syn-dup_stream
 add_files dup_stream_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
 add_files -tb dup_stream_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
