@@ -417,16 +417,20 @@ void FMPadding_Batch(
 	}
 }
 
+
 /**
  * \brief   Stream Data Width Converter - Converts the width of the input stream in the output stream
  *
  * Used to upscale or downscale a stream, without any loss of data in the procedure. 
  * For downscaling (InWidth > OutWidth), InWidth has to be a multiple of OutWidth.
  * For upscaling (InWidth < OutWidth), OutWidth has to be a multiple of InWidth.
+ * Additionally performs padding or cropping of the output stream based on the 
+ * Resize parameter
  *
  * \tparam     InWidth      Width, in number of bits, of the input stream
  * \tparam     OutWidth     Width, in number of bits, of the output stream 
  * \tparam     NumInWords   Number of input words to process
+ * \tparam     Resize   	Padding or cropping amount in bits
  *
  * \param      in           Input stream
  * \param      out          Output stream
@@ -435,15 +439,19 @@ void FMPadding_Batch(
  */
 template<unsigned int InWidth,		
 		unsigned int OutWidth,		
-		unsigned int NumInWords		
+		unsigned int NumInWords,
+		signed int Resize		
 >
 void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
-  static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0), "");
 
-  if (InWidth > OutWidth) {
+
+	const unsigned int OutWidthUnpadded = (const unsigned int) (OutWidth - Resize);
+	static_assert((InWidth % OutWidthUnpadded == 0) || (OutWidthUnpadded % InWidth == 0), "");
+
+  if (InWidth > OutWidthUnpadded) {
     // emit multiple output words per input word read
-    const unsigned int outPerIn = InWidth / OutWidth;
+    const unsigned int outPerIn = InWidth / OutWidthUnpadded;
     const unsigned int totalIters = NumInWords * outPerIn * numReps;
     unsigned int o = 0;
     ap_uint<InWidth> ei = 0;
@@ -454,10 +462,26 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
         ei = in.read();
 	  }
       // pick output word from the rightmost position
-      ap_uint<OutWidth> eo = ei(OutWidth - 1, 0);
+	  // initialized to 0 for potential padding
+	  ap_uint<OutWidth> eo = 0;
+
+	  if (Resize == 0) {
+		// no padding or cropping
+		eo = ei(OutWidth - 1, 0);
+
+	  } else if (Resize > 0 ) {
+		// pad by assigning the pre-padded width only, 
+		// the rest have already been initialized to 0
+		eo(OutWidthUnpadded - 1, 0) = ei(OutWidthUnpadded - 1, 0);
+
+	  } else {
+		// crop by only assigning the newly cropped width
+		eo(OutWidth - 1, 0) = ei(OutWidth-1, 0);
+	  }
+      
       out.write(eo);
       // shift input to get new output word for next iteration
-      ei = ei >> OutWidth;
+      ei = ei >> OutWidthUnpadded;
       // increment written output count
       o++;
       // wraparound indices to recreate the nested loop structure
@@ -474,16 +498,33 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
     }
   } else { // InWidth < OutWidth
     // read multiple input words per output word emitted
-    const unsigned int inPerOut = OutWidth / InWidth;
+    const unsigned int inPerOut = OutWidthUnpadded / InWidth;
     const unsigned int totalIters = NumInWords * numReps;
     unsigned int i = 0;
+	// initialized to 0 for potential padding
     ap_uint<OutWidth> eo = 0;
     for (unsigned int t = 0; t < totalIters; t++) {
 #pragma HLS pipeline style=flp II=1
       // read input and shift into output buffer
       ap_uint<InWidth> ei = in.read();
       eo = eo >> InWidth;
-      eo(OutWidth - 1, OutWidth - InWidth) = ei;
+
+	  if (Resize == 0) {
+		// no padding or cropping
+      	eo(OutWidth - 1, OutWidth - InWidth) = ei;
+
+	  } else if (Resize > 0) {
+		// pad by assigning the pre-padded width only, 
+		// the rest have already been initialized to 0
+		eo(OutWidthUnpadded - 1, OutWidthUnpadded - InWidth) = ei;
+
+	  } else {
+		// crop by only assigning the newly cropped width
+		eo(OutWidth - 1, OutWidth - InWidth) = ei(OutWidth-1, 0);
+
+	  }
+
+
       // increment read input count
       i++;
       // wraparound logic to recreate nested loop functionality
