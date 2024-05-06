@@ -430,7 +430,8 @@ void FMPadding_Batch(
  * \tparam     InWidth      Width, in number of bits, of the input stream
  * \tparam     OutWidth     Width, in number of bits, of the output stream 
  * \tparam     NumInWords   Number of input words to process
- * \tparam     Resize   	Padding or cropping amount in bits
+ * \tparam     Cropping   	Cropping of the input
+  * \tparam    Padding   	Padding of the output
  *
  * \param      in           Input stream
  * \param      out          Output stream
@@ -440,18 +441,29 @@ void FMPadding_Batch(
 template<unsigned int InWidth,		
 		unsigned int OutWidth,		
 		unsigned int NumInWords,
-		signed int Resize		
+		unsigned int Cropping,
+		unsigned int Padding		
 >
 void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
 
 
-	const unsigned int OutWidthUnpadded = (const unsigned int) (OutWidth - Resize);
-	static_assert((InWidth % OutWidthUnpadded == 0) || (OutWidthUnpadded % InWidth == 0), "");
+	const unsigned int InWidthOriginal = InWidth;
+	const unsigned int OutWidthOriginal = OutWidth;
 
-  if (InWidth > OutWidthUnpadded) {
+	if (Cropping > 0) {
+		// cropping, the input width has changed
+		const unsigned int InWidthOriginal = (const unsigned int) (InWidth - Cropping);
+	} else if (Resize < 0) {
+		// padding, the output width has changed
+		const unsigned int OutWidthOriginal = (const unsigned int) (OutWidth - Padding);	
+	}
+
+	static_assert((InWidthOriginal % OutWidthOriginal == 0) || (OutWidthOriginal % InWidthOriginal == 0), "");
+
+  if (InWidthOriginal > OutWidthOriginal) {
     // emit multiple output words per input word read
-    const unsigned int outPerIn = InWidth / OutWidthUnpadded;
+    const unsigned int outPerIn = InWidthOriginal / OutWidthOriginal;
     const unsigned int totalIters = NumInWords * outPerIn * numReps;
     unsigned int o = 0;
     ap_uint<InWidth> ei = 0;
@@ -465,23 +477,14 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 	  // initialized to 0 for potential padding
 	  ap_uint<OutWidth> eo = 0;
 
-	  if (Resize == 0) {
-		// no padding or cropping
-		eo = ei(OutWidth - 1, 0);
-
-	  } else if (Resize > 0 ) {
-		// pad by assigning the pre-padded width only, 
-		// the rest have already been initialized to 0
-		eo(OutWidthUnpadded - 1, 0) = ei(OutWidthUnpadded - 1, 0);
-
-	  } else {
-		// crop by only assigning the newly cropped width
-		eo(OutWidth - 1, 0) = ei(OutWidth-1, 0);
-	  }
-      
+	  // Read only up to padded bits if they exist
+	  eo(OutWidthOriginal - 1, 0) = ei(OutWidthOriginal - 1, 0);
+	        
       out.write(eo);
       // shift input to get new output word for next iteration
-      ei = ei >> OutWidthUnpadded;
+
+	  ei = ei >> OutWidthOriginal;
+	  
       // increment written output count
       o++;
       // wraparound indices to recreate the nested loop structure
@@ -489,16 +492,22 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
         o = 0;
       }
     }
-  } else if (InWidth == OutWidth) {
+  } else if (InWidthOriginal == OutWidthOriginal) {
     // straight-through copy
     for (unsigned int i = 0; i < NumInWords * numReps; i++) {
 #pragma HLS pipeline style=flp II=1
       ap_uint<InWidth> e = in.read();
-      out.write(e);
+
+	  // initialized to 0 for potential padding
+	  ap_uint<OutWidth> eo = 0;
+	  // this performs padding if necessary
+	  eo(OutWidthOriginal - 1, 0) = ei(OutWidthOriginal - 1, 0);
+
+      out.write(eo);
     }
   } else { // InWidth < OutWidth
     // read multiple input words per output word emitted
-    const unsigned int inPerOut = OutWidthUnpadded / InWidth;
+    const unsigned int inPerOut = OutWidthOriginal / InWidthOriginal;
     const unsigned int totalIters = NumInWords * numReps;
     unsigned int i = 0;
 	// initialized to 0 for potential padding
@@ -507,23 +516,13 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 #pragma HLS pipeline style=flp II=1
       // read input and shift into output buffer
       ap_uint<InWidth> ei = in.read();
-      eo = eo >> InWidth;
 
-	  if (Resize == 0) {
+	  // If cropping exists, it should be ignored here
+      eo = eo >> InWidthOriginal;
+
 		// no padding or cropping
-      	eo(OutWidth - 1, OutWidth - InWidth) = ei;
-
-	  } else if (Resize > 0) {
-		// pad by assigning the pre-padded width only, 
-		// the rest have already been initialized to 0
-		eo(OutWidthUnpadded - 1, OutWidthUnpadded - InWidth) = ei;
-
-	  } else {
-		// crop by only assigning the newly cropped width
-		eo(OutWidth - 1, OutWidth - InWidth) = ei(OutWidth-1, 0);
-
-	  }
-
+		// again, ignore cropped input bits if they exist
+      eo(OutWidth - 1, OutWidth - InWidthOriginal) = ei(InWidthOriginal-1, 0);
 
       // increment read input count
       i++;
