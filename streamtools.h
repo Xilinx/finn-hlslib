@@ -424,14 +424,13 @@ void FMPadding_Batch(
  * Used to upscale or downscale a stream, without any loss of data in the procedure. 
  * For downscaling (InWidth > OutWidth), InWidth has to be a multiple of OutWidth.
  * For upscaling (InWidth < OutWidth), OutWidth has to be a multiple of InWidth.
- * Additionally performs padding or cropping of the output stream based on the 
- * Resize parameter
+ * Additionally performs padding or cropping of the streams
  *
  * \tparam     InWidth      Width, in number of bits, of the input stream
  * \tparam     OutWidth     Width, in number of bits, of the output stream 
  * \tparam     NumInWords   Number of input words to process
  * \tparam     Cropping   	Cropping of the input
-  * \tparam    Padding   	Padding of the output
+* \tparam    Padding   	Padding of the output
  *
  * \param      in           Input stream
  * \param      out          Output stream
@@ -448,16 +447,8 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
 
 
-	const unsigned int InWidthOriginal = InWidth;
-	const unsigned int OutWidthOriginal = OutWidth;
-
-	if (Cropping > 0) {
-		// cropping, the input width has changed
-		const unsigned int InWidthOriginal = (const unsigned int) (InWidth - Cropping);
-	} else if (Resize < 0) {
-		// padding, the output width has changed
-		const unsigned int OutWidthOriginal = (const unsigned int) (OutWidth - Padding);	
-	}
+	const unsigned int InWidthOriginal = InWidth - Cropping;
+	const unsigned int OutWidthOriginal = OutWidth - Padding;
 
 	static_assert((InWidthOriginal % OutWidthOriginal == 0) || (OutWidthOriginal % InWidthOriginal == 0), "");
 
@@ -496,7 +487,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
     // straight-through copy
     for (unsigned int i = 0; i < NumInWords * numReps; i++) {
 #pragma HLS pipeline style=flp II=1
-      ap_uint<InWidth> e = in.read();
+      ap_uint<InWidth> ei = in.read();
 
 	  // initialized to 0 for potential padding
 	  ap_uint<OutWidth> eo = 0;
