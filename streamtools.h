@@ -658,17 +658,18 @@ void StreamingDataWidthConverterNoMultiple(
  * \param      out2         Output stream II
  *
  */
-
-template<typename T, unsigned int NumTotal >
+template<typename T,
+        unsigned int NumTotal
+>
 void DuplicateStreams(hls::stream<T> & in, hls::stream<T> & out1,
-                      hls::stream<T> & out2) {
+		hls::stream<T> & out2) {
 
-  for (unsigned int i = 0; i < NumTotal; i++) {
+	for (unsigned int i = 0; i < NumTotal; i++) {
 #pragma HLS pipeline style=flp II=1
-    T e = in.read();
-    out1.write(e);
-    out2.write(e);
-  }
+		T e = in.read();
+		out1.write(e);
+		out2.write(e);
+	}
 }
 
 
@@ -686,12 +687,14 @@ void DuplicateStreams(hls::stream<T> & in, hls::stream<T> & out1,
  * \param      numReps      Number of frames / images
  *
  */
-template<typename T, unsigned int NumTotal >
+template<typename T,
+        unsigned int NumTotal
+>
 void DuplicateStreams_Batch(hls::stream<T> & in, hls::stream<T> & out1,
-                            hls::stream<T> & out2, const unsigned int numReps) {
-  for (unsigned int image = 0; image < numReps; image++) {
-    DuplicateStreams<T, NumTotal>(in, out1, out2);
-  }
+		hls::stream<T> & out2, const unsigned int numReps) {
+	for (unsigned int image = 0; image < numReps; image++) {
+		DuplicateStreams<T, NumTotal>(in, out1, out2);
+	}
 }
 
 
