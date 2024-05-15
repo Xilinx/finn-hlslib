@@ -422,15 +422,14 @@ void FMPadding_Batch(
  * \brief   Stream Data Width Converter - Converts the width of the input stream in the output stream
  *
  * Used to upscale or downscale a stream, without any loss of data in the procedure. 
- * For downscaling (InWidth > OutWidth), InWidth has to be a multiple of OutWidth.
- * For upscaling (InWidth < OutWidth), OutWidth has to be a multiple of InWidth.
- * Additionally performs padding or cropping of the streams
+ * Additionally performs padding or cropping of the streams if
+ * InWidth*NumInWords != OutWidth*NumOutWords
  *
  * \tparam     InWidth      Width, in number of bits, of the input stream
  * \tparam     OutWidth     Width, in number of bits, of the output stream 
  * \tparam     NumInWords   Number of input words to process
- * \tparam     Cropping   	Cropping of the input
-* \tparam    Padding   	Padding of the output
+  *\tparam     NumOutWords   Number of output words to process
+
  *
  * \param      in           Input stream
  * \param      out          Output stream
@@ -440,88 +439,105 @@ void FMPadding_Batch(
 template<unsigned int InWidth,		
 		unsigned int OutWidth,		
 		unsigned int NumInWords,
-		unsigned int Cropping,
-		unsigned int Padding		
+		unsigned int NumOutWords	
 >
 void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
 
 
-	const unsigned int InWidthOriginal = InWidth - Cropping;
-	const unsigned int OutWidthOriginal = OutWidth - Padding;
-
-	static_assert((InWidthOriginal % OutWidthOriginal == 0) || (OutWidthOriginal % InWidthOriginal == 0), "");
-
-  if (InWidthOriginal > OutWidthOriginal) {
+  if (InWidth > OutWidth) {
     // emit multiple output words per input word read
-    const unsigned int outPerIn = InWidthOriginal / OutWidthOriginal;
-    const unsigned int totalIters = NumInWords * outPerIn * numReps;
-    unsigned int o = 0;
+    const unsigned int totalIters = NumOutWords * numReps;
+	unsigned int width_written = 0;
+	unsigned int words_written = 0;
     ap_uint<InWidth> ei = 0;
     for (unsigned int t = 0; t < totalIters; t++) {
 #pragma HLS pipeline style=flp II=1
+
       // read new input word if current out count is zero
-      if (o == 0) {
+      if (width_written == 0) {
         ei = in.read();
 	  }
       // pick output word from the rightmost position
 	  // initialized to 0 for potential padding
 	  ap_uint<OutWidth> eo = 0;
 
-	  // Read only up to padded bits if they exist
-	  eo(OutWidthOriginal - 1, 0) = ei(OutWidthOriginal - 1, 0);
+	  eo(OutWidth - 1, 0) = ei(OutWidth - 1, 0);
 	        
       out.write(eo);
       // shift input to get new output word for next iteration
-
-	  ei = ei >> OutWidthOriginal;
+	  ei = ei >> OutWidth;
 	  
-      // increment written output count
-      o++;
-      // wraparound indices to recreate the nested loop structure
-      if (o == outPerIn) {
-        o = 0;
-      }
+      // increment written output count and size
+	  width_written += OutWidth;
+	  words_written += 1; 
+	  if (width_written >= InWidth || words_written >= NumOutWords)
+	  {
+		width_written = 0;
+		if (words_written >= NumOutWords) {
+			words_written = 0;
+		}
+	  }
     }
-  } else if (InWidthOriginal == OutWidthOriginal) {
+  } else if (InWidth == OutWidth) {
     // straight-through copy
-    for (unsigned int i = 0; i < NumInWords * numReps; i++) {
+	// NumOutWords != NumInWords if padding or cropping happened
+	// So we use one of two versions where we control how many times
+	// the streams are read/written.
+
+	if (NumOutWords >= NumInWords) {
+		for (unsigned int i = 0; i < NumOutWords * numReps; i++) {
 #pragma HLS pipeline style=flp II=1
-      ap_uint<InWidth> ei = in.read();
-
-	  // initialized to 0 for potential padding
-	  ap_uint<OutWidth> eo = 0;
-	  // this performs padding if necessary
-	  eo(OutWidthOriginal - 1, 0) = ei(OutWidthOriginal - 1, 0);
-
-      out.write(eo);
-    }
+			ap_uint<InWidth> e = 0;
+			if (i < NumInWords) {
+				e = in.read();
+			}
+			out.write(e);
+		}
+	} else {
+		for (unsigned int i = 0; i < NumInWords * numReps; i++) {
+#pragma HLS pipeline style=flp II=1
+			ap_uint<InWidth> e = in.read();
+			if (i < NumOutWords) {
+				out.write(e);
+			}	
+		}	
+	}
   } else { // InWidth < OutWidth
     // read multiple input words per output word emitted
-    const unsigned int inPerOut = OutWidthOriginal / InWidthOriginal;
     const unsigned int totalIters = NumInWords * numReps;
     unsigned int i = 0;
+	unsigned int width_read = 0;
+	unsigned int words_read = 0;
 	// initialized to 0 for potential padding
-    ap_uint<OutWidth> eo = 0;
+	// we allocate InWidth extra space for cases where we have leftover from
+	// a previous word due to our width_read tracking scheme for when to 
+	// write out eo (potentially introducing padding or cropping)
+    ap_uint<OutWidth+InWidth> eo = 0;
     for (unsigned int t = 0; t < totalIters; t++) {
 #pragma HLS pipeline style=flp II=1
       // read input and shift into output buffer
       ap_uint<InWidth> ei = in.read();
 
-	  // If cropping exists, it should be ignored here
-      eo = eo >> InWidthOriginal;
+	  // important to shift in 0s for padding
+      eo = eo >> InWidth;
 
-		// no padding or cropping
-		// again, ignore cropped input bits if they exist
-      eo(OutWidth - 1, OutWidth - InWidthOriginal) = ei(InWidthOriginal-1, 0);
+      eo(OutWidth+InWidth - 1, OutWidth) = ei(InWidth-1, 0);
 
-      // increment read input count
-      i++;
+	  // increment words added
+	  words_read += 1;
+	  // increment width added
+	  width_read += InWidth;
+
       // wraparound logic to recreate nested loop functionality
-      if (i == inPerOut) {
-        i = 0;
-        out.write(eo);
-      }
+	  if (width_read >= OutWidth || words_read >= NumInWords) {
+		width_read -= OutWidth;
+		words_read = 0;
+		out.write(eo(OutWidth+InWidth-1,InWidth));
+		if (words_read >= NumInWords) {
+			words_read = 0;
+		}
+	  } 
     }
   }
 }
