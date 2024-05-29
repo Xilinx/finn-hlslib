@@ -5,14 +5,10 @@
 #include <hls_stream.h>
 #include <hls_vector.h>
 
+#include "utils.hpp"
 
 //===========================================================================
 // Utility
-
-//- Static Evaluation of ceil(log2(x)) --------------------------------------
-constexpr unsigned clog2(unsigned  x) {
-  return  x<2? 0 : 1+clog2((x+1)/2);
-}
 
 //- Feature Map Cropping ----------------------------------------------------
 template<
@@ -27,6 +23,7 @@ void crop(
 	hls::stream<hls::vector<T, SIMD>> &src,
 	hls::stream<hls::vector<T, SIMD>> &dst
 ) {
+#pragma HLS interface ap_ctrl_none port=return
 	static_assert(C%SIMD == 0, "SIMD parallelism must divide channel count.");
 
 #pragma HLS pipeline II=1 style=flp
@@ -67,6 +64,7 @@ void pad(
 	hls::stream<hls::vector<T, SIMD>> &dst,
 	TV const  val
 ) {
+#pragma HLS interface ap_ctrl_none port=return
 	static_assert(C%SIMD == 0, "SIMD parallelism must divide channel count.");
 
 #pragma HLS function_instantiate variable=val
@@ -124,6 +122,8 @@ void deconv_weights(
 	TW const (&kernel)[CF*K*K*SF][PE][SIMD],
 	hls::stream<hls::vector<hls::vector<TW, SIMD>, PE>> &dst
 ) {
+#pragma HLS interface ap_ctrl_none port=return
+
 #pragma HLS pipeline II=1 style=flp
 	static_assert(K%S == 0, "Stride must divide kernel size.");
 	constexpr unsigned  KK = K/S;
@@ -227,6 +227,8 @@ void deconv_swg(
 	hls::stream<T> &src,
 	hls::stream<T> &dst
 ) {
+#pragma HLS interface ap_ctrl_none port=return
+
 #pragma HLS pipeline II=1 style=flp
 	static_assert(K%S == 0, "Stride must divide kernel size.");
 	constexpr unsigned  KK = K/S;
@@ -351,6 +353,8 @@ void deconv_mvu(
 	hls::stream<hls::vector<TI, SIMD>>                  &src,
 	hls::stream<hls::vector<TO, PE>>                    &dst
 ) {
+#pragma HLS interface ap_ctrl_none port=return
+
 #pragma HLS pipeline II=1 style=flp
 	static TO  accu[PE] = { 0, };
 	static ap_uint<clog2(N)>  cnt = 0;
@@ -420,6 +424,7 @@ void deconv(
 	hls::stream<hls::vector<TI, SIMD>> &src,
 	hls::stream<hls::vector<TO, PE>>   &dst
 ) {
+#pragma HLS interface ap_ctrl_none port=return
 #pragma HLS dataflow disable_start_propagation
 
 	// Parameter Validation & Fold Derivation
