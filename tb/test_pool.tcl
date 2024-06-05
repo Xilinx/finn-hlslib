@@ -32,6 +32,7 @@
 ###############################################################################
  #
  #  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ #  Authors: Jonas Kuehle <jonas.kuehle@cs.hs-fulda.de>
  #
  # \file test_pool.tcl
  #
@@ -39,6 +40,7 @@
  #
 ###############################################################################
 open_project hls-syn-pool
+delete_project hls-syn-pool
 add_files pool_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
 add_files -tb maxpool_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
 set_top Testbench_pool
