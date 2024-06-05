@@ -1,2 +1,2 @@
-#define WIDTH 8
-#define NUM_REPEAT 4
+using T = ap_uint<8>;
+constexpr unsigned NUM_REPEAT = 4;
