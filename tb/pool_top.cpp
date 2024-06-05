@@ -33,6 +33,7 @@
  *
  *  Authors: Giulio Gambardella <giuliog@xilinx.com>
  *           Felix Jentzsch <felixj@xilinx.com>
+ *           Jonas Kuehle <jonas.kuehle@cs.hs-fulda.de>
  *
  *  \file pool_top.cpp
  *
@@ -40,24 +41,38 @@
  *
  *****************************************************************************/
 #include <hls_stream.h>
-using namespace hls;
 #include "ap_int.h"
 #include "bnn-library.h"
 
 
 #include "data/pool_config.h"
 
-void Testbench_pool_binary(stream<ap_uint<FM_Channels1> > & in, stream<ap_uint<FM_Channels1> > & out, unsigned int numReps){
+void Testbench_pool_binary(hls::stream<hls::vector<T, FM_Channels1> > & in, hls::stream<hls::vector<T, FM_Channels1> > & out, unsigned int numReps){
 #pragma HLS DATAFLOW
-	StreamingMaxPool_Batch<IFMDim1, KERNEL_DIM, FM_Channels1>(in, out, numReps);
+#pragma HLS interface AXIS port=in
+#pragma HLS interface AXIS port=out
+#pragma HLS aggregate variable=in compact=bit
+#pragma HLS aggregate variable=out compact=bit
+#pragma HLS dataflow disable_start_propagation
+  StreamingMaxPool_Batch<IFMDim1, KERNEL_DIM, FM_Channels1, T, 0>(in, out, numReps);
 }
 
-void Testbench_pool(stream<ap_uint<FM_Channels1*PRECISION> > & in, stream<ap_uint<FM_Channels1*PRECISION> > & out, unsigned int numReps){
+void Testbench_pool(hls::stream<hls::vector<T, FM_Channels1> > & in, hls::stream<hls::vector<T, FM_Channels1> > & out, unsigned int numReps){
 #pragma HLS DATAFLOW
-	StreamingMaxPool_Precision_Batch<IFMDim1, KERNEL_DIM, FM_Channels1, ap_uint<PRECISION>, 0>(in, out, numReps);
+#pragma HLS interface AXIS port=in
+#pragma HLS interface AXIS port=out
+#pragma HLS aggregate variable=in compact=bit
+#pragma HLS aggregate variable=out compact=bit
+#pragma HLS dataflow disable_start_propagation
+	StreamingMaxPool_Batch<IFMDim1, KERNEL_DIM, FM_Channels1, T, 0>(in, out, numReps);
 }
 
-void Testbench_pool_1d(stream<ap_uint<PE1*PRECISION> > & in, stream<ap_uint<PE1*PRECISION> > & out, unsigned int numReps){
+void Testbench_pool_1d(hls::stream<hls::vector<T, PE1> > & in, hls::stream<hls::vector<T, PE1> > & out){
 #pragma HLS DATAFLOW
-	StreamingMaxPool_Precision_1d<IFMDim1, KERNEL_DIM, FM_Channels1, PE1, OFMDim1, ap_uint<PRECISION>, 0>(in, out);
+#pragma HLS interface AXIS port=in
+#pragma HLS interface AXIS port=out
+#pragma HLS aggregate variable=in compact=bit
+#pragma HLS aggregate variable=out compact=bit
+#pragma HLS dataflow disable_start_propagation
+	StreamingMaxPool_1d<IFMDim1, KERNEL_DIM, FM_Channels1, PE1, OFMDim1, T, 0>(in, out);
 }

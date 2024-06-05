@@ -37,6 +37,7 @@
  *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
  *           Christoph Doehring <cdoehrin@xilinx.com>
  *           Felix Jentzsch <felixj@xilinx.com>
+ *           Jonas Kuehle <jonas.kuehle@cs.hs-fulda.de>
  *
  *
  *  Library of templated HLS functions for QNN deployment. 
@@ -52,94 +53,24 @@
 #include "utils.hpp"
 
 /**
- * \brief   Max Pool implementation for Binarized values 
- * 
- * This function performes the maxpool for binary inputs, and works with kernel and stride being equal 
+ * \brief   Max Pool implementation for non Binarized values
  *
- * \tparam     ImgDim       Width and Heigth of the Input Feature Map (assumed square)
- * \tparam     PoolDim      Dimension of the Max Pool kernel (assumed square)
- * \tparam     NumChannels  Number of Input Feature Maps
+ * This function performes the maxpool for non-binary inputs, and works with kernel and stride being equal
  *
- * \param      in           Input stream
- * \param      out          Output stream
- *
- */
-template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels>
-void StreamingMaxPool(hls::stream<ap_uint<NumChannels> > & in,
-        hls::stream<ap_uint<NumChannels> > & out) {
-  static_assert(ImgDim % PoolDim == 0, "");
-  // need buffer space for a single maxpooled row of the image
-  ap_uint<NumChannels> buf[ImgDim / PoolDim];
-  for(unsigned int i = 0; i < ImgDim / PoolDim; i++) {
-#pragma HLS UNROLL
-    buf[i] = 0;
-  }
-
-  for (unsigned int yp = 0; yp < ImgDim / PoolDim; yp++) {
-    for (unsigned int ky = 0; ky < PoolDim; ky++) {
-      for (unsigned int xp = 0; xp < ImgDim / PoolDim; xp++) {
-        ap_uint<NumChannels> acc = 0;
-        for (unsigned int kx = 0; kx < PoolDim; kx++) {
-#pragma HLS pipeline style=flp II=1
-          acc = acc | in.read();
-        }
-        // pool with old value in row buffer
-        buf[xp] |= acc;
-      }
-    }
-    for (unsigned int outpix = 0; outpix < ImgDim / PoolDim; outpix++) {
-#pragma HLS pipeline style=flp II=1
-      out.write(buf[outpix]);
-      // get buffer ready for next use
-      buf[outpix] = 0;
-    }
-  }
-}
-
-/**
- * \brief   Max Pool implementation for Binarized values on multiple images
- *
- * This function performes the maxpool for binary inputs, and works with kernel and stride being equal 
- * 
- * \tparam ImgDim       Width and Heigth of the Input Feature Map (assumed square)
- * \tparam PoolDim      Dimension of the Max Pool kernel (assumed square)
- * \tparam NumChannels  Number of Input Feature Maps
- *
- * \param in            Input stream
- * \param out           Output stream
- * \param numReps       Number of time the function has to be repeatedly executed (e.g. number of images)
- *
- */
-template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels>
-void StreamingMaxPool_Batch(hls::stream<ap_uint<NumChannels> > & in,
-        hls::stream<ap_uint<NumChannels> > & out, unsigned int numReps) {
-  for (unsigned int rep = 0; rep < numReps; rep++) {
-    StreamingMaxPool<ImgDim, PoolDim, NumChannels>(in, out);
-  }
-}
-
-
-/**
- * \brief   Max Pool implementation for non Binarized values 
- *
- * This function performes the maxpool for non-binary inputs, and works with kernel and stride being equal 
- * 
  * \tparam ImgDim       Width and Heigth of the Input Feature Map (assumed square)
  * \tparam PoolDim      Dimension of the Max Pool kernel (assumed square)
  * \tparam NumChannels  Number of Input Feature Maps
  * \tparam ActType      DataType of the input activation (as used in the comparison)
  * \tparam min_value    Minimum value possible with the given ActType, used to initialize the value before the comparison
  * \tparam StreamW      Width of the input and output stream
- * 
+ *
  * \param in            Input stream
  * \param out           Output stream
  *
  */
-template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, typename ActType, int min_value, 
-        int StreamW 
-        >
-void StreamingMaxPool_Precision(hls::stream<ap_uint<StreamW> > & in,
-        hls::stream<ap_uint<StreamW> > & out) {
+template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, typename ActType, int min_value>
+void StreamingMaxPool(hls::stream<hls::vector<ActType, NumChannels> > & in,
+        hls::stream<hls::vector<ActType, NumChannels> > & out) {
   static_assert(ImgDim % PoolDim == 0, "");
   // need buffer space for a single maxpooled row of the image
   ActType buf[ImgDim / PoolDim][NumChannels];
@@ -147,23 +78,21 @@ void StreamingMaxPool_Precision(hls::stream<ap_uint<StreamW> > & in,
   for(unsigned int i = 0; i < ImgDim / PoolDim; i++) {
     for(unsigned int ch = 0; ch<NumChannels; ch++){
 #pragma HLS UNROLL
-      buf[i][ch] = min_value; //std::numeric_limits<ActType>::min();
+      buf[i][ch] = min_value; // replace with std::numeric_limits<ActType>::min() as soon as implmented
     }
   }
-  ap_uint<StreamW> inputData,outputData;
+  hls::vector<ActType, NumChannels> inputData,outputData;
   for (unsigned int yp = 0; yp < ImgDim / PoolDim; yp++) {
     for (unsigned int ky = 0; ky < PoolDim; ky++) {
       for (unsigned int xp = 0; xp < ImgDim / PoolDim; xp++) {
-        // Change to comparator 
+        // Change to comparator
         for (unsigned int kx = 0; kx < PoolDim; kx++) {
 #pragma HLS pipeline style=flp II=1
           inputData = in.read();
           for(unsigned int ch = 0; ch<NumChannels; ch++){
-#pragma HLS UNROLL                      
-            unsigned int lowBit = ch * ActType::width;
-            unsigned int highBit = (ch+1) * ActType::width -1;
-            ActType channeldata = inputData(highBit, lowBit);                   
-            ActType oldMax = buf[xp][ch];               
+#pragma HLS UNROLL
+            ActType channeldata = inputData[ch];
+            ActType oldMax = buf[xp][ch];
             if(channeldata > oldMax){
               buf[xp][ch] = channeldata;
             }
@@ -174,9 +103,7 @@ void StreamingMaxPool_Precision(hls::stream<ap_uint<StreamW> > & in,
     for (unsigned int outpix = 0; outpix < ImgDim / PoolDim; outpix++) {
       for(unsigned int ch = 0; ch < NumChannels; ch++){
 #pragma HLS UNROLL
-        unsigned int lowBit = ch * ActType::width;
-        unsigned int highBit = (ch+1) * ActType::width -1;  
-        outputData(highBit, lowBit) = buf[outpix][ch];
+        outputData[ch] = buf[outpix][ch];
         // get buffer ready for next use
         buf[outpix][ch] = min_value;
       }
@@ -188,46 +115,41 @@ void StreamingMaxPool_Precision(hls::stream<ap_uint<StreamW> > & in,
 /**
  * \brief   Max Pool implementation for non binarized values on multiple images
  *
- * This function performes the maxpool for non binary inputs, and works with kernel and stride being equal 
- * 
+ * This function performes the maxpool for non binary inputs, and works with kernel and stride being equal
+ *
  * \tparam ImgDim       Width and Heigth of the Input Feature Map (assumed square)
  * \tparam PoolDim      Dimension of the Max Pool kernel (assumed square)
  * \tparam NumChannels  Number of Input Feature Maps
  * \tparam ActType      DataType of the input activation (as used in the comparison)
  * \tparam min_value    Minimum value possible with the given ActType, used to initialize the value before the comparison
- * \tparam StreamW      Width of the input and output stream
- * 
+ *
  * \param in            Input stream
  * \param out           Output stream
  * \param numReps       Number of time the function has to be repeatedly executed (e.g. number of images)
  *
  */
-template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, typename ActType, int min_value, 
-        int InStreamW, int OutStreamW  // safely deducible (stream width must be int though!)
-        >
-void StreamingMaxPool_Precision_Batch(hls::stream<ap_uint<InStreamW> > & in,
-        hls::stream<ap_uint<OutStreamW> > & out, unsigned int numReps) {
+template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, typename ActType, int min_value>
+void StreamingMaxPool_Batch(hls::stream<hls::vector<ActType, NumChannels> > & in,
+        hls::stream<hls::vector<ActType, NumChannels> > & out, unsigned int numReps) {
 #pragma HLS INLINE
-  unsigned const  InpPerImage = ImgDim*ImgDim*NumChannels*ActType::width/InStreamW ;
+  unsigned const  InpPerImage = ImgDim*ImgDim;
   unsigned const  OutPerImage = ImgDim*ImgDim / (PoolDim*PoolDim);
-  hls::stream<ap_uint<NumChannels*ActType::width> > wa_in("StreamingMaxPool_Precision_Batch.wa_in");
-  hls::stream<ap_uint<NumChannels*ActType::width> > mvOut("StreamingMaxPool_Precision_Batch.mvOut");
-  StreamingDataWidthConverter_Batch<InStreamW, NumChannels*ActType::width, InpPerImage>(in, wa_in, numReps);
+  hls::stream<hls::vector<ActType, NumChannels> > wa_in("StreamingMaxPool_Batch.wa_in");
+  hls::stream<hls::vector<ActType, NumChannels> > mvOut("StreamingMaxPool_Batch.mvOut");
+  StreamingDataWidthConverter_Batch<InpPerImage, ActType, ActType, NumChannels, NumChannels>(in, wa_in, numReps);
   for (unsigned int rep = 0; rep < numReps; rep++) {
-    StreamingMaxPool_Precision<ImgDim, PoolDim, NumChannels, ActType, min_value>
-      (static_cast<hls::stream<ap_uint<NumChannels*ActType::width>>&>(wa_in), 
-      static_cast<hls::stream<ap_uint<NumChannels*ActType::width>>&>(mvOut));
+    StreamingMaxPool<ImgDim, PoolDim, NumChannels, ActType, min_value>
+      (wa_in, mvOut);
   }
-  StreamingDataWidthConverter_Batch<NumChannels*ActType::width, OutStreamW, OutPerImage>(mvOut, out, numReps);
-
+  StreamingDataWidthConverter_Batch<OutPerImage, ActType, ActType, NumChannels, NumChannels>(mvOut, out, numReps);
 }
 
 
 /**
- * \brief   1D Max Pool implementation for non Binarized values 
+ * \brief   1D Max Pool implementation for non Binarized values
  *
- * This function performes the maxpool for non-binary inputs, and works with kernel and stride being equal 
- * 
+ * This function performes the maxpool for non-binary inputs, and works with kernel and stride being equal
+ *
  * \tparam ImgDim        Length of the Input Feature Map
  * \tparam PoolDim       Dimension of the Max Pool kernel
  * \tparam NumChannels   Number of Input Feature Maps
@@ -235,7 +157,7 @@ void StreamingMaxPool_Precision_Batch(hls::stream<ap_uint<InStreamW> > & in,
  * \tparam OutputSize    Length of the Output Feature Map
  * \tparam ActType       DataType of the input activation (as used in the comparison)
  * \tparam min_value     Minimum value possible with the given ActType, used to initialize the value before the comparison
- * 
+ *
  * \param in             Input stream
  * \param out            Output stream
  *
@@ -243,13 +165,13 @@ void StreamingMaxPool_Precision_Batch(hls::stream<ap_uint<InStreamW> > & in,
 
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, unsigned int PE,
         unsigned int OutputSize, typename ActType, int min_value
-        >
-void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in,
-        hls::stream<ap_uint<PE*ActType::width> > & out) {
+>
+void StreamingMaxPool_1d(hls::stream<hls::vector<ActType, PE> > & in,
+        hls::stream<hls::vector<ActType, PE> > & out) {
   static_assert(NumChannels % PE == 0, "");
   constexpr unsigned NF = NumChannels / PE;
   constexpr unsigned REMAINDER_PIXELS = ImgDim > PoolDim * OutputSize ? ImgDim - OutputSize * PoolDim : 0;
-  
+
   // need buffer space for a single maxpooled pixel of the image
   ActType buf[NF][PE];
 #pragma HLS ARRAY_PARTITION variable=buf complete dim=2
@@ -258,11 +180,11 @@ void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in
 #pragma HLS pipeline style=flp II=1
     for(unsigned int p = 0; p < PE; p++){
 #pragma HLS UNROLL
-        buf[ch][p] = min_value;
+      buf[ch][p] = min_value;
     }
   }
 
-  ap_uint<PE*ActType::width> inputData,outputData;
+  hls::vector<ActType, PE> inputData,outputData;
   unsigned input_count = 0;
   for (unsigned int xp = 0; xp < OutputSize; xp++) {
     // Change to comparator
@@ -273,9 +195,7 @@ void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in
           inputData = in.read();
           for(unsigned int p = 0; p < PE; p++){
 #pragma HLS UNROLL
-            unsigned const lowBit = p * ActType::width;
-            unsigned const highBit = (p+1) * ActType::width -1;
-            ActType const channeldata = inputData(highBit, lowBit);
+            ActType const channeldata = inputData[p];
             ActType const oldMax = buf[ch][p];
             if(channeldata > oldMax){
               buf[ch][p] = channeldata;
@@ -288,9 +208,7 @@ void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in
 #pragma HLS pipeline style=flp II=1
       for(unsigned int p = 0; p < PE; p++){
 #pragma HLS UNROLL
-        unsigned const lowBit = p * ActType::width;
-        unsigned const highBit = (p+1) * ActType::width -1;
-        outputData(highBit, lowBit) = buf[ch][p];
+        outputData[p] = buf[ch][p];
         // get buffer ready for next use
         buf[ch][p] = min_value;
       }
@@ -300,7 +218,7 @@ void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in
 
   for (unsigned int r = 0; r < REMAINDER_PIXELS*NF; r++){
 #pragma HLS pipeline style=flp II=1
-      inputData = in.read();
+    inputData = in.read();
   }
 
 }
@@ -309,15 +227,15 @@ void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in
 /**
  * \brief   1D Max Pool implementation for non binarized values on multiple images
  *
- * This function performes the maxpool for non binary inputs, and works with kernel and stride being equal 
- * 
+ * This function performes the maxpool for non binary inputs, and works with kernel and stride being equal
+ *
  * \tparam ImgDim       Length of the Input Feature Map
  * \tparam PoolDim      Dimension of the Max Pool kernel
  * \tparam NumChannels  Number of Input Feature Maps
  * \tparam PE           Number of input rows (channels) computed in parallel
  * \tparam ActType      DataType of the input activation (as used in the comparison)
  * \tparam min_value    Minimum value possible with the given ActType, used to initialize the value before the comparison
- * 
+ *
  * \param in            Input stream
  * \param out           Output stream
  * \param numReps       Number of time the function has to be repeatedly executed (e.g. number of images)
@@ -325,12 +243,12 @@ void StreamingMaxPool_Precision_1d(hls::stream<ap_uint<PE*ActType::width> > & in
  */
 template<unsigned int ImgDim, unsigned int PoolDim, unsigned int NumChannels, unsigned int PE,
         unsigned int OutputSize, typename ActType, int min_value
-        >
-void StreamingMaxPool_Precision_Batch_1d(hls::stream<ap_uint<PE*ActType::width> > & in,
-        hls::stream<ap_uint<PE*ActType::width> > & out, unsigned int numReps) {
+>
+void StreamingMaxPool_Batch_1d(hls::stream<hls::vector<ActType, PE> > & in,
+        hls::stream<hls::vector<ActType, PE> > & out, unsigned int numReps) {
 #pragma HLS INLINE
   for (unsigned int rep = 0; rep < numReps; rep++) {
-    StreamingMaxPool_Precision_1d<ImgDim, PoolDim, NumChannels, PE, OutputSize,
+    StreamingMaxPool_1d<ImgDim, PoolDim, NumChannels, PE, OutputSize,
     ActType, min_value>
       (in, out);
   }

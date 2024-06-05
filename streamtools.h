@@ -50,6 +50,8 @@
 #define STREAMTOOLS_H
 
 #include "ap_axi_sdata.h"
+#include "hls_vector.h"
+#include "utils.hpp"
 
 /**
  * \brief   Stream limiter - limits the number of stream packets
@@ -497,77 +499,55 @@ void FMPadding_Pixel(
 /**
  * \brief   Stream Data Width Converter - Converts the width of the input stream in the output stream
  *
- * Used to upscale or downscale a stream, without any loss of data in the procedure. 
- * For downscaling (InWidth > OutWidth), InWidth has to be a multiple of OutWidth.
- * For upscaling (InWidth < OutWidth), OutWidth has to be a multiple of InWidth.
+ * Used to change number of elements in a vector inside a stream, without any loss of data in the procedure.
  *
- * \tparam     InWidth      Width, in number of bits, of the input stream
- * \tparam     OutWidth     Width, in number of bits, of the output stream 
  * \tparam     NumInWords   Number of input words to process
+ * \tparam	   TI			      Input datatype
+ * \tparam	   TO			      Output datatype
+ * \tparam     NI      		  Number of elements in input stream
+ * \tparam     NO      		  Number of elements in output stream
+
  *
  * \param      in           Input stream
  * \param      out          Output stream
  * \param      numReps      Number of times the function has to be called
  *
  */
-template<unsigned int InWidth,		
-		unsigned int OutWidth,		
-		unsigned int NumInWords		
+template<unsigned NumInWords,
+		typename TI,
+    typename TO,
+    unsigned NI,
+    unsigned NO
 >
-void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
-		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
-  static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0), "");
+void StreamingDataWidthConverter_Batch(hls::stream<hls::vector<TI, NI>> & in,
+		hls::stream<hls::vector<TO, NO>> & out, const unsigned numReps) {
+  static_assert((NI % NO == 0) || (NO % NI == 0), "");
 
-  if (InWidth > OutWidth) {
-    // emit multiple output words per input word read
-    const unsigned int outPerIn = InWidth / OutWidth;
-    const unsigned int totalIters = NumInWords * outPerIn * numReps;
-    unsigned int o = 0;
-    ap_uint<InWidth> ei = 0;
-    for (unsigned int t = 0; t < totalIters; t++) {
-#pragma HLS pipeline style=flp II=1
-      // read new input word if current out count is zero
-      if (o == 0) {
-        ei = in.read();
-	  }
-      // pick output word from the rightmost position
-      ap_uint<OutWidth> eo = ei(OutWidth - 1, 0);
-      out.write(eo);
-      // shift input to get new output word for next iteration
-      ei = ei >> OutWidth;
-      // increment written output count
-      o++;
-      // wraparound indices to recreate the nested loop structure
-      if (o == outPerIn) {
-        o = 0;
-      }
+  const unsigned totalIters = NumInWords * NI * numReps;
+
+  ap_uint<clog2(NI+1)> iCtr = 0; // input vector element counter
+  ap_uint<clog2(NO+1)> oCtr = 0; // output vector element counter
+  hls::vector<TI, NI> vecIn;
+  hls::vector<TO, NO> vecOut;
+
+  for (unsigned i = 0; i < totalIters; i++){
+    if(iCtr == 0){
+      vecIn = in.read();
     }
-  } else if (InWidth == OutWidth) {
-    // straight-through copy
-    for (unsigned int i = 0; i < NumInWords * numReps; i++) {
-#pragma HLS pipeline style=flp II=1
-      ap_uint<InWidth> e = in.read();
-      out.write(e);
+    // copy from input vector to output vector
+    vecOut[oCtr] = vecIn[iCtr];
+    iCtr++;
+    oCtr++;
+
+    if(oCtr == NO){
+      out.write(vecOut);
     }
-  } else { // InWidth < OutWidth
-    // read multiple input words per output word emitted
-    const unsigned int inPerOut = OutWidth / InWidth;
-    const unsigned int totalIters = NumInWords * numReps;
-    unsigned int i = 0;
-    ap_uint<OutWidth> eo = 0;
-    for (unsigned int t = 0; t < totalIters; t++) {
-#pragma HLS pipeline style=flp II=1
-      // read input and shift into output buffer
-      ap_uint<InWidth> ei = in.read();
-      eo = eo >> InWidth;
-      eo(OutWidth - 1, OutWidth - InWidth) = ei;
-      // increment read input count
-      i++;
-      // wraparound logic to recreate nested loop functionality
-      if (i == inPerOut) {
-        i = 0;
-        out.write(eo);
-      }
+    // reset counter if vector was read completely
+    if(iCtr == NI){
+      iCtr = 0;
+    }
+    if(oCtr == NO){
+      oCtr = 0;
     }
   }
 }
