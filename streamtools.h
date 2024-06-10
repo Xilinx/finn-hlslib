@@ -548,7 +548,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 	  }
 
 	  // conditionally write out
-	  if (((els_in_buffer >= OutWidth) && (words_written < NumOutWords)) || words_read >= NumInWords) {
+	  if (((els_in_buffer >= OutWidth) || (words_read >= NumInWords)) && (words_written < NumOutWords)) {
 		out.write(eo(OutWidth-1,0));
 		els_in_buffer -= OutWidth;
 		eo = eo >> OutWidth;
@@ -562,7 +562,6 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 		words_written = 0;
 		els_in_buffer = 0;
 	  }
-
     }
   }
 }
