@@ -49,7 +49,6 @@
 #define STREAMTOOLS_H
 
 #include "ap_axi_sdata.h"
-#include <cmath>
 
 /**
  * \brief   Stream limiter - limits the number of stream packets
@@ -420,10 +419,10 @@ void FMPadding_Batch(
 
 
 
-constexpr int log2_of_template_arg(unsigned int word)
+/*constexpr int log2_of_template_arg(unsigned int word)
 {
    return int(std::log2(word))+1;
-}
+}*/
 
 /**
  * \brief   Stream Data Width Converter - Converts the width of the input stream in the output stream
@@ -460,8 +459,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
 
   // cant use a template argument to construct a constant using a func..?
-  //const unsigned int NumOutWordsLog = log2_of_template_arg(NumOutWords);
-  unsigned int totalItersReps = totalIters*numReps;
+  unsigned int totalItersReps = totalIters*numReps+numReps;
   ap_uint<NumOutWordsLog> words_written = 0;
   ap_uint<NumInWordsLog> words_read = 0;
   ap_uint<BufferWidthLog> els_in_buffer = 0;
@@ -470,6 +468,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
   // a previous word due to our els_in_buffer tracking scheme for when to 
   // read in ei (potentially introducing padding or cropping)
 
+  ap_uint<OutWidth> eo_final = 0;
   ap_uint<InWidth+OutWidth> eo = 0;
   ap_uint<InWidth> ei;
 
@@ -478,6 +477,23 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 
     for (unsigned int t = 0; t < totalItersReps; t++) {
 #pragma HLS pipeline style=flp II=1
+
+
+
+	  // we reached the end of the transaction for this numReps superiteration
+	  // reset all trackers to allow further stream IO and stop padding/cropping
+
+
+	  eo_final(OutWidth-1,0) = eo(OutWidth-1,0);
+
+	  // write each cycle and shift
+	  if ((words_written < NumOutWords) && (els_in_buffer >= OutWidth)){
+	    out.write(eo_final(OutWidth-1,0));
+	    els_in_buffer -= OutWidth;
+	    eo = eo >> OutWidth;
+	    words_written+=1;
+	  }
+
 
 	  // conditionally read in
 	  if (els_in_buffer < OutWidth) {
@@ -490,21 +506,16 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 	    els_in_buffer += InWidth;
 	  }
 
-	  // write each cycle and shift
-	  if (words_written < NumOutWords){
-	    out.write(eo(OutWidth-1,0));
-	    els_in_buffer -= OutWidth;
-	    eo = eo >> OutWidth;
-	    words_written+=1;
-	  }
 
-	  // we reached the end of the transaction for this numReps superiteration
-	  // reset all trackers to allow further stream IO and stop padding/cropping
+
+
 	  if ((words_written == NumOutWords) && (words_read == NumInWords)) {
 		words_read = 0;
 		words_written = 0;
 		els_in_buffer = 0;
 	  }
+
+
 
     }
 
@@ -538,6 +549,22 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
     for (unsigned int t = 0; t < totalItersReps; t++) {
 #pragma HLS pipeline style=flp II=1
 
+	  // we reached the end of the transaction for this numReps superiteration
+	  // reset all trackers to allow further stream IO and stop padding/cropping
+
+
+      eo_final(OutWidth-1,0) = eo(OutWidth-1,0);
+
+	  // conditionally write out
+	  if (((els_in_buffer >= OutWidth) || (words_read >= NumInWords)) && (words_written < NumOutWords)) {
+		out.write(eo_final(OutWidth-1,0));
+		els_in_buffer -= OutWidth;
+		eo = eo >> OutWidth;
+		words_written+=1;
+	  }
+
+
+
       // read input each cycle and shift into output buffer
 	  // padding if we ran out of input words
 	  if (words_read < NumInWords){
@@ -547,21 +574,15 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
 		els_in_buffer += InWidth;
 	  }
 
-	  // conditionally write out
-	  if (((els_in_buffer >= OutWidth) || (words_read >= NumInWords)) && (words_written < NumOutWords)) {
-		out.write(eo(OutWidth-1,0));
-		els_in_buffer -= OutWidth;
-		eo = eo >> OutWidth;
-		words_written+=1;
-	  }
 
-	  // we reached the end of the transaction for this numReps superiteration
-	  // reset all trackers to allow further stream IO and stop padding/cropping
+
+
 	  if ((words_written == NumOutWords) && (words_read == NumInWords)) {
 		words_read = 0;
 		words_written = 0;
 		els_in_buffer = 0;
 	  }
+
     }
   }
 }
