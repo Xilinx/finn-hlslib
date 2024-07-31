@@ -19,7 +19,7 @@ template<
 	typename  TO,
 	typename  TI
 >
-void concat(
+void StreamingConcat(
 	hls::stream<TO> &dst,
 	hls::stream<TI> (&src)[N]
 ) {
@@ -91,7 +91,7 @@ template<
 	typename     TO,
 	typename...  TI
 >
-void concat(
+void StreamingConcat(
 	hls::stream<TO>    &dst,
 	hls::stream<TI>&... src
 ) {
