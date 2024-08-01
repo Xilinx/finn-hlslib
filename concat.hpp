@@ -28,7 +28,7 @@ void StreamingConcat(
 	static unsigned const  CNT_INIT[N] = { (C-2)... };
 	static ap_uint<clog2(N)>                    sel = 0;
 	static ap_int<1+clog2(std::max({C...})-1)>  cnt = CNT_INIT[0];
-#pragma HLS reset variable=sell
+#pragma HLS reset variable=sel
 #pragma HLS reset variable=cnt
 
 #pragma HLS pipeline II=1 style=flp
