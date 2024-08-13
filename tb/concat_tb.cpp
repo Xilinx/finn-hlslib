@@ -2,12 +2,11 @@
 #include <cmath>
 #include <ctime>
 #include <cstring>
-#include <numeric>
 
 #include <hls_stream.h>
 #include <hls_vector.h>
 #define AP_INT_MAX_W 8191
-#include "ap_int.h"
+// #include "ap_int.h"
 
 #include "data/concat_config.h"
 #include "concat.hpp"
@@ -27,20 +26,24 @@ int main()
 
 	for (unsigned int counter = 0; counter < NUM_VECTORS; counter++){
 		for(unsigned int f = 0; f < NUM_FOLDS0; f++){
-			in0_V.write({1, 1});
-			expected.write({1, 1});
+			IN_TYPE0 el0 = (EL_TYPE0)1;
+			in0_V.write(el0);
+			expected.write(el0);
 		}
 		for(unsigned int f = 0; f < NUM_FOLDS1; f++){
-			in1_V.write({2, 2});
-			expected.write({2, 2});
+			IN_TYPE0 el1 = (EL_TYPE1)2;
+			in1_V.write(el1);
+			expected.write(el1);
 		}
 		for(unsigned int f = 0; f < NUM_FOLDS2; f++){
-			in2_V.write({3, 3});
-			expected.write({3, 3});
+			IN_TYPE0 el2 = (EL_TYPE2)3;
+			in2_V.write(el2);
+			expected.write(el2);
 		}
 		for(unsigned int f = 0; f < NUM_FOLDS3; f++){
-			in3_V.write({4, 4});
-			expected.write({4, 4});
+			IN_TYPE0 el3 = (EL_TYPE3)4;
+			in3_V.write(el3);
+			expected.write(el3);
 		}
 	}
 

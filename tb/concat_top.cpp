@@ -1,12 +1,16 @@
 #include <hls_stream.h>
 #include <hls_vector.h>
-#include "ap_int.h"
+// #include "ap_int.h"
 #include "bnn-library.h"
 
 #include "data/concat_config.h"
 #include "concat.hpp"
 
-void Testbench_concat(hls::stream<IN_TYPE0> &in0_V, hls::stream<IN_TYPE1> &in1_V, hls::stream<IN_TYPE2> &in2_V, hls::stream<IN_TYPE3> &in3_V, hls::stream<OUT_TYPE> &out_V)
+void Testbench_concat(hls::stream<IN_TYPE0> &in0_V,
+                      hls::stream<IN_TYPE1> &in1_V,
+                      hls::stream<IN_TYPE2> &in2_V,
+                      hls::stream<IN_TYPE3> &in3_V,
+                      hls::stream<OUT_TYPE> &out_V)
 {
 #pragma HLS INTERFACE axis port=in0_V
 #pragma HLS INTERFACE axis port=in1_V
