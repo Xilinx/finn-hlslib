@@ -1,12 +1,7 @@
 #include <iostream>
-#include <cmath>
-#include <ctime>
-#include <cstring>
 
 #include <hls_stream.h>
 #include <hls_vector.h>
-#define AP_INT_MAX_W 8191
-// #include "ap_int.h"
 
 #include "data/concat_config.h"
 #include "concat.hpp"
@@ -61,7 +56,6 @@ int main()
 			OUT_TYPE exp = expected.read();
 			if(y != exp)
 				std::cerr << "ERROR! Unexpected output nr " << out_cnt << ". Got: " << y << " Expected: " << exp << std::endl;
-			std::cout << out_cnt << " output:  y: " << y << "exp: " << exp << std::endl;
 			out_cnt++;
 		}
 	}
