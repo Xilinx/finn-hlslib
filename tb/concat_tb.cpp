@@ -26,17 +26,17 @@ int main()
 			expected.write(el0);
 		}
 		for(unsigned int f = 0; f < NUM_FOLDS1; f++){
-			IN_TYPE0 el1 = (EL_TYPE1)2;
+			IN_TYPE1 el1 = (EL_TYPE1)2;
 			in1_V.write(el1);
 			expected.write(el1);
 		}
 		for(unsigned int f = 0; f < NUM_FOLDS2; f++){
-			IN_TYPE0 el2 = (EL_TYPE2)3;
+			IN_TYPE2 el2 = (EL_TYPE2)3;
 			in2_V.write(el2);
 			expected.write(el2);
 		}
 		for(unsigned int f = 0; f < NUM_FOLDS3; f++){
-			IN_TYPE0 el3 = (EL_TYPE3)4;
+			IN_TYPE3 el3 = (EL_TYPE3)4;
 			in3_V.write(el3);
 			expected.write(el3);
 		}
