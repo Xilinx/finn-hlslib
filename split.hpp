@@ -1,4 +1,4 @@
-#include "util.hpp"
+#include "utils.hpp"
 
 #include <hls_stream.h>
 #include <ap_int.h>

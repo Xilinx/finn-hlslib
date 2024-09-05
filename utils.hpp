@@ -55,7 +55,8 @@
 #include <cstddef>
 
 //- Static Evaluation of ceil(log2(x)) ---------------------------------------
-constexpr unsigned clog2(size_t  x) {
+template<typename T>
+constexpr unsigned clog2(T  x) {
   return  x<2? 0 : 1+clog2((x+1)/2);
 }
 
@@ -102,6 +103,17 @@ void logStringStream(const char *layer_name, hls::stream<ap_uint<BitWidth> > &lo
   }
 
   ofs.close();
+}
+
+//- hls::vector<> Enablement ------------------------------------------------
+template<typename  T, unsigned long  N>
+inline std::ostream& operator<<(std::ostream &o, hls::vector<T, N> const &v) {
+	char  delim = '{';
+	for(auto const &x : v) {
+		o << delim << x;
+		delim = ':';
+	}
+	return (o << '}');
 }
 
 #endif

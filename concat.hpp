@@ -1,4 +1,4 @@
-#include "util.hpp"
+#include "utils.hpp"
 
 #include <hls_stream.h>
 #include <ap_int.h>
@@ -59,7 +59,6 @@ namespace {
 			else {
 				T0  y0;
 				if(!src0.read_nb(y0))  return  false;
-				// y = y0;
 				convert_vector(y0, y);
 				return  true;
 			}
@@ -78,7 +77,6 @@ namespace {
 			else {
 				T0  y0;
 				if(!src0.read_nb(y0))  return  false;
-				// y = y0;
 				convert_vector(y0, y);
 				return  true;
 			}
