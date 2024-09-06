@@ -51,8 +51,11 @@
 #include <ap_int.h>
 
 #include <iostream>
+#include <ostream>
 #include <fstream>
 #include <cstddef>
+#include <hls_vector.h>
+#include <hls_stream.h>
 
 //- Static Evaluation of ceil(log2(x)) ---------------------------------------
 template<typename T>
