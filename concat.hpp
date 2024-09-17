@@ -1,17 +1,53 @@
+/******************************************************************************
+ *  Copyright (c) 2024, Advanced Micro Devices, Inc.
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *
+ *  1.  Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *
+ *  2.  Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *
+ *  3.  Neither the name of the copyright holder nor the names of its
+ *      contributors may be used to endorse or promote products derived from
+ *      this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ *  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ *  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ *  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ *  OR BUSINESS INTERRUPTION). HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ ******************************************************************************/
+
+/*******************************************************************************
+ *
+ *  Authors: Thomas B. Preusser <thomas.preusser@amd.com>
+ *           Michal Danilowicz <danilowi@agh.edu.pl>
+ *
+ *  \file concat.hpp
+ *
+ *  This file defines template functions
+ *	of a channel concatenation operation.
+ *
+ *******************************************************************************/
+
 #include "utils.hpp"
 
 #include <hls_stream.h>
 #include <ap_int.h>
 #include <algorithm>
 
-
-template<typename Tsrc, typename Tdst>
-void convert_vector(Tsrc& src, Tdst& dst){
-    for(std::size_t i = 0; i < src.size(); i++){
-#pragma HLS UNROLL
-        dst[i] = src[i];
-    }
-}
 
 template<
 	unsigned...  C,
@@ -42,9 +78,18 @@ void StreamingConcat(
 		}
 	}
 
-} // concat()
+} // StreamingConcat()
 
 namespace {
+	template<typename TI, typename TO, size_t N>
+	void convert_vector(hls::vector<TI, N>& src, hls::vector<TO, N>& dst){
+#pragma HLS inline
+		for(size_t i = 0; i < N; i++){
+#pragma HLS UNROLL
+			dst[i] = src[i];
+		}
+	}
+
 	/** Recursive selector for reading from stream with represented index. */
 	template<unsigned  IDX, typename... TI>
 	class PackReader {};
@@ -114,6 +159,4 @@ void StreamingConcat(
 			cnt = CNT_INIT[sel];
 		}
 	}
-
-} // concat()
-
+} // StreamingConcat()
