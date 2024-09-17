@@ -42,13 +42,14 @@
  *
  *******************************************************************************/
 
-#include "utils.hpp"
-
 #include <hls_stream.h>
 #include <ap_int.h>
 #include <algorithm>
 
+#include "utils.hpp"
 
+
+/** For inputs of the same datatype */
 template<
 	unsigned...  C,
 	unsigned  N,
@@ -81,6 +82,7 @@ void StreamingConcat(
 } // StreamingConcat()
 
 namespace {
+	/** Type conversion between vectors */
 	template<typename TI, typename TO, size_t N>
 	void convert_vector(hls::vector<TI, N>& src, hls::vector<TO, N>& dst){
 #pragma HLS inline
@@ -129,6 +131,7 @@ namespace {
 	};
 }
 
+/** For inputs of different datatypes */
 template<
 	unsigned...  C,
 	typename     TO,

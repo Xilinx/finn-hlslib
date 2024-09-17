@@ -41,11 +41,11 @@
  *
  *******************************************************************************/
 
-#include "utils.hpp"
-
 #include <hls_stream.h>
 #include <ap_int.h>
 #include <algorithm>
+
+#include "utils.hpp"
 
 
 template<
