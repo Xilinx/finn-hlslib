@@ -50,7 +50,6 @@
 
 
 void Testbench_split(hls::stream<IN_TYPE> &in0_V, hls::stream<IN_TYPE> (&out_arr)[NUM_OUTPUTS]);
-unsigned int folds_per_output[NUM_OUTPUTS] = FOLDS_PER_OUTPUT;
 
 int main()
 {
@@ -61,7 +60,7 @@ int main()
 	// prepare stimulus and expected output
 	for (unsigned int counter = 0; counter < REP_COUNT; counter++){
 		for(unsigned int output = 0; output < REP_COUNT; output++){
-			for(unsigned int f = 0; f < folds_per_output[output]; f++){
+			for(unsigned int f = 0; f < FOLDS_PER_OUTPUT[output]; f++){
 				IN_TYPE el = (EL_TYPE)(output + 1);
 				in0_V.write(el);
 				expected[output].write(el);

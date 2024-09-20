@@ -1,13 +1,12 @@
 #include <ap_int.h>
 
-#define NUM_INPUTS 4
-#define NUM_FOLDS0 1
-#define NUM_FOLDS1 1
-#define NUM_FOLDS2 3
-#define NUM_FOLDS3 2
-#define TOTAL_FOLDS 7
-#define REP_COUNT 3
-
+constexpr unsigned NUM_INPUTS = 4;
+constexpr unsigned NUM_FOLDS0 = 1;
+constexpr unsigned NUM_FOLDS1 = 1;
+constexpr unsigned NUM_FOLDS2 = 3;
+constexpr unsigned NUM_FOLDS3 = 2;
+constexpr unsigned TOTAL_FOLDS = 7;
+constexpr unsigned REP_COUNT = 3;
 constexpr unsigned SIMD = 2;
 
 using EL_TYPE0 = ap_uint<3>;
