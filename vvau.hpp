@@ -108,8 +108,12 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
   constexpr unsigned  TOTAL_FOLD = NF * SF ;
   for(unsigned  i = 0; i < reps * TOTAL_FOLD; i++) {
 #pragma HLS pipeline style=flp II=1
-    TI  inElem;
-    inElem = in.read();
+	// TODO: find a better solution to handle slicing/re-ordering of input ap_uint<> or MultiChanData<>
+	MultiChanData<MMV, SIMD*PE*TSrcI::width> inElem;
+	if constexpr (MMV >  1)
+		inElem = in.read();
+	else
+		inElem[0] = in.read();
     // Threshold Initialisation
     if(sf == 0) {
       for(unsigned  pe = 0; pe < PE; pe++) {
@@ -126,14 +130,12 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
 #pragma HLS UNROLL
       auto const  wgt = TWeightI()(w[pe]);
 
-      ap_uint<SIMD*TSrcI::width> act_simd= 0;
-      for(unsigned int simd = 0; simd < SIMD; simd++) {
-        act_simd(TSrcI::width*(simd+1)-1, TSrcI::width*simd) = (Slice<ap_uint<PE*TSrcI::width>>()(inElem)(SIMD - simd - 1,0))
-                                                               (TSrcI::width*(pe+1)-1, TSrcI::width*pe);
-      }
-
       for (unsigned mmv = 0; mmv < MMV; mmv++){
-        auto const  act = TSrcI()(act_simd, mmv);
+		MultiChanData<MMV, SIMD*TSrcI::width> act_simd;
+		for(unsigned int simd = 0; simd < SIMD; simd++) {
+			act_simd[mmv](TSrcI::width*(simd+1)-1, TSrcI::width*simd) = ((Slice_mmv<ap_uint<PE*TSrcI::width>, MMV>()(inElem))(SIMD - simd - 1, mmv))(TSrcI::width*(pe+1)-1, TSrcI::width*pe);
+		}
+		auto const  act = Slice_mmv<ap_uint<TSrcI::width>, MMV>()(act_simd);
         accu[mmv][pe] = mac<SIMD>(accu[mmv][pe], wgt, act, r, mmv);
       }
     }
