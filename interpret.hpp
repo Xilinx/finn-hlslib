@@ -187,9 +187,23 @@ struct Caster<ap_fixed<W, I, Q, O, N>> {
   static ap_fixed<W, I, Q, O, N> cast(ap_int<M> const &arg) {
     return  ap_fixed<W, I, Q, O, N>(arg);
   }
-}; 
+};
 
-template<typename T, unsigned STRIDE=T::width>
+template<>
+struct Caster<float> {
+	template<int M>
+	static float cast(ap_int<M> const &arg) {
+	 return *reinterpret_cast<const float*>(&arg);
+	}
+};
+
+template<class Type>
+    constexpr auto Width = Type::width;
+
+template<>
+    constexpr auto Width<float> = 32;
+
+template<typename T, unsigned STRIDE = Width<T>>
 class Slice {
  public:
   static unsigned const  width = STRIDE;
@@ -246,7 +260,7 @@ class Slice {
 
 
 // This class is done for Slicing an MMV container (vector of ap_uint)
-template<typename T, unsigned MMV, unsigned STRIDE=T::width>
+template<typename T, unsigned MMV, unsigned STRIDE = Width<T>>
 class Slice_mmv {
  public:
   static unsigned const  width = STRIDE;
