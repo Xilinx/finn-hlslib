@@ -257,8 +257,7 @@ void instrument(
 	cnt_clk++;
 
 	// Copy Status Outputs
-	status[0] = timestamp_ovf;
-	status[1] = timestamp_unf;
+	status = timestamp_ovf | (timestamp_unf << 1);
 	latency  = last_latency;
 	interval = last_interval;
 	checksum = last_checksum;
