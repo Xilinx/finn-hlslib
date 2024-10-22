@@ -143,7 +143,8 @@ void instrument(
 	ap_uint<32> &status,	// [0] - timestamp overflow; [1] - timestamp underflow
 	ap_uint<32> &latency,
 	ap_uint<32> &interval,
-	ap_uint<32> &checksum
+	ap_uint<32> &checksum,
+	ap_uint<32> &min_latency
 ) {
 #pragma HLS pipeline II=1 style=flp
 
@@ -198,9 +199,11 @@ void instrument(
 	static clock_t  ts1 = 0;	// last output timestamp
 	static clock_t  last_latency = 0;
 	static clock_t  last_interval = 0;
+	static clock_t  cur_min_latency = ~0;
 #pragma HLS reset variable=ts1
 #pragma HLS reset variable=last_latency
 #pragma HLS reset variable=last_interval
+#pragma HLS reset variable=cur_min_latency
 
 	static ap_uint<8>  pkts = 0;
 #pragma HLS reset variable=pkts
@@ -245,6 +248,7 @@ void instrument(
 			else {
 				last_latency  = cnt_clk - ts0;	// completion - start
 				last_interval = cnt_clk - ts1;	// completion - previous completion
+				cur_min_latency = std::min(cur_min_latency, last_latency);
 				ts1 = cnt_clk;	// mark completion ^
 			}
 			ocnt = 0;
@@ -261,6 +265,7 @@ void instrument(
 	latency  = last_latency;
 	interval = last_interval;
 	checksum = last_checksum;
+	min_latency = cur_min_latency;
 
 } // instrument()
 
@@ -271,7 +276,8 @@ void instrumentation_wrapper(
 	ap_uint<32> &status,
 	ap_uint<32> &latency,
 	ap_uint<32> &interval,
-	ap_uint<32> &checksum
+	ap_uint<32> &checksum,
+	ap_uint<32> &min_latency
 ) {
 #pragma HLS interface axis port=finnix
 #pragma HLS interface axis port=finnox
@@ -280,6 +286,7 @@ void instrumentation_wrapper(
 #pragma HLS interface s_axilite bundle=ctrl port=latency
 #pragma HLS interface s_axilite bundle=ctrl port=interval
 #pragma HLS interface s_axilite bundle=ctrl port=checksum
+#pragma HLS interface s_axilite bundle=ctrl port=min_latency
 #pragma HLS interface ap_ctrl_none port=return
 
 #pragma HLS dataflow disable_start_propagation
@@ -292,7 +299,7 @@ void instrumentation_wrapper(
 	move(finnox, finnox0);
 
 	// Main
-	instrument<PENDING, ILEN, OLEN, KO>(finnix0, finnox0, cfg, status, latency, interval, checksum);
+	instrument<PENDING, ILEN, OLEN, KO>(finnix0, finnox0, cfg, status, latency, interval, checksum, min_latency);
 
 	// FIFO -> AXI-Stream
 	move(finnix0, finnix);
