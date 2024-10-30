@@ -36,6 +36,7 @@
  *           Thomas B. Preusser <thomas.preusser@utexas.edu>
  *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
  *           Christoph Doehring <cdoehrin@xilinx.com>
+ *           Lukas Stasytis <lukas.stasytis@amd.com>
  *
  *  @file stream-tools.h
  *
@@ -509,36 +510,37 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
  * \tparam     NumInWords   Number of input words to process
  * \tparam     NumOutWords   Number of output words to process
  * \tparam     totalIters   Number of loop iterations in total to process a transaction
-
  *
  * \param      in           Input stream
  * \param      out          Output stream
  * \param      numReps      Number of times the function has to be called
  *
  */
-template<unsigned int InWidth,		
-		unsigned int OutWidth,		
-		unsigned int NumInWords,
-		unsigned int NumOutWords,
-		unsigned int totalIters	
+template<
+	unsigned  InWidth,		
+	unsigned  OutWidth,		
+	unsigned  NumInWords,
+	unsigned  NumOutWords,
+	unsigned  totalIters	
 >
-void StreamingDataWidthConverterGeneralized_Batch(hls::stream<ap_uint<InWidth> > & in,
-		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
-
-  const unsigned int  BufferLength = InWidth+OutWidth;
+void StreamingDataWidthConverterGeneralized_Batch(
+	hls::stream<ap_uint<InWidth>>  &in,
+	hls::stream<ap_uint<OutWidth>> &out,
+	unsigned const  numReps
+) {
+  constexpr unsigned  BufferLength = InWidth+OutWidth;
   constexpr unsigned  NumInWordsLog = clog2(NumInWords)+1;
   constexpr unsigned  NumOutWordsLog = clog2(NumOutWords)+1;
   constexpr unsigned  BufferWidthLog = clog2(BufferLength)+1;
-  unsigned int totalItersReps = totalIters*numReps+numReps;
+  unsigned const totalItersReps = totalIters*numReps+numReps;
+
   ap_uint<NumOutWordsLog> words_written = 0;
   ap_uint<NumInWordsLog> words_read = 0;
   ap_uint<BufferWidthLog> els_in_buffer = 0;
   // we allocate OutWidth extra space for cases where we have leftover from
   // a previous word due to our els_in_buffer tracking scheme for when to 
-  // read in ei (potentially introducing padding or cropping)
-  ap_uint<OutWidth> eo_final = 0;
+  // read in input (potentially introducing padding or cropping)
   ap_uint<InWidth+OutWidth> eo = 0;
-  ap_uint<InWidth> ei;
   if (InWidth > OutWidth) {
     // emit multiple output words per input word read
     for (unsigned int t = 0; t < totalItersReps; t++) {
@@ -546,23 +548,23 @@ void StreamingDataWidthConverterGeneralized_Batch(hls::stream<ap_uint<InWidth> >
 
 	  // we reached the end of the transaction for this numReps superiteration
 	  // reset all trackers to allow further stream IO and stop padding/cropping
-	  eo_final(OutWidth-1,0) = eo(OutWidth-1,0);
+
 	  // write each cycle and shift
-	  if ((words_written < NumOutWords) && (els_in_buffer >= OutWidth)){
-	    out.write(eo_final(OutWidth-1,0));
+	  if ((words_written < NumOutWords) && (els_in_buffer >= OutWidth)) {
+	    out.write(eo(OutWidth-1,0));
 	    els_in_buffer -= OutWidth;
 	    eo = eo >> OutWidth;
-	    words_written+=1;
+	    words_written++;
 	  }
 	  // conditionally read in
 	  if (els_in_buffer < OutWidth) {
-		if (words_read < NumInWords){
-          ei = in.read();
-		  words_read+=1;
-		  eo(InWidth + els_in_buffer - 1, els_in_buffer) = ei(InWidth-1, 0);	
+		if (words_read < NumInWords) {
+		  ap_uint<InWidth> const  ei = in.read();
+		  words_read++;
+		  eo(InWidth + els_in_buffer - 1, els_in_buffer) = ei;
 		}
 		// always introducing elements to provide padding functionality
-	    els_in_buffer += InWidth;
+		els_in_buffer += InWidth;
 	  }
 	  if ((words_written == NumOutWords) && (words_read == NumInWords)) {
 		words_read = 0;
@@ -571,7 +573,7 @@ void StreamingDataWidthConverterGeneralized_Batch(hls::stream<ap_uint<InWidth> >
 	  }
     }
   } else if (InWidth == OutWidth) {
-    // straight-through copy
+	// straight-through copy
 	// NumOutWords != NumInWords if padding or cropping happened
 	// So we use one of two versions where we control how many times
 	// the streams are read/written.
@@ -579,18 +581,14 @@ void StreamingDataWidthConverterGeneralized_Batch(hls::stream<ap_uint<InWidth> >
 		for (unsigned int i = 0; i < totalItersReps; i++) {
 #pragma HLS pipeline style=flp II=1
 			ap_uint<InWidth> e = 0;
-			if (i < NumInWords) {
-				e = in.read();
-			}
+			if(i < NumInWords)  e = in.read();
 			out.write(e);
 		}	
 	} else {
 		for (unsigned int i = 0; i < totalItersReps; i++) {
 #pragma HLS pipeline style=flp II=1
-			ap_uint<InWidth> e = in.read();
-			if (i < NumOutWords) {
-				out.write(e);
-			}	
+			ap_uint<InWidth> const  e = in.read();
+			if(i < NumOutWords)  out.write(e);
 		}	
 	}
   } else { // InWidth < OutWidth
@@ -599,20 +597,20 @@ void StreamingDataWidthConverterGeneralized_Batch(hls::stream<ap_uint<InWidth> >
 #pragma HLS pipeline style=flp II=1
 	  // we reached the end of the transaction for this numReps superiteration
 	  // reset all trackers to allow further stream IO and stop padding/cropping
-      eo_final(OutWidth-1,0) = eo(OutWidth-1,0);
+
 	  // conditionally write out
 	  if (((els_in_buffer >= OutWidth) || (words_read >= NumInWords)) && (words_written < NumOutWords)) {
-		out.write(eo_final(OutWidth-1,0));
+		out.write(eo(OutWidth-1,0));
 		els_in_buffer -= OutWidth;
 		eo = eo >> OutWidth;
-		words_written+=1;
+		words_written++;
 	  }
-      // read input each cycle and shift into output buffer
+	  // read input each cycle and shift into output buffer
 	  // padding if we ran out of input words
-	  if (words_read < NumInWords){
-		ei = in.read();
-		eo(InWidth + els_in_buffer - 1, els_in_buffer) = ei(InWidth-1, 0);
-		words_read+=1;
+	  if (words_read < NumInWords) {
+		ap_uint<InWidth> const  ei = in.read();
+		eo(InWidth + els_in_buffer - 1, els_in_buffer) = ei;
+		words_read++;
 		els_in_buffer += InWidth;
 	  }
 	  if ((words_written == NumOutWords) && (words_read == NumInWords)) {
