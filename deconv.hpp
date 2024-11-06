@@ -449,7 +449,7 @@ void deconv(
 	// Activation Processing Pipeline: pad -> swg -> mvu -> crop
 	static hls::stream<hls::vector<TI, SIMD>>  src_eff("src_eff");
 	static hls::stream<hls::vector<TI, SIMD>>  swg    ("swg");
-	static hls::stream<hls::vector<TO, SIMD>>  dst_eff("dst_eff");
+	static hls::stream<hls::vector<TO, PE>>  dst_eff("dst_eff");
 #pragma HLS stream depth=2 variable=src_eff
 #pragma HLS stream depth=2 variable=swg
 #pragma HLS stream depth=2 variable=dst_eff
