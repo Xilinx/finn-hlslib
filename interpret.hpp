@@ -192,9 +192,7 @@ struct Caster<ap_fixed<W, I, Q, O, N>> {
 
 template<>
 struct Caster<float> {
-	template<int M>
-	static float cast(ap_int<M> const &arg) {
-		static_assert(M == 32, "Can only reinterpret 32-bit values as floats.");
+	static float cast(ap_int<32> const &arg) {
 		union { int32_t  i; float  f; } const  conv = { .i = arg };
 		return  conv.f;
 	}
