@@ -57,12 +57,23 @@
 #include <hls_vector.h>
 #include <hls_stream.h>
 
-//- Static Evaluation of ceil(log2(x)) ---------------------------------------
+
+//- Compile-Time Functions --------------------------------------------------
+
+// ceil(log2(x))
 template<typename T>
 constexpr unsigned clog2(T  x) {
   return  x<2? 0 : 1+clog2((x+1)/2);
 }
 
+template<typename T>
+constexpr unsigned gcd(T  a, T  b) {
+	if(b == 0)  return  a;
+	else {
+		T const  r = a%b;
+		return  (r == 0)? b : gcd(b, r);
+	}
+}
 //- Helpers to get hold of types ---------------------------------------------
 template<typename T> struct first_param {};
 template<typename R, typename A, typename... Args>
@@ -118,5 +129,41 @@ inline std::ostream& operator<<(std::ostream &o, hls::vector<T, N> const &v) {
 	}
 	return (o << '}');
 }
+
+//- Modulus Counter ---------------------------------------------------------
+
+/**
+ * Modulus counter returning true upon each N-th call of tick.
+ * @description
+ *	The implementation internally counts from N-2, ..., 0, -1 wrapping back to
+ *	N-2 so that the sign bit of the counter value can directly serve as the
+ *	wrap-around indicator without requiring a multi-bit comparator.
+ */
+template<unsigned  N> class ModCounter {
+	ap_int<1+clog2(N-1)>  cnt = N-2;
+public:
+	bool last() const {
+#pragma HLS inline
+		return  cnt < 0;
+	}
+	bool tick() {
+#pragma HLS inline
+		bool const  ret = last();
+		cnt += ret? N-1 : -1;
+		return  ret;
+	}
+};
+template<> class ModCounter<1> {
+public:
+	bool last() const {
+#pragma HLS inline
+		return  true;
+	}
+	bool tick() const {
+#pragma HLS inline
+		return  true;
+	}
+};
+template<> class ModCounter<0> {};
 
 #endif
