@@ -49,6 +49,7 @@
 #define INTERPRET_HPP
 
 #include <ap_int.h>
+#include <cstdint>
 #include <ostream>
 
 /**
@@ -187,9 +188,22 @@ struct Caster<ap_fixed<W, I, Q, O, N>> {
   static ap_fixed<W, I, Q, O, N> cast(ap_int<M> const &arg) {
     return  ap_fixed<W, I, Q, O, N>(arg);
   }
-}; 
+};
 
-template<typename T, unsigned STRIDE=T::width>
+template<>
+struct Caster<float> {
+	static float cast(ap_int<32> const &arg) {
+		union { int32_t  i; float  f; } const  conv = { .i = arg };
+		return  conv.f;
+	}
+};
+
+template<typename  T>
+constexpr static auto  width_v = T::width;
+template<>
+constexpr static auto  width_v<float> = 32;
+
+template<typename T, unsigned STRIDE = width_v<T>>
 class Slice {
  public:
   static unsigned const  width = STRIDE;
@@ -246,7 +260,7 @@ class Slice {
 
 
 // This class is done for Slicing an MMV container (vector of ap_uint)
-template<typename T, unsigned MMV, unsigned STRIDE=T::width>
+template<typename T, unsigned MMV, unsigned STRIDE = width_v<T>>
 class Slice_mmv {
  public:
   static unsigned const  width = STRIDE;
