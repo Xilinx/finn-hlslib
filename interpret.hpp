@@ -193,15 +193,15 @@ struct Caster<ap_fixed<W, I, Q, O, N>> {
 template<>
 struct Caster<float> {
 	static float cast(ap_int<32> const &arg) {
-		union { int32_t  i; float  f; } const  conv = { .i = arg };
+		union { int32_t  i; float  f; } const  conv = { .i = int32_t(arg) };
 		return  conv.f;
 	}
 };
 
 template<typename  T>
-constexpr static auto  width_v = T::width;
+constexpr auto  width_v = T::width;
 template<>
-constexpr static auto  width_v<float> = 32;
+constexpr auto  width_v<float> = 32;
 
 template<typename T, unsigned STRIDE = width_v<T>>
 class Slice {
