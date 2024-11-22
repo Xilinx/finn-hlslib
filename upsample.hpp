@@ -268,12 +268,6 @@ void upsample_nn(
 #pragma HLS dependence variable=buf intra false
 #pragma HLS array_partition variable=wp complete
 
-	//- Output Buffer Register ----------------------------------------------
-	static bool  ovld = false;
-	static T     obuf;
-#pragma HLS reset variable=ovld
-#pragma HLS reset variable=obuf off
-
 	// Update delay pipeline for wp
 	for(unsigned  i = WP_DELAY-1; i > 0; i--)  wp[i] = wp[i-1];
 
@@ -283,21 +277,15 @@ void upsample_nn(
 		if(src.read_nb(x))  buf[idx_t(wp[0]++)] = x;
 	}
 
-	// Try to clear output buffer
-	if(ovld)  ovld = !dst.write_nb(obuf);
+	// Emit output if ready
+	if(/* rp < wp */ ptr_t(rp-wp[WP_DELAY-1]) < 0) {
+		dst.write(buf[idx_t(rp)]);
 
-	// Try to refill output buffer
-	if(!ovld) {
-		obuf = buf[idx_t(rp)];
-
-		if(/* rp < wp */ ptr_t(rp-wp[WP_DELAY-1]) < 0) {
-			auto const  res = nest.tick();
-			rp += res.inc;
-			if(res.free)  fp = rp;
-
-			ovld = true;
-		}
+		auto const  res = nest.tick();
+		rp += res.inc;
+		if(res.free)  fp = rp;
 	}
+
 } // upsample_nn()
 
 //===========================================================================
