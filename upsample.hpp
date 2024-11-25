@@ -41,7 +41,6 @@
 #define UPSAMPLE_HPP
 
 #include <type_traits>
-#include <hls_task.h>
 #include "utils.hpp"
 
 
@@ -97,7 +96,7 @@ namespace upsample {
 	// directly above the integer part of the ideal y-coordinate of its
 	// horizontal midpoint. The Bresenham implementation tracks the fractional
 	// part of the y-coordinate explicitly as an approximation error and
-	// otherwise only identfies when to step its integer part up.
+	// otherwise only identifies when to step its integer part up.
 	// The initial fractional error at the first pixel's midpoint of x=1/2 is:
 	//
 	//	e_0 = 1/2 * Y/X
@@ -158,7 +157,7 @@ namespace upsample {
 
 	//-----------------------------------------------------------------------
 	// Result of a tick of the loop nest
-	// propagated and manipuated from the innermost to the outermost loop.
+	// propagated and manipulated from the innermost to the outermost loop.
 	struct tickres_t {
 		using  inc_t = typename std::make_signed<size_t>::type;
 
@@ -251,11 +250,12 @@ void upsample_nn(
 	constexpr size_t  WP_DELAY = 4;
 	using  MyNest = upsample::Nest<V...>;
 	constexpr size_t  ADDR_BITS = clog2(MyNest::buf_size);
+	constexpr size_t  BUF_SIZE  = 1 << ADDR_BITS;
 	using  idx_t = ap_uint<ADDR_BITS>;
 	using  ptr_t = ap_int<1 + ADDR_BITS>;
 
 	static MyNest  nest;
-	static T      buf[1 << ADDR_BITS];
+	static T      buf[BUF_SIZE];
 	static ptr_t  wp[WP_DELAY] = { 0, };	// write pointer: delay for rp comparison
 	static ptr_t  rp = 0;	// read pointer: bounded by wp
 	static ptr_t  fp = 0;	// free pointer: bounds wp for next buffer generation
