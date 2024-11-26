@@ -197,11 +197,22 @@ struct Caster<float> {
 	}
 };
 
+template<>
+struct Caster<half> {
+	template<int M>
+	static float cast(ap_int<M> const &arg) {
+	 return *reinterpret_cast<const half*>(&arg);
+	}
+};
+
 template<class Type>
     constexpr auto Width = Type::width;
 
 template<>
     constexpr auto Width<float> = 32;
+
+template<>
+    constexpr auto Width<half> = 16;
 
 template<typename T, unsigned STRIDE = Width<T>>
 class Slice {
