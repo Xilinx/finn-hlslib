@@ -50,6 +50,7 @@
 #define STREAMTOOLS_H
 
 #include "ap_axi_sdata.h"
+#include "mmv.hpp"
 #include "utils.hpp"
 
 /**
