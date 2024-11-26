@@ -508,8 +508,7 @@ void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
  * \tparam     InWidth      Width, in number of bits, of the input stream
  * \tparam     OutWidth     Width, in number of bits, of the output stream 
  * \tparam     NumInWords   Number of input words to process
- * \tparam     NumOutWords   Number of output words to process
- * \tparam     totalIters   Number of loop iterations in total to process a transaction
+ * \tparam     NumOutWords  Number of output words to process
  *
  * \param      in           Input stream
  * \param      out          Output stream
@@ -520,8 +519,7 @@ template<
 	unsigned  InWidth,		
 	unsigned  OutWidth,		
 	unsigned  NumInWords,
-	unsigned  NumOutWords,
-	unsigned  totalIters	
+	unsigned  NumOutWords
 >
 void StreamingDataWidthConverterGeneralized_Batch(
 	hls::stream<ap_uint<InWidth>>  &in,
@@ -532,6 +530,8 @@ void StreamingDataWidthConverterGeneralized_Batch(
   constexpr unsigned  NumInWordsLog = clog2(NumInWords)+1;
   constexpr unsigned  NumOutWordsLog = clog2(NumOutWords)+1;
   constexpr unsigned  BufferWidthLog = clog2(BufferLength)+1;
+  constexpr unsigned totalIters = (NumInWords > NumOutWords ? NumInWords : NumOutWords);
+  // we need one additional cycle per transaction for potential padding
   unsigned const totalItersReps = totalIters*numReps+numReps;
 
   ap_uint<NumOutWordsLog> words_written = 0;
@@ -577,19 +577,33 @@ void StreamingDataWidthConverterGeneralized_Batch(
 	// NumOutWords != NumInWords if padding or cropping happened
 	// So we use one of two versions where we control how many times
 	// the streams are read/written.
-	if (NumOutWords >= NumInWords) {
-		for (unsigned int i = 0; i < totalItersReps; i++) {
+	if (NumOutWords > NumInWords) {
+		for (unsigned int j = 0; j < numReps; j++) {
+			for (unsigned int i = 0; i < totalIters; i++) {
 #pragma HLS pipeline style=flp II=1
-			ap_uint<InWidth> e = 0;
-			if(i < NumInWords)  e = in.read();
-			out.write(e);
+				ap_uint<InWidth> e = 0;
+				if(i < NumInWords) {
+					e = in.read();
+				}  
+				out.write(e);
+			}
 		}	
+	} else if (NumOutWords == NumInWords) {
+		for (unsigned int j = 0; j < numReps; j++) {
+			for (unsigned int i = 0; i < totalIters; i++) {
+#pragma HLS pipeline style=flp II=1
+				ap_uint<InWidth> const  e = in.read();
+				out.write(e);
+			}	
+		}
 	} else {
-		for (unsigned int i = 0; i < totalItersReps; i++) {
+		for (unsigned int j = 0; j < numReps; j++) {
+			for (unsigned int i = 0; i < totalIters; i++) {
 #pragma HLS pipeline style=flp II=1
-			ap_uint<InWidth> const  e = in.read();
-			if(i < NumOutWords)  out.write(e);
-		}	
+				ap_uint<InWidth> const  e = in.read();
+				if(i < NumOutWords)  out.write(e);
+			}	
+		}
 	}
   } else { // InWidth < OutWidth
     // read multiple input words per output word emitted
