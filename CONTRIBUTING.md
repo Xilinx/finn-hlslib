@@ -1,2 +1,1 @@
-To get started, <a href="https://www.clahub.com/agreements/Xilinx/finn-hlslib">sign the Contributor License Agreement</a>.
-
+Contributions to `finn-hlslib` are subject to [Rules](https://github.com/Xilinx/finn/blob/main/CONTRIBUTING.md) set forth by the [FINN Project](https://xilinx.github.io/finn/).
