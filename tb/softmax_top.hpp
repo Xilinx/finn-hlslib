@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2022, Xilinx, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -27,32 +27,20 @@
  *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- ******************************************************************************/
-
-/******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *
- *  \file
- *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
- *
- ******************************************************************************/
-
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
+ *******************************************************************************
+ * @author	Thomas B. Preusser <thomas.preusser@amd.com>
+ *******************************************************************************/
+#ifndef SOFTMAX_TOP_HPP
+#define SOFTMAX_TOP_HPP
 
 #include <ap_int.h>
+#include <hls_stream.h>
 
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
-    }
-};
+constexpr unsigned  FM_SIZE = 12;
+using TI = ap_uint<6>;
 
+void softmax_top(
+	hls::stream<TI>    &src,
+	hls::stream<float> &dst
+);
 #endif

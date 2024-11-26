@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2022, Xilinx, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -27,32 +27,19 @@
  *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- ******************************************************************************/
+ *******************************************************************************
+ * @author	Thomas B. Preusser <thomas.preusser@amd.com>
+ *******************************************************************************/
+#include "normalize.hpp"
+#include "softmax_top.hpp"
 
-/******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *
- *  \file
- *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
- *
- ******************************************************************************/
 
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
-
-#include <ap_int.h>
-
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
-    }
-};
-
-#endif
+void softmax_top(
+	hls::stream<TI>    &src,
+	hls::stream<float> &dst
+) {
+#pragma HLS interface AXIS port=src
+#pragma HLS interface AXIS port=dst
+#pragma HLS dataflow disable_start_propagation
+	softmax<FM_SIZE>(src, dst);
+}

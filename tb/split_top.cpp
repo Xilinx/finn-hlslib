@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2024, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -30,29 +30,34 @@
  *
  ******************************************************************************/
 
-/******************************************************************************
+/*******************************************************************************
  *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *  Authors: Michal Danilowicz <danilowi@agh.edu.pl>     
  *
- *  \file
+ *  \file split_top.cpp
  *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
+ *  HLS Top function with channel split operation for unit testing
  *
- ******************************************************************************/
+ *******************************************************************************/
 
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
+#include <hls_stream.h>
+#include <hls_vector.h>
 
-#include <ap_int.h>
+#include "data/split_config.h"
+#include "split.hpp"
 
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
-    }
-};
+void Testbench_split(hls::stream<IN_TYPE> &in0_V, hls::stream<IN_TYPE> (&out_arr)[NUM_OUTPUTS])
+{
+#pragma HLS INTERFACE axis port=in0_V
+#pragma HLS INTERFACE axis port=out_arr[0]
+#pragma HLS INTERFACE axis port=out_arr[1]
+#pragma HLS INTERFACE axis port=out_arr[2]
+#pragma HLS INTERFACE ap_ctrl_none port=return
 
-#endif
+#pragma HLS aggregate variable=in0_V compact=bit
+#pragma HLS aggregate variable=out_arr[0] compact=bit
+#pragma HLS aggregate variable=out_arr[1] compact=bit
+#pragma HLS aggregate variable=out_arr[2] compact=bit
+
+StreamingSplit<NUM_FOLDS0, NUM_FOLDS1, NUM_FOLDS2>(in0_V, out_arr);
+}

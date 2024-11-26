@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2024, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -30,29 +30,50 @@
  *
  ******************************************************************************/
 
-/******************************************************************************
+/*******************************************************************************
  *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *  Authors: Michal Danilowicz <danilowi@agh.edu.pl>     
  *
- *  \file
+ *  \file split.hpp
  *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
+ *  This file defines template function
+ *	of a channel split operation.
  *
- ******************************************************************************/
+ *******************************************************************************/
 
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
-
+#include <hls_stream.h>
 #include <ap_int.h>
+#include <algorithm>
 
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
+#include "utils.hpp"
+
+
+template<
+    unsigned... C,
+    typename TI,
+    unsigned N
+>
+void StreamingSplit(
+    hls::stream<TI>& src,
+    hls::stream<TI> (&dst)[N]
+){
+    static ap_uint<clog2(N)> sel = 0;
+    static unsigned const CNT_INIT[N] = {(C-2)...};
+    static ap_int<1+clog2(std::max({C...})-1)>  cnt = CNT_INIT[0];
+
+#pragma HLS reset variable=sel
+#pragma HLS reset variable=cnt
+#pragma HLS pipeline II=1 style=flp
+ 
+    TI x;
+    if(!src.empty()){
+        x = src.read();
+        dst[sel].write(x);
+        if(cnt >= 0)
+            cnt--;
+        else{
+            sel = (sel == N-1) ? decltype(sel)(0) : decltype(sel)(sel+1);
+            cnt = CNT_INIT[sel]; 
+        }
     }
-};
-
-#endif
+}

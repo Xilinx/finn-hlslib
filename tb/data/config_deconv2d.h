@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2023, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -30,29 +30,32 @@
  *
  ******************************************************************************/
 
-/******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *
- *  \file
- *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
- *
- ******************************************************************************/
+#ifndef DECONV_CONF_H
+#define DECONV_CONF_H
 
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
+constexpr unsigned  IFDim1 = 4;
+constexpr unsigned  IFMCh1 = 1;
+constexpr unsigned  OFDim1 = 7;
+constexpr unsigned  OFMCh1 = 1;
+constexpr unsigned  Kernel1 = 4;
+constexpr unsigned  Stride1 = 3;
+constexpr unsigned  Padding1 = 3;
 
-#include <ap_int.h>
+constexpr unsigned  FMPadODim1 = 10;
+constexpr unsigned  FMPadStride1 = 3;
+constexpr unsigned  FMPadSIMD1 = 1;
 
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
-    }
-};
+constexpr unsigned  ConvKernel1 = 4;
+constexpr unsigned  ConvIFMCh1 = 1;
+constexpr unsigned  ConvIFMDim1 = 10;
+constexpr unsigned  ConvOFMCh1 = 1;
+constexpr unsigned  ConvOFMDim1 = 7;
+constexpr unsigned  ConvStride1 = 1;
+constexpr unsigned  ConvSIMD1 = 1;
+constexpr unsigned  ConvPE1 = 1;
+
+constexpr unsigned  IPrecision = 6;
+constexpr unsigned  OPrecision = 16;
+constexpr unsigned  WPrecision = 5;
 
 #endif

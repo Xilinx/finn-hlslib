@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2023, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -27,32 +27,20 @@
  *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
  ******************************************************************************/
 
-/******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *
- *  \file
- *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
- *
- ******************************************************************************/
+#ifndef FMPP_CONFIG_H
+#define FMPP_CONFIG_H
 
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
+constexpr unsigned  SIMD1 = 1;
+constexpr unsigned  INPUT_WIDTH = 8;
+constexpr unsigned  INPUT_DIM_X = 30;
+constexpr unsigned  INPUT_DIM_Y = 40;
+constexpr unsigned  CHANNELS = 3;
+constexpr unsigned  XSTRIDE = 5;
+constexpr unsigned  YSTRIDE = 3;
 
-#include <ap_int.h>
-
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
-    }
-};
+constexpr unsigned  OUTPUT_DIM_X = INPUT_DIM_X + (INPUT_DIM_X - 1) * (XSTRIDE - 1);
+constexpr unsigned  OUTPUT_DIM_Y = INPUT_DIM_Y + (INPUT_DIM_Y - 1) * (YSTRIDE - 1);
 
 #endif

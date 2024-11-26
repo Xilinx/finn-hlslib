@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2023, Xilinx, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -27,32 +27,37 @@
  *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- ******************************************************************************/
+ *******************************************************************************
+ * @brief	Testbench for SoftMax layer.
+ * @author	Thomas B. Preusser <thomas.preusser@amd.com>
+ *******************************************************************************/
+#include "softmax_top.hpp"
 
-/******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *
- *  \file
- *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
- *
- ******************************************************************************/
+#include <iostream>
+#include <iomanip>
+#include <random>
 
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
+int main() {
+	hls::stream<TI>     src("src");
+	hls::stream<TI>     bypass("bypass");
+	hls::stream<float>  dst("dst");
 
-#include <ap_int.h>
+	{
+		std::default_random_engine  rnd;
+		std::uniform_int_distribution<>  dist(0, (1<<TI::width)-1);
+		for(unsigned  i = 0; i < FM_SIZE; i++) {
+			TI const  x = dist(rnd);
+			src   .write(x);
+			bypass.write(x);
+		}
+	}
 
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
-    }
-};
+	softmax_top(src, dst);
+	for(unsigned  i = 0; i < FM_SIZE; i++) {
+		TI    const  x = bypass.read();
+		float const  y = dst.read();
+		std::cout << std::setw(3) << x << " -> " << y << std::endl;
+	}
+	std::cout << "--------------\n" << std::endl;
 
-#endif
+}

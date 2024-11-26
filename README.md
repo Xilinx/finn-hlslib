@@ -1,5 +1,9 @@
-# finn-hlslib [![Documentation Status](https://readthedocs.org/projects/finn-hlslib/badge/?version=latest)](https://finn-hlslib.readthedocs.io/en/latest/?badge=latest)
+# FINN
+FINN is an ML framework by the Integrated Communications and AI Lab of AMD Research & Advanced Development.
+It provides an end-to-end flow for the exploration and implementation of quantized neural network inference solutions on FPGAs.
+FINN generates dataflow architectures as a physical representation of the implemented custom network in space.
+It is not a generic DNN acceleration solution but relies on co-design and design space exploration for quantization and parallelization tuning so as to optimize a solutions with respect to resource and performance requirements.
 
-This repo contains the [**Vitis HLS**](https://docs.xilinx.com/r/en-US/ug1399-vitis-hls/Getting-Started-with-Vitis-HLS) C++ library for the hardware acceleration of Quantized Neural Networks (QNN) using FINN. 
-
-For more information please refer to the documentation available <a href="https://finn-hlslib.readthedocs.io" target="_blank"> here</a>.
+# FINN-hlslib
+This repository is the collection of the templated C++ HLS models of various neural network operators that the FINN compiler instantiates into its generated neural network inference solution.
+The library is built to synthesize using the Vitis HLS tool.
