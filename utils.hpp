@@ -119,8 +119,54 @@ void logStringStream(const char *layer_name, hls::stream<ap_uint<BitWidth> > &lo
   ofs.close();
 }
 
+//- Zero-Width-Enabled Arbitrary-Precision Numbers ..........................
+
+// Non-zero-width instances as thinnest possible wrapper around ap_uint<N>.
+template<unsigned N> class ap_uzint : public ap_uint<N> {
+public:
+	template<typename... T> ap_uzint(T&&... val) : ap_uint<N>(std::forward<T>(val)...) {}
+};
+
+// Zero-width specialization avoiding the illegal ap_uint<0> parametrization.
+template<> class ap_uzint<0> : public std::false_type {
+	// Enable initialization and assignment from any source type with complete truncation.
+public:
+	template<typename... T> ap_uzint(T&&...) {}
+	template<typename T> ap_uzint& operator=(T&&) { return *this; }
+
+	// Allow but neutralize increment operators
+	ap_uzint& operator++()    { return *this; }
+	ap_uzint& operator++(int) { return *this; }
+	ap_uzint& operator--()    { return *this; }
+	ap_uzint& operator--(int) { return *this; }
+	template<typename T> ap_uzint& operator+=(T&&) { return *this; }
+	template<typename T> ap_uzint& operator-=(T&&) { return *this; }
+};
+
+// Non-zero-width instances as thinnest possible wrapper around ap_uint<N>.
+template<unsigned N> class ap_zint : public ap_int<N> {
+public:
+	template<typename... T> ap_zint(T&&... val) : ap_int<N>(std::forward<T>(val)...) {}
+};
+
+// Zero-width specialization avoiding the illegal ap_uint<0> parametrization.
+template<> class ap_zint<0> : public std::false_type {
+	// Enable initialization and assignment from any source type with complete truncation.
+public:
+	template<typename... T> ap_zint(T&&...) {}
+	template<typename T> ap_zint& operator=(T&&) { return *this; }
+
+	// Allow but neutralize increment operators
+	ap_zint& operator++()    { return *this; }
+	ap_zint& operator++(int) { return *this; }
+	ap_zint& operator--()    { return *this; }
+	ap_zint& operator--(int) { return *this; }
+	template<typename T> ap_zint& operator+=(T&&) { return *this; }
+	template<typename T> ap_zint& operator-=(T&&) { return *this; }
+};
+
 //- hls::vector<> Enablement ------------------------------------------------
-template<typename  T, unsigned long  N>
+template<typename  T, size_t  N>
 inline std::ostream& operator<<(std::ostream &o, hls::vector<T, N> const &v) {
 	char  delim = '{';
 	for(auto const &x : v) {
