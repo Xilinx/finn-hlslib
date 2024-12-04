@@ -340,7 +340,7 @@ template <
     typename TI, typename TO>
 void Thresholding_Stream_Batch(hls::stream<TI> &in,
                         hls::stream<TO> &out,
-                        hls::stream<ap_uint<PE*NumSteps*TT::width>> &weight,
+                        hls::stream<ap_uint<PE*NumSteps*Width<TT>>> &weight,
                         int const reps)
 {
 
@@ -357,10 +357,10 @@ void Thresholding_Stream_Batch(hls::stream<TI> &in,
   {
 #pragma HLS pipeline style=flp II=1
 
-    ap_uint<PE*NumSteps*TT::width> packed_thr;
+    ap_uint<PE*NumSteps*Width<TT>> packed_thr;
     packed_thr = weight.read();
     // slicer to get 1 PE's worth of thresholds
-    auto const pe_slicer = Slice<ap_uint<NumSteps*TT::width>>()(packed_thr);
+    auto const pe_slicer = Slice<ap_uint<NumSteps*Width<TT>>>()(packed_thr);
 
     TI inElem;
     inElem = in.read();
