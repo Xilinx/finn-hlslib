@@ -7,7 +7,7 @@
  *  modification, are permitted provided that the following conditions are met:
  *
  *  1.  Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
+ *      this list of conditions and the following disclaimer.
  *
  *  2.  Redistributions in binary form must reproduce the above copyright
  *      notice, this list of conditions and the following disclaimer in the
@@ -34,76 +34,70 @@
 #ifndef FLATTEN_HPP
 #define FLATTEN_HPP
 
-// HLS arbitrary precision types
 #include <ap_int.h>
-// width_v (since ::width doesn't work for float, half..)
-#include "interpret.hpp"
+#include <hls_vector.h>
+#include <cstddef>
 
-static ap_int<32> float2apint_cast(float const &arg) {
-    union { int32_t  i; float  f; } const  conv = { .f = arg };
-    return  (ap_int<32> )conv.i;
+#include "interpret.hpp"	// width_v(T)
+
+
+//---------------------------------------------------------------------------
+// Utility: Get the raw bit image of a value
+template<typename  T>
+ap_uint<width_v<T>> bit_image(T const &val) {
+#pragma HLS inline
+	return  ap_uint<width_v<T>>(val);
 }
 
-static ap_int<16> half2apint_cast(half const &arg) {
-    union { int16_t  i; half  h; } const  conv = { .h = arg };
-    return  (ap_int<16> )conv.i;
+template<>
+ap_uint<32> bit_image(float const &val) {
+#pragma HLS inline
+	union { uint32_t  i; float  f; } const  conv = { .f = val };
+	return  ap_uint<32>(conv.i);
 }
 
-// Flattens an array of N elements of Type into a single bitvector
-template<long unsigned N, class Type>
-    ap_uint<N * width_v<Type>> flatten(const Type buffer[N]) {
-// Inline this small piece of bit merging logic
-#pragma HLS INLINE
-        // Fill a flat word of N times the bit-width of the element type
-        ap_uint<N * width_v<Type>> flat;
-        // Merge all N chunks of the tile into the flat bitvector
-        for(unsigned j = 0; j < N; ++j) {
-// Do the merging of all chunks in parallel
-#pragma HLS UNROLL
-            // Insert the chunk into the right place of the
-            // bitvector
-            flat((j + 1) * width_v<Type> - 1, j * width_v<Type>) = buffer[j];
-        }
-        // Return the buffer flattened into a single bitvector
-        return flat;
-    }
+template<>
+ap_uint<16> bit_image(half const &val) {
+#pragma HLS inline
+	union { uint16_t  i; half  f; } const  conv = { .f = val };
+	return  ap_uint<16>(conv.i);
+}
 
-// Flattens an array of N elements of float into a single bitvector
-template<long unsigned N>
-    ap_uint<N * 32> flatten(const float buffer[N]) {
-// Inline this small piece of bit merging logic
-#pragma HLS INLINE
-        // Fill a flat word of N times the bit-width of the element type
-        ap_uint<N * 32> flat;
-        // Merge all N chunks of the tile into the flat bitvector
-        for(unsigned j = 0; j < N; ++j) {
-// Do the merging of all chunks in parallel
-#pragma HLS UNROLL
-            // Insert the chunk into the right place of the
-            // bitvector
-            flat((j + 1) * 32 - 1, j * 32) = float2apint_cast(buffer[j]);
-        }
-        // Return the buffer flattened into a single bitvector
-        return flat;
-    }
+//---------------------------------------------------------------------------
+// Actual Flattening: all inlined, just wiring in HW
+//	Ultimately (C++20), there should probably be a single copy leveraging a
+//	concept that covers T[N], std::array<T, N> and hls::vector<T, N>.
 
-// Flattens an array of N elements of half into a single bitvector
-template<long unsigned N>
-    ap_uint<N * 16> flatten(const half buffer[N]) {
-// Inline this small piece of bit merging logic
+// Flatten an array of N elements of type T into an ap_uint<>
+template<
+	typename  T,	// [inferred] Element type
+	size_t    N 	// [inferred] Array size
+>
+ap_uint<N * width_v<T>> flatten(T const (&buffer)[N]) {
 #pragma HLS INLINE
-        // Fill a flat word of N times the bit-width of the element type
-        ap_uint<N * 16> flat;
-        // Merge all N chunks of the tile into the flat bitvector
-        for(unsigned j = 0; j < N; ++j) {
-// Do the merging of all chunks in parallel
+	constexpr size_t  W = width_v<T>;
+	ap_uint<N * W>  flat;
+	for(size_t  j = 0; j < N; j++) {
 #pragma HLS UNROLL
-            // Insert the chunk into the right place of the
-            // bitvector
-            flat((j + 1) * 16 - 1, j * 16) = half2apint_cast(buffer[j]);
-        }
-        // Return the buffer flattened into a single bitvector
-        return flat;
-    }
+		flat((j+1)*W - 1, j*W) = bit_image(buffer[j]);
+	}
+	return flat;
+}
+
+// Flatten an hls::vector<> of N elements of type T into an ap_uint<>
+template<
+	typename  T,	// [inferred] Element type
+	size_t    N 	// [inferred] Vector length
+>
+ap_uint<N * width_v<T>> flatten(hls::vector<T, N> const &vec) {
+#pragma HLS INLINE
+	constexpr size_t  W = width_v<T>;
+	ap_uint<N * W>  flat;
+	for(size_t  j = 0; j < N; j++) {
+#pragma HLS UNROLL
+		flat((j+1)*W - 1, j*W) = bit_image(vec[j]);
+	}
+	return flat;
+}
 
 #endif // FLATTEN_HPP
