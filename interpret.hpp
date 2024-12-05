@@ -198,10 +198,20 @@ struct Caster<float> {
 	}
 };
 
+template<>
+struct Caster<half> {
+	static half cast(ap_int<16> const &arg) {
+		union { int16_t  i; half h; } const  conv = { .i = int16_t(arg) };
+		return  conv.h;
+	}
+};
+
 template<typename  T>
 constexpr auto  width_v = T::width;
 template<>
 constexpr auto  width_v<float> = 32;
+template<>
+constexpr auto  width_v<half> = 16;
 
 template<typename T, unsigned STRIDE = width_v<T>>
 class Slice {
