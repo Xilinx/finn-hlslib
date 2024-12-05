@@ -36,6 +36,8 @@
 
 // HLS arbitrary precision types
 #include <ap_int.h>
+// width_v (since ::width doesn't work for float, half..)
+#include "interpret.hpp"
 
 static ap_int<32> float2apint_cast(float const &arg) {
     union { int32_t  i; float  f; } const  conv = { .f = arg };
@@ -49,18 +51,18 @@ static ap_int<16> half2apint_cast(half const &arg) {
 
 // Flattens an array of N elements of Type into a single bitvector
 template<long unsigned N, class Type>
-    ap_uint<N * Type::width> flatten(const Type buffer[N]) {
+    ap_uint<N * width_v<Type>> flatten(const Type buffer[N]) {
 // Inline this small piece of bit merging logic
 #pragma HLS INLINE
         // Fill a flat word of N times the bit-width of the element type
-        ap_uint<N * Type::width> flat;
+        ap_uint<N * width_v<Type>> flat;
         // Merge all N chunks of the tile into the flat bitvector
         for(unsigned j = 0; j < N; ++j) {
 // Do the merging of all chunks in parallel
 #pragma HLS UNROLL
             // Insert the chunk into the right place of the
             // bitvector
-            flat((j + 1) * Type::width - 1, j * Type::width) = buffer[j];
+            flat((j + 1) * width_v<Type> - 1, j * width_v<Type>) = buffer[j];
         }
         // Return the buffer flattened into a single bitvector
         return flat;
