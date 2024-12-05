@@ -50,6 +50,7 @@
 
 #include <ap_int.h>
 #include <cstdint>
+#include <cstddef>
 #include <ostream>
 
 /**
@@ -207,11 +208,11 @@ struct Caster<half> {
 };
 
 template<typename  T>
-constexpr auto  width_v = T::width;
-template<>
-constexpr auto  width_v<float> = 32;
-template<>
-constexpr auto  width_v<half> = 16;
+constexpr size_t  width_v = 8*sizeof(T);
+template<size_t  N>
+constexpr size_t  width_v<ap_int<N>> = N;
+template<size_t  N>
+constexpr size_t  width_v<ap_uint<N>> = N;
 
 template<typename T, unsigned STRIDE = width_v<T>>
 class Slice {
