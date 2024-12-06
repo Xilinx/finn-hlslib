@@ -57,6 +57,13 @@ ap_uint<32> bit_image(float const &val) {
 }
 
 template<>
+ap_uint<64> bit_image(double const &val) {
+#pragma HLS inline
+	union { uint64_t  i; double  f; } const  conv = { .f = val };
+	return  ap_uint<64>(conv.i);
+}
+
+template<>
 ap_uint<16> bit_image(half const &val) {
 #pragma HLS inline
 	union { uint16_t  i; half  f; } const  conv = { .f = val };
