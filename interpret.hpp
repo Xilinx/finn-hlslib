@@ -207,12 +207,11 @@ struct Caster<half> {
 	}
 };
 
-template<typename  T>
-constexpr size_t  width_v = 8*sizeof(T);
-template<int  N>
-constexpr size_t  width_v<ap_int<N>> = N;
-template<int  N>
-constexpr size_t  width_v<ap_uint<N>> = N;
+// Determine bit width of types
+template<typename  T> std::integral_constant<size_t, 8*sizeof(T)> get_width_v(...);    // standard types
+template<typename  T> std::integral_constant<size_t, T::width>    get_width_v(void*);  // types with explicit T::width
+template<typename  T> constexpr size_t  width_v = decltype(get_width_v<T>(nullptr))::value;
+
 
 template<typename T, unsigned STRIDE = width_v<T>>
 class Slice {
