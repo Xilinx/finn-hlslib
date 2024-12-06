@@ -209,9 +209,9 @@ struct Caster<half> {
 
 template<typename  T>
 constexpr size_t  width_v = 8*sizeof(T);
-template<size_t  N>
+template<int  N>
 constexpr size_t  width_v<ap_int<N>> = N;
-template<size_t  N>
+template<int  N>
 constexpr size_t  width_v<ap_uint<N>> = N;
 
 template<typename T, unsigned STRIDE = width_v<T>>
