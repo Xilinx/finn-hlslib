@@ -29,7 +29,34 @@
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ******************************************************************************/
-#define INPUT_WIDTH 8
+
+// pad larger output width
+#define INPUT_WIDTH 4
+#define OUT_WIDTH 13
+#define NumInWords 6
+#define NumOutWords 2
+#define NUM_REPEAT 4
+
+/* pad words on equal widths
+#define INPUT_WIDTH 4
 #define OUT_WIDTH 4
-#define NumInWords 4
-#define NUM_REPEAT 1
+#define NumInWords 2
+#define NumOutWords 4
+#define NUM_REPEAT 4
+*/
+
+/* pad smaller output width
+#define INPUT_WIDTH 10
+#define OUT_WIDTH 6
+#define NumInWords 1
+#define NumOutWords 2
+#define NUM_REPEAT 4
+*/
+
+/* crop smaller output width
+#define INPUT_WIDTH 10
+#define OUT_WIDTH 4
+#define NumInWords 1
+#define NumOutWords 2
+#define NUM_REPEAT 4
+*/
