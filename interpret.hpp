@@ -50,6 +50,7 @@
 
 #include <ap_int.h>
 #include <cstdint>
+#include <cstddef>
 #include <ostream>
 
 /**
@@ -198,10 +199,19 @@ struct Caster<float> {
 	}
 };
 
-template<typename  T>
-constexpr auto  width_v = T::width;
 template<>
-constexpr auto  width_v<float> = 32;
+struct Caster<half> {
+	static half cast(ap_int<16> const &arg) {
+		union { int16_t  i; half h; } const  conv = { .i = int16_t(arg) };
+		return  conv.h;
+	}
+};
+
+// Determine bit width of types
+template<typename  T> std::integral_constant<size_t, 8*sizeof(T)> get_width_v(...);    // standard types
+template<typename  T> std::integral_constant<size_t, T::width>    get_width_v(void*);  // types with explicit T::width
+template<typename  T> constexpr size_t  width_v = decltype(get_width_v<T>(nullptr))::value;
+
 
 template<typename T, unsigned STRIDE = width_v<T>>
 class Slice {
