@@ -35,6 +35,9 @@
 #define FLATTEN_HPP
 
 #include <ap_int.h>
+#include <ap_fixed.h>
+#include <ap_float.h>
+
 #include <hls_vector.h>
 #include <cstddef>
 
@@ -44,31 +47,52 @@
 //---------------------------------------------------------------------------
 // Utility: Get the raw bit image of a value
 template<typename  T>
-ap_uint<width_v<T>> bit_image(T const &val) {
+ap_uint<width_v<T>> to_bitimage(T const &val) {
 #pragma HLS inline
-	return  ap_uint<width_v<T>>(val);
+	static_assert(std::is_integral<T>::value, "Non-integral types require bit image specialization.");
+	return  val;
 }
 
-template<>
-ap_uint<32> bit_image(float const &val) {
+// ap_*-Type Specializations
+template<int  W>
+ap_uint<W> to_bitimage(ap_int<W> const &val) {
 #pragma HLS inline
-	union { uint32_t  i; float  f; } const  conv = { .f = val };
-	return  ap_uint<32>(conv.i);
+	return  val;
+}
+template<int  W>
+ap_uint<W> to_bitimage(ap_uint<W> const &val) {
+#pragma HLS inline
+	return  val;
 }
 
-template<>
-ap_uint<64> bit_image(double const &val) {
+template <int  W, int  I, ap_q_mode  Q, ap_o_mode  O, int  N>
+ap_uint<W> to_bitimage(ap_fixed<W, I, Q, O, N> const &val) {
 #pragma HLS inline
-	union { uint64_t  i; double  f; } const  conv = { .f = val };
-	return  ap_uint<64>(conv.i);
+	return  val(W-1, 0);
 }
 
-template<>
-ap_uint<16> bit_image(half const &val) {
+template<int W, int E>
+ap_uint<W> to_bitimage(ap_float<W, E> const &val) {
+	return (ap_uint<1>(val.sign_ref()), val.exponent_ref(), val.mantissa_ref());
+}
+
+// Floating-point Specializations
+ap_uint<16> to_bitimage(half const &val) {
 #pragma HLS inline
 	union { uint16_t  i; half  f; } const  conv = { .f = val };
-	return  ap_uint<16>(conv.i);
+	return  to_bitimage(conv.i);
 }
+ap_uint<32> to_bitimage(float const &val) {
+#pragma HLS inline
+	union { uint32_t  i; float  f; } const  conv = { .f = val };
+	return  to_bitimage(conv.i);
+}
+ap_uint<64> to_bitimage(double const &val) {
+#pragma HLS inline
+	union { uint64_t  i; double  f; } const  conv = { .f = val };
+	return  to_bitimage(conv.i);
+}
+
 
 //---------------------------------------------------------------------------
 // Actual Flattening: all inlined, just wiring in HW
@@ -86,7 +110,7 @@ ap_uint<N * width_v<T>> flatten(T const (&buffer)[N]) {
 	ap_uint<N * W>  flat;
 	for(size_t  j = 0; j < N; j++) {
 #pragma HLS UNROLL
-		flat((j+1)*W - 1, j*W) = bit_image(buffer[j]);
+		flat((j+1)*W - 1, j*W) = to_bitimage(buffer[j]);
 	}
 	return flat;
 }
@@ -102,7 +126,7 @@ ap_uint<N * width_v<T>> flatten(hls::vector<T, N> const &vec) {
 	ap_uint<N * W>  flat;
 	for(size_t  j = 0; j < N; j++) {
 #pragma HLS UNROLL
-		flat((j+1)*W - 1, j*W) = bit_image(vec[j]);
+		flat((j+1)*W - 1, j*W) = to_bitimage(vec[j]);
 	}
 	return flat;
 }
