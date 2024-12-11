@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2024, Xilinx, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,23 @@
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ******************************************************************************/
-#define INPUT_WIDTH 8
-#define OUT_WIDTH 4
-#define NumInWords 4
-#define NUM_REPEAT 1
+/******************************************************************************
+ *
+ *  Authors: Lukas Stasytis <lukas.stasytis@amd.com>
+ *
+ *  \file dwcgeneralized_tb.cpp
+ *
+ *  Testbench for the generalized data-width converter HLS block unit testing
+ *
+ *****************************************************************************/
+#include <hls_stream.h>
+using namespace hls;
+#include "ap_int.h"
+#include "bnn-library.h"
+
+
+#include "data/dwcgeneralized_config.h"
+
+void Testbench_dwcgeneralized(stream<ap_uint<INPUT_WIDTH> > & in, stream<ap_uint<OUT_WIDTH> > & out, unsigned int numReps){
+	StreamingDataWidthConverterGeneralized_Batch<INPUT_WIDTH, OUT_WIDTH, NumInWords, NumOutWords>(in, out, numReps);
+}
