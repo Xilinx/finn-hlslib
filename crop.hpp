@@ -9,7 +9,7 @@
 #ifndef CROP_HPP
 #define CROP_HPP
 
-#include "util.hpp"
+#include "utils.hpp"
 #include <hls_stream.h>
 #include <ap_int.h>
 
