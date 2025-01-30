@@ -8,10 +8,11 @@
  ****************************************************************************/
 
 // g++ -Wall -Wno-unknown-pragmas -O2 -DHLS_NO_XIL_FPO_LIB
+#include <ap_fixed.h>
+#include <ap_float.h>
 #include "flatten.hpp"
 
 #include <iostream>
-#include "ap_float.h"
 
 
 int main() {

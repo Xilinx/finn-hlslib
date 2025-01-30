@@ -35,8 +35,6 @@
 #define FLATTEN_HPP
 
 #include <ap_int.h>
-#include <ap_fixed.h>
-#include <ap_float.h>
 
 #include <hls_vector.h>
 #include <cstddef>
@@ -65,16 +63,20 @@ ap_uint<W> to_bitimage(ap_uint<W> const &val) {
 	return  val;
 }
 
+#ifdef __AP_FIXED_H__
 template <int  W, int  I, ap_q_mode  Q, ap_o_mode  O, int  N>
 ap_uint<W> to_bitimage(ap_fixed<W, I, Q, O, N> const &val) {
 #pragma HLS inline
 	return  val(W-1, 0);
 }
+#endif
 
+#ifdef __AP_FLOAT_H__
 template<int W, int E>
 ap_uint<W> to_bitimage(ap_float<W, E> const &val) {
 	return (ap_uint<1>(val.sign_ref()), val.exponent_ref(), val.mantissa_ref());
 }
+#endif
 
 // Floating-point Specializations
 ap_uint<16> to_bitimage(half const &val) {
