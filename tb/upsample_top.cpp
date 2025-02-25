@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2025, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,7 @@
  ******************************************************************************/
 /******************************************************************************
  *
- *  Authors:  erling on 5/10/21.
- *  			Giulio Gambardella <giuliog@xilinx.com>
+ *  Authors:  Michal Danilowicz <danilowi@agh.edu.pl>		
  *
  *  \file upsample_top.cpp
  *  
