@@ -1,7 +1,7 @@
 /******************************************************************************
  *
- *  Authors:  erling on 5/10/21.
- *  			Giulio Gambardella <giuliog@xilinx.com>
+ *  Authors:  
+ *  			Michal Danilowicz <danilowi@agh.edu.pl>
  *
  *  \file upsample_top.cpp
  *  
@@ -11,36 +11,42 @@
 
 #include <iostream>
 #include <hls_stream.h>
-#include "ap_int.h"
+#include <ap_int.h>
 #include "data/upsample_config.h"
 
 
-using namespace hls;
-using namespace std;
+// using namespace hls;
+// using namespace std;
 
 
+void Testbench_upsample(hls::stream<VEC_TYPE> &in, hls::stream<VEC_TYPE> &out);
+void Golden_upsample(EL_TYPE in[HI][WI][FM_CHANNELS], EL_TYPE out[HO][WO][FM_CHANNELS]);
 
-void Testbench_upsample(stream<ap_uint<PRECISION * FM_CHANNELS>> &in, stream<ap_uint<PRECISION * FM_CHANNELS>> &out);
-
-void Golden_upsample(ap_uint<PRECISION> in[IFMDIM][IFMDIM][FM_CHANNELS], ap_uint<PRECISION> out[OFMDIM][OFMDIM][FM_CHANNELS]);
 
 int main(){
-  static ap_uint<PRECISION> golden_in[IFMDIM][IFMDIM][FM_CHANNELS];
-  static ap_uint<PRECISION> golden_out[OFMDIM][OFMDIM][FM_CHANNELS];
+  static EL_TYPE golden_in[HI][WI][FM_CHANNELS];
+  static EL_TYPE golden_out[HO][WO][FM_CHANNELS];
 
-  stream<ap_uint<PRECISION*FM_CHANNELS>> test_in("test_input");
-  stream<ap_uint<PRECISION*FM_CHANNELS>> test_out("test_ouput");
+  hls::stream<VEC_TYPE> test_in("test_input");
+  hls::stream<VEC_TYPE> test_out("test_ouput");
 
-  for (int i = 0; i<IFMDIM; i++) {
-    for (int j = 0; j<IFMDIM; j++) {
-      ap_uint<PRECISION*FM_CHANNELS> input_channel = 0;
-      for (int k = 0; k<FM_CHANNELS; k++) {
-        ap_uint<PRECISION> input = i*IFMDIM + j;
-        input_channel = input_channel << PRECISION;
-        input_channel(PRECISION-1,0) = input;
-        golden_in[i][j][k] = input;
+  for (int i = 0; i < HI; i++) {
+    for (int j = 0; j < WI; j++) {
+
+      VEC_TYPE simd_vector;
+      // iterate over folds
+      for (int fold = 0; fold < CF; fold++) {
+        simd_vector = (EL_TYPE)0;
+
+        // iterate over channels in fold
+        for (int c = 0; c < SIMD; c++){
+          EL_TYPE input = i*WI + j;
+          golden_in[i][j][fold*SIMD + c] = input;
+          simd_vector[c] = input;
+        }
+        
+        test_in.write(simd_vector);
       }
-      test_in.write(input_channel);
     }
   }
 
@@ -49,17 +55,20 @@ int main(){
   Testbench_upsample(test_in, test_out);
 
 
-  ap_uint<PRECISION> out_channel;
   int err_counter = 0;
-  for (int i = 0; i<OFMDIM; i++) {
-    for (int j = 0; j<OFMDIM; j++) {
-      ap_uint<PRECISION * FM_CHANNELS> out_elem = test_out.read();
-      for (int k = 0; k<FM_CHANNELS; k++) {
-        ap_uint<PRECISION> expect = golden_out[i][j][k];
-        out_channel(PRECISION-1,0) = out_elem((k+1)*PRECISION-1, k*PRECISION);
-        if (expect != out_channel) {
-          cout << "ERROR: Expected["<<i<<"]["<<j<<"]["<<k<<"]=" <<expect <<" actual " <<out_channel <<endl;
-          err_counter++;
+  for (int i = 0; i < HO; i++) {
+    for (int j = 0; j < WO; j++) {
+
+      for (int fold = 0; fold < CF; fold++){
+        VEC_TYPE out_vec = test_out.read();
+
+        for (int c = 0; c < SIMD; c++){
+          EL_TYPE expected = golden_out[i][j][fold*SIMD + c];
+          EL_TYPE out_el = out_vec[c];
+          if (expected != out_el){
+            std::cerr << "ERROR: Expected["<<i<<"]["<<j<<"]["<<(fold*SIMD + c)<<"]=" << expected << " actual " << out_el << std::endl;
+            err_counter++;
+          }
         }
       }
     }
@@ -69,27 +78,15 @@ int main(){
 }
 
 
+void Golden_upsample(EL_TYPE in[HI][WI][FM_CHANNELS], EL_TYPE out[HO][WO][FM_CHANNELS]) {
 
-
-
-void Golden_upsample(ap_uint<PRECISION> in[IFMDIM][IFMDIM][FM_CHANNELS], ap_uint<PRECISION> out[OFMDIM][OFMDIM][FM_CHANNELS]) {
-  const int scaling = OFMDIM / IFMDIM;
-  const int padding = OFMDIM % IFMDIM;
-  for (int i = 0; i<OFMDIM; i++) {
-    for (int j = 0; j<OFMDIM; j++) {
-
-      int dst_i = i-padding;
-      if (dst_i<0) dst_i = 0;
-      int dst_j = j - padding;
-      if (dst_j<0) dst_j = 0;
-
-      int src_i = dst_i/scaling;
-      int src_j = dst_j/scaling;
-      for (int k = 0; k<FM_CHANNELS; k++) {
-        out[i][j][k] = in[src_i][src_j][k];
-      }
-	  //std::cout << out[i][j][0] << " " ;
-    }
-	//std::cout << std::endl;
-  }
+	for(unsigned  i = 0; i < HO; i++) {
+		unsigned const  ii = unsigned((0.5f + i) * HI/HO);
+		for(unsigned  j = 0; j < WO; j++) {
+			unsigned const  jj = unsigned((0.5f + j) * WI/WO);
+			for (unsigned  k = 0; k < FM_CHANNELS; k++) {
+				out[i][j][k] = in[ii][jj][k];
+			}
+		}
+	}
 }

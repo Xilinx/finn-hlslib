@@ -42,15 +42,20 @@
 
 
 #include <hls_stream.h>
-using namespace hls;
+#include <ap_int.h>
 
-#include "ap_int.h"
 #include "bnn-library.h"
-
 #include "data/upsample_config.h"
+#include "upsample.hpp"
 
 
+void Testbench_upsample(hls::stream<VEC_TYPE> &in, hls::stream<VEC_TYPE> &out) {
+    #pragma HLS INTERFACE axis port=in
+    #pragma HLS INTERFACE axis port=out
+    #pragma HLS INTERFACE ap_ctrl_none port=return
 
-void Testbench_upsample(stream<ap_uint<PRECISION * FM_CHANNELS>> &in, stream<ap_uint<PRECISION * FM_CHANNELS>> &out) {
-	UpsampleNearestNeighbour<OFMDIM, IFMDIM, FM_CHANNELS, ap_uint<PRECISION> >(in,out);
+    #pragma HLS aggregate variable=in compact=bit
+    #pragma HLS aggregate variable=out compact=bit
+
+	upsample_nn<HI, WI, HO, WO, CF>(in, out);
 }
