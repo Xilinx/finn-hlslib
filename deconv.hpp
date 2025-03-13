@@ -1,3 +1,13 @@
+/****************************************************************************
+ * Copyright (C) 2024, Advanced Micro Devices, Inc.
+ * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * @brief	Deconvolution adopted from
+ *			https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=9592768
+ * @author	Thomas B. Preußer <thomas.preusser@amd.com>
+ ***************************************************************************/
 #ifndef DECONV_HPP
 #define DECONV_HPP
 
@@ -16,7 +26,7 @@ template<
 	unsigned  H,	// IFM Height
 	unsigned  W,	// IFM Width
 	unsigned  C,	// IFM Channel Count
-	unsigned long  SIMD,
+	size_t    SIMD,
 	typename  T
 >
 void crop(
@@ -55,7 +65,7 @@ template<
 	unsigned  H,	// IFM Height
 	unsigned  W,	// IFM Width
 	unsigned  C,	// IFM Channel Count
-	unsigned long  SIMD,
+	size_t    SIMD,
 	typename  T,
 	typename  TV
 >
@@ -114,8 +124,8 @@ template<
 	unsigned  W,	// IFM Width
 	unsigned  CF,	// channel fold (CO/PE)
 	unsigned  SF,	// SIMD fold (CI/SIMD)
-	unsigned long  PE,
-	unsigned long  SIMD,
+	size_t    PE,
+	size_t    SIMD,
 	typename  TW
 >
 void deconv_weights(
@@ -342,8 +352,8 @@ void deconv_swg(
 
 template<
 	unsigned  N,	// dot product depth
-	unsigned  PE,
-	unsigned  SIMD,
+	size_t    PE,
+	size_t    SIMD,
 	typename  TW,
 	typename  TI,
 	typename  TO
@@ -413,8 +423,8 @@ template<
 	unsigned  W,	// IFM Width
 	unsigned  CO,	// output channels
 	unsigned  CI,	// input channels
-	unsigned  PE,
-	unsigned  SIMD,
+	size_t    PE,
+	size_t    SIMD,
 	typename  TW,
 	typename  TI,
 	typename  TO
@@ -438,8 +448,8 @@ void deconv(
 	constexpr unsigned  CROP  = S*PADUP - ((K-S)-P);
 	constexpr unsigned  H_EFF = PADUP + H + PADUP;
 	constexpr unsigned  W_EFF = PADUP + W + PADUP;
-	constexpr unsigned  HO_EFF = (H_EFF-1)*S + K;
-	constexpr unsigned  WO_EFF = (W_EFF-1)*S + K;
+	constexpr unsigned  HO_EFF = (H_EFF+1)*S - K;
+	constexpr unsigned  WO_EFF = (W_EFF+1)*S - K;
 
 	// Continuous Weight Feed
 	static hls::stream<hls::vector<hls::vector<TW, SIMD>, PE>>  wgt("wgt");
@@ -454,10 +464,10 @@ void deconv(
 #pragma HLS stream depth=2 variable=swg
 #pragma HLS stream depth=2 variable=dst_eff
 
-	pad<PADUP, H, W, CI>(src, src_eff, 0);
+	pad<PADUP, H, W, CI>(src, src_eff, TI(0));
 
-	deconv_swg <K, S, H_EFF, W_EFF, CF, SF>(src_eff, swg);
-	deconv_mvu <K/S*K/S*SF, PE, SIMD>(wgt, swg, dst_eff);
+	deconv_swg<K, S, H_EFF, W_EFF, CF, SF>(src_eff, swg);
+	deconv_mvu<K/S*K/S*SF>(wgt, swg, dst_eff);
 
 	crop<CROP, HO_EFF, WO_EFF, CO>(dst_eff, dst);
 
