@@ -187,9 +187,13 @@ template<int W, int I, ap_q_mode Q, ap_o_mode O, int N>
 struct Caster<ap_fixed<W, I, Q, O, N>> {
   template<int M>
   static ap_fixed<W, I, Q, O, N> cast(ap_int<M> const &arg) {
-    return  ap_fixed<W, I, Q, O, N>(arg);
+    union { ap_int<M>  int_type; ap_fixed<W, I, Q, O, N>  fixed_type; } const  conv = { .int_type = arg };
+    return  conv.fixed_type;
   }
 };
+
+
+
 
 template<>
 struct Caster<float> {
