@@ -37,6 +37,8 @@
 #ifndef POOL_HPP
 #define POOL_HPP
 
+#include <type_traits>
+
 /*!
  * \brief PoolFunction: General contract for pool functions.
  *
@@ -89,7 +91,7 @@ class MaxPoolFunction : public PoolFunction<T> {
 public:
 	T init() const {
 #pragma HLS inline
-		return	numeric_limits<T>::min();
+		return	std::numeric_limits<T>::min();
 	}
 	template<typename  TI>
 	void pool(T &accu, TI const &x) const {
@@ -103,7 +105,7 @@ template<typename  E, size_t  N>
 class MaxPoolFunction<hls::vector<E, N>> : public PoolFunction<hls::vector<E, N>> {
 	using  T = hls::vector<E, N>;
 
-protected:
+public:
 	// Broadcast initialization
 	T init() {
 #pragma HLS inline
@@ -142,7 +144,7 @@ public:
 }; // class AvgPoolFunction
 
 template<typename  T>
-using  AccPoolFunction<T> = AvgPoolFunction<T, T, 1>;
+using  AccPoolFunction = AvgPoolFunction<T, T, 1>;
 
 
 /*!
@@ -185,7 +187,7 @@ void Pool_batch(
 ) {
 	static_assert(ISIZE%K == 0, "Kernel size must divide input size.");
 
-	F::accu_t  accu;
+	typename std::remove_reference_t<F>::accu_t  accu;
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
 
 	// everything merged into a common iteration space (one "big" loop instead
@@ -194,9 +196,9 @@ void Pool_batch(
 	for(size_t  i = 0; i < ISIZE; i++) {
 #pragma HLS pipeline II=1 style=flp
 		if(k == 0)  accu = fct.init();
-		fct.pool(accu, in.read());
+		fct.pool(accu, src.read());
 		if(++k == K) {
-			out.write(fct.activate(accu));
+			dst.write(fct.activate(accu));
 			k = 0;
 		}
 	}
