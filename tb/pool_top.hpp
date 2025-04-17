@@ -1,6 +1,7 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
- *  All rights reserved.
+ * Copyright (c) 2019, Xilinx, Inc.
+ * Copyright (c) 2025, AMD, Inc.
+ * All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -27,66 +28,36 @@
  *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ ****************************************************************************
+ * @author	Thomas B. Preußer <thomas.preusser@amd.com>
  ******************************************************************************/
-/******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *           Felix Jentzsch <felixj@xilinx.com>
- *
- *  \file pool_tb.hpp
- *
- *  C++ Implementation of a max pool layer, used for testbench
- *
- *****************************************************************************/
+#ifndef POOL_TOP_HPP
+#define POOL_TOP_HPP
 
-#ifndef POOL_TB_H
-#define POOL_TB_H
+#include <hls_stream.h>
+#include <hls_vector.h>
+#include <ap_int.h>
 
-template<int MAX_IMAGE,
-	int IFMDim,
-	int OFMDim,
-	int FMCh,
-	int kernel,
-	int stride,
-	typename TI>
-	void pool(TI const img[MAX_IMAGE][IFMDim][IFMDim][FMCh], TI out[MAX_IMAGE][OFMDim][OFMDim][FMCh]){
-		for(int n=0;n<MAX_IMAGE;n++)
-			for(int x=0;x<OFMDim;x++)
-				for(int y=0;y<OFMDim;y++)
-					for(int h=0;h<FMCh;h++){
-						TI tmp = 0;
-						for (int ky=0;ky<kernel;ky++)
-							for (int kx=0;kx<kernel;kx++)
-								if(img[n][(y*stride+ky)][x*stride+kx][h]>tmp){
-									tmp=img[n][(y*stride+ky)][x*stride+kx][h];
-								}
-						out[n][x][y][h] = tmp;
-					}
-	}
 
-template<int MAX_IMAGE,
-	int IFMDim,
-	int OFMDim,
-	int FMCh,
-	int kernel,
-	int stride,
-	typename TI>
-	void pool_1d(TI const img[MAX_IMAGE][IFMDim][FMCh], TI out[MAX_IMAGE][OFMDim][FMCh]){
-		for(int n=0;n<MAX_IMAGE;n++)
-			for(int x=0;x<OFMDim;x++)
-				for(int h=0;h<FMCh;h++){
-					TI tmp = 0;
-					for (int kx=0;kx<kernel;kx++){
-						unsigned const idx = x*stride+kx;
-						if (idx < IFMDim){
-							if(img[n][idx][h]>tmp){
-								tmp=img[n][idx][h];
-							}
-						}
-					}
-					out[n][x][h] = tmp;
-				}
-	}
+constexpr unsigned  H = 13; // Input height
+constexpr unsigned  W = 13; // Input width (must currently equal H for input generator)
+constexpr unsigned  C = 16; // Channels
+constexpr unsigned  K = 3;  // Dimension of square kernel
+constexpr unsigned  S = 2;  // Stride
+
+constexpr unsigned  PE = 4; // Parallelism
+
+static_assert((H-K)%S == 0, "Input height requires padding.");
+static_assert((W-K)%S == 0, "Input width requires padding.");
+static_assert(C%PE == 0, "PE must divide channel count.");
+
+using  val_t = ap_uint<8>;
+using  pix_t = hls::vector<val_t, C>;
+using  vec_t = hls::vector<val_t, PE>;
+
+void pool_top(
+	hls::stream<pix_t> &src,
+	hls::stream<pix_t> &dst
+);
 
 #endif

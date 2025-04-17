@@ -38,6 +38,12 @@
 #define POOL_HPP
 
 #include <type_traits>
+#include <limits>
+#include <algorithm>
+
+#include <hls_stream.h>
+#include <hls_vector.h>
+
 
 /*!
  * \brief PoolFunction: General contract for pool functions.
