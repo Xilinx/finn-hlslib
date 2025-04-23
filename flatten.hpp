@@ -97,6 +97,65 @@ ap_uint<64> to_bitimage(double const &val) {
 
 
 //---------------------------------------------------------------------------
+// Utility: Retrieve a value from its raw bit image
+template<typename  T>
+struct BitImage {
+	static_assert(std::is_integral<T>::value, "Non-integral types require specialization.");
+
+	static T from(ap_uint<width_v<T>> const &bits) {
+#pragma HLS inline
+		return  bits;
+	}
+};
+
+// ap_*-Type Specializations
+template<int  W>
+struct BitImage<ap_uint<W>> {
+	static ap_uint<W> from(ap_uint<W> const &bits) {
+#pragma HLS inline
+		return  bits;
+	}
+};
+template<int  W>
+struct BitImage<ap_int<W>> {
+	static ap_int<W> from(ap_uint<W> const &bits) {
+#pragma HLS inline
+		return  bits;
+	}
+};
+
+// Floating-point Specializations
+template<>
+struct BitImage<half> {
+	static half from(ap_uint<16> const &bits) {
+#pragma HLS inline
+		union { uint16_t  i; half  f; } const  conv = { .i = uint16_t(bits) };
+		return  conv.f;
+	}
+};
+template<>
+struct BitImage<float> {
+	static float from(ap_uint<32> const &bits) {
+#pragma HLS inline
+		union { uint32_t  i; float  f; } const  conv = { .i = uint32_t(bits) };
+		return  conv.f;
+	}
+};
+template<>
+struct BitImage<double> {
+	static double from(ap_uint<64> const &bits) {
+#pragma HLS inline
+		union { uint64_t  i; double  f; } const  conv = { .i = uint64_t(bits) };
+		return  conv.f;
+	}
+};
+
+template<typename  T>
+T from_bitimage(ap_uint<width_v<T>> const &bits) {
+	return  BitImage<T>::from(bits);
+}
+
+//---------------------------------------------------------------------------
 // Actual Flattening: all inlined, just wiring in HW
 //	Ultimately (C++20), there should probably be a single copy leveraging a
 //	concept that covers T[N], std::array<T, N> and hls::vector<T, N>.
@@ -131,6 +190,34 @@ ap_uint<N * width_v<T>> flatten(hls::vector<T, N> const &vec) {
 		flat((j+1)*W - 1, j*W) = to_bitimage(vec[j]);
 	}
 	return flat;
+}
+
+// Unflatten an ap_uint<> into an array of N elements of type T
+template<
+	typename  T,	// [inferred] Element type
+	size_t    N 	// [inferred] Vector length
+>
+void unflatten(T (&arr)[N], ap_uint<N * width_v<T>> const &flat) {
+#pragma HLS INLINE
+	constexpr size_t  W = width_v<T>;
+	for(size_t  j = 0; j < N; j++) {
+#pragma HLS UNROLL
+		arr[j] = from_bitimage<T>(flat((j+1)*W - 1, j*W));
+	}
+}
+
+// Unflatten an ap_uint<> into an hls::vector<> of N elements of type T
+template<
+	typename  T,	// [inferred] Element type
+	size_t    N 	// [inferred] Vector length
+>
+void unflatten(hls::vector<T, N> &vec, ap_uint<N * width_v<T>> const &flat) {
+#pragma HLS INLINE
+	constexpr size_t  W = width_v<T>;
+	for(size_t  j = 0; j < N; j++) {
+#pragma HLS UNROLL
+		vec[j] = from_bitimage<T>(flat((j+1)*W - 1, j*W));
+	}
 }
 
 #endif // FLATTEN_HPP
