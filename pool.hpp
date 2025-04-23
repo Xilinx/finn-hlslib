@@ -60,7 +60,7 @@ public:
 	 */
 	TA init() const {
 #pragma HLS inline
-		return	0;
+		return	TA(0);
 	}
 
 	/*!
@@ -128,13 +128,39 @@ public:
 /*!
  * \brief AvgPoolFunction: Implementing avg pool.
  */
+template<typename  E, typename F, size_t  N>
+class AvgPoolFunction : public PoolFunction<hls::vector<E,N>, hls::vecotr<T,N>> {
+public:
+	template<typename  E, typename F, size_t N>
+	void pool(hls::vector<F,N> &accu, hls::vector<E,N> const &x) const {
+#pragma HLS inline
+		for(size_t i=0; i<N; i++) {
+#pragma HLS unroll
+			accu[i] += x[i];
+		}
+	}
+	hls::vector<F,N> activate(hls::vector<F,N> const &accu) const {
+		hls::vector<F,N> tmp;
+#pragma HLS inline
+		for(size_t i=0; i<N; i++) {
+			tmp[i] = accu[i]/N;
+#pragma HLS unroll
+		}
+		return  tmp;
+	}
+
+}; // class AvgPoolFunction
+   
+/*!
+ * \brief AvgPoolFunction: Implementing avg pool for hls::vector.
+ */
 template<typename  TO, typename  TA,  size_t  N>
 class AvgPoolFunction : public PoolFunction<TO, TA> {
 public:
 	template<typename  TI>
 	void pool(TA &accu, TI const &x) const {
 #pragma HLS inline
-		accu += x;
+			accu += x;
 	}
 	TO activate(TA const &accu) const {
 #pragma HLS inline
@@ -142,6 +168,7 @@ public:
 	}
 
 }; // class AvgPoolFunction
+
 
 template<typename  T>
 using  AccPoolFunction = AvgPoolFunction<T, T, 1>;
