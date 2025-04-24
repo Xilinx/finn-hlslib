@@ -132,7 +132,7 @@ public:
 
 
 /*!
- * \brief AvgPoolFunction: Implementing avg pool for hls::vector.
+ * \brief AvgPoolFunction: Implementing avg pool. 
  */
 template<typename  TO, typename  TA,  size_t  N>
 class AvgPoolFunction : public PoolFunction<TO, TA> {
@@ -150,7 +150,7 @@ public:
 }; // class AvgPoolFunction
 
 /*!
- * \brief AvgPoolFunction: Implementing avg pool.
+ * \brief AvgPoolFunction: Implementing avg pool for hls::vector.
  */
 template<typename  EO, typename  EA, size_t  PE, size_t  N>
 class AvgPoolFunction<hls::vector<EO, PE>, hls::vector<EA, PE>, N> : public PoolFunction<hls::vector<EO, PE>, hls::vector<EA, PE>> {
@@ -195,6 +195,29 @@ public:
 		return	TO(accu >> SHIFT);
 	}
 }; // class QuantAvgPoolFunction
+
+
+/*!  
+ * \brief QuantAvgPoolFunction: Avg pool with shift instead of division for hls::vector.  
+ */  
+template<typename EO, typename EA, size_t PE, size_t SHIFT>  
+class QuantAvgPoolFunction<hls::vector<EO, PE>, hls::vector<EA, PE>, SHIFT> : public AvgPoolFunction<hls::vector<EO, PE>, hls::vector<EA, PE>, 0> {  
+public:  
+    using accu_t = hls::vector<EA, PE>;  
+    using output_t = hls::vector<EO, PE>;  
+  
+public:  
+    output_t activate(accu_t const &accu) const {  
+#pragma HLS inline  
+        output_t res;  
+        for (size_t i = 0; i < PE; i++) {  
+#pragma HLS unroll  
+            res[i] = EO(accu[i] >> SHIFT);  
+        }  
+        return res;  
+    }  
+}; // class QuantAvgPoolFunction<hls::vector>
+
 
 //===========================================================================
 // Operator Top-Level Function
