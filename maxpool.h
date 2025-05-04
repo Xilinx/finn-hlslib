@@ -463,12 +463,12 @@ template<
     unsigned int NumTop,
     typename In_T,
     typename Out_T>
-void LabelSelect_Batch(hls::stream<ap_uint<PECount * In_T::width> > & in,
+void LabelSelect_Batch(hls::stream<ap_uint<PECount * width_v<In_T>> > & in,
         hls::stream<Out_T> & out, const unsigned int numReps) {
 
   // Check that classes, aka. labels / indeces, can be encoded as non-negative outputs
-  static_assert(clog2(NumClasses) <= Out_T::width - Out_T::sign_flag, "");
-  static In_T const  In_T_MIN_VAL = (In_T(-1)<0)? 1<<(In_T::width-1) : 0;
+  static_assert(clog2(NumClasses) <= width_v<Out_T> - Out_T::sign_flag, "");
+  static In_T const  In_T_MIN_VAL = (In_T(-1)<0)? 1<<(width_v<In_T>-1) : 0;
 
   // Array of encountered top values
   //  - maintains topval[i] <= topval[i+1]
@@ -487,13 +487,12 @@ void LabelSelect_Batch(hls::stream<ap_uint<PECount * In_T::width> > & in,
     }
     for(unsigned int block=0; block<(NumClasses/PECount); block++){
 #pragma HLS pipeline style=flp II=1
-      ap_uint<PECount * In_T::width> const  inval = in.read();
+      ap_uint<PECount * width_v<In_T>> const  inval = in.read();
+      const auto buffer = Slice<In_T>{}(inval);
       for(unsigned int elem=0; elem<PECount; elem++){
 #pragma HLS UNROLL
         // Extract individual input
-        unsigned const  lowBit = elem * In_T::width;
-        unsigned const  highBit = (elem+1) * In_T::width - 1;
-        In_T const  val = inval(highBit,lowBit);
+        In_T const  val = buffer(elem,0);
 
         // Compare input against all current tops
         bool  cmp[NumTop+1];
