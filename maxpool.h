@@ -464,11 +464,10 @@ template<
     typename In_T,
     typename Out_T>
 void LabelSelect_Batch(hls::stream<ap_uint<PECount * width_v<In_T>> > & in,
-        hls::stream<Out_T> & out, const unsigned int numReps) {
+        hls::stream<Out_T> & out, const unsigned int numReps, const In_T in_t_minval) {
 
   // Check that classes, aka. labels / indeces, can be encoded as non-negative outputs
   static_assert(clog2(NumClasses) <= width_v<Out_T> - Out_T::sign_flag, "");
-  static In_T const  In_T_MIN_VAL = (In_T(-1)<0)? 1<<(width_v<In_T>-1) : 0;
 
   // Array of encountered top values
   //  - maintains topval[i] <= topval[i+1]
@@ -482,7 +481,7 @@ void LabelSelect_Batch(hls::stream<ap_uint<PECount * width_v<In_T>> > & in,
     unsigned int idx = 0;
     for(unsigned int topx=0; topx<NumTop; topx++){
 #pragma HLS UNROLL
-      topval   [topx] = In_T_MIN_VAL;
+      topval   [topx] = in_t_minval;
       toplabels[topx] = 0;
     }
     for(unsigned int block=0; block<(NumClasses/PECount); block++){
