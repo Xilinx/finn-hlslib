@@ -180,12 +180,16 @@ class Recast {
 template<typename T>
 struct Caster {
 	template<int M>
-	static T cast(ap_int<M> const &arg) { return  T(arg); }
+	static T cast(ap_int<M> const &arg) {
+#pragma HLS inline
+		return  T(arg);
+	}
 };
 
 template<int W, int I, ap_q_mode Q, ap_o_mode O, int N>
 struct Caster<ap_fixed<W, I, Q, O, N>> {
   static ap_fixed<W, I, Q, O, N> cast(ap_int<W> const &arg) {
+#pragma HLS inline
     ap_fixed<W, I, Q, O, N>  res;
     res(W-1, 0) = arg;
     return  res;
@@ -195,6 +199,7 @@ struct Caster<ap_fixed<W, I, Q, O, N>> {
 template<int W, int I, ap_q_mode Q, ap_o_mode O, int N>
 struct Caster<ap_ufixed<W, I, Q, O, N>> {
   static ap_ufixed<W, I, Q, O, N> cast(ap_int<W> const &arg) {
+#pragma HLS inline
     ap_ufixed<W, I, Q, O, N>  res;
     res(W-1, 0) = arg;
     return  res;
@@ -204,6 +209,7 @@ struct Caster<ap_ufixed<W, I, Q, O, N>> {
 template<>
 struct Caster<float> {
 	static float cast(ap_int<32> const &arg) {
+#pragma HLS inline
 		union { int32_t  i; float  f; } const  conv = { .i = int32_t(arg) };
 		return  conv.f;
 	}
@@ -212,6 +218,7 @@ struct Caster<float> {
 template<>
 struct Caster<half> {
 	static half cast(ap_int<16> const &arg) {
+#pragma HLS inline
 		union { int16_t  i; half h; } const  conv = { .i = int16_t(arg) };
 		return  conv.h;
 	}
