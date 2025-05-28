@@ -185,9 +185,19 @@ struct Caster {
 
 template<int W, int I, ap_q_mode Q, ap_o_mode O, int N>
 struct Caster<ap_fixed<W, I, Q, O, N>> {
-  template<int M>
-  static ap_fixed<W, I, Q, O, N> cast(ap_int<M> const &arg) {
-    return  ap_fixed<W, I, Q, O, N>(arg);
+  static ap_fixed<W, I, Q, O, N> cast(ap_int<W> const &arg) {
+    ap_fixed<W, I, Q, O, N>  res;
+    res(W-1, 0) = arg;
+    return  res;
+  }
+};
+
+template<int W, int I, ap_q_mode Q, ap_o_mode O, int N>
+struct Caster<ap_ufixed<W, I, Q, O, N>> {
+  static ap_ufixed<W, I, Q, O, N> cast(ap_int<W> const &arg) {
+    ap_ufixed<W, I, Q, O, N>  res;
+    res(W-1, 0) = arg;
+    return  res;
   }
 };
 
