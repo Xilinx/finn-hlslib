@@ -37,12 +37,12 @@
 #ifndef POOL_HPP
 #define POOL_HPP
 
+#include "utils.hpp"
+
+
 #include <type_traits>
 #include <limits>
 #include <algorithm>
-
-#include <hls_stream.h>
-#include <hls_vector.h>
 
 
 /*!
@@ -249,19 +249,17 @@ void Pool_batch(
 
 	typename std::remove_reference_t<F>::accu_t  accu;
 #pragma HLS ARRAY_PARTITION variable=accu complete dim=0
+	ModCounter<K>  cnt;
+	bool  first = true;
 
-	// everything merged into a common iteration space (one "big" loop instead
-	// of smaller nested loops) to get the pipelining the way we want
-	size_t  k = 0;
 	for(size_t  i = 0; i < ISIZE; i++) {
 #pragma HLS pipeline II=1 style=flp
-		if(k == 0)  accu = fct.init();
+		if(first)  accu = fct.init();
 		fct.pool(accu, src.read());
-		if(++k == K) {
-			dst.write(fct.activate(accu));
-			k = 0;
-		}
+		first = cnt.tick();
+		if(first)  dst.write(fct.activate(accu));
 	}
+
 }
 
 #endif
