@@ -48,12 +48,11 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
-#include <ap_int.h>
-
-#include <iostream>
-#include <ostream>
+#include <limits>
 #include <fstream>
 #include <cstddef>
+
+#include <ap_int.h>
 #include <hls_vector.h>
 #include <hls_stream.h>
 
@@ -118,6 +117,42 @@ void logStringStream(const char *layer_name, hls::stream<ap_uint<BitWidth> > &lo
 
   ofs.close();
 }
+
+//- Type Traits -------------------------------------------------------------
+
+template<int  W>
+class std::numeric_limits<ap_uint<W>> : public std::numeric_limits<void> {
+public:
+	static constexpr bool  is_specialized = true;
+	static constexpr bool  is_signed = false;
+	static constexpr bool  is_integer = true;
+	static constexpr bool  is_exact = true;
+	static constexpr bool  is_bounded = true;
+	static constexpr bool  is_modulo = true;
+	static constexpr unsigned  digits = W;
+	static constexpr unsigned  radix  = 2;
+
+	static ap_uint<W> min   () { return  0; }
+	static ap_uint<W> lowest() { return  0; }
+	static ap_uint<W> max   () { return  ap_uint<W>(0) - 1; }
+};
+
+template<int  W>
+class std::numeric_limits<ap_int<W>> : public std::numeric_limits<void> {
+public:
+	static constexpr bool  is_specialized = true;
+	static constexpr bool  is_signed = true;
+	static constexpr bool  is_integer = true;
+	static constexpr bool  is_exact = true;
+	static constexpr bool  is_bounded = true;
+	static constexpr bool  is_modulo = true;
+	static constexpr unsigned  digits = W;
+	static constexpr unsigned  radix  = 2;
+
+	static ap_int<W> min   () { ap_int<W>  res = 0; res[W - 1] = 1; return  res; }
+	static ap_int<W> lowest() { ap_int<W>  res = 0; res[W - 1] = 1; return  res; }
+	static ap_int<W> max   () { ap_int<W>  res = 0; res[W - 1] = 1; return ~res; }
+};
 
 //- Zero-Width-Enabled Arbitrary-Precision Numbers ..........................
 
