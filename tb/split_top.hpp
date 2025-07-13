@@ -30,75 +30,27 @@
  *
  * @author	Michal Danilowicz <danilowi@agh.edu.pl>
  * @author	Thomas B. Preußer <thomas.preusser@amd.com>
- *
- * @brief Testbench for the channel split operation.
  *******************************************************************************/
 
-#include "split_top.hpp"
-#include <iostream>
+#include <ap_int.h>
+#include <hls_vector.h>
+#include <hls_stream.h>
 
 
-template<
-	typename  T,
-	size_t    N
->
-std::ostream& operator<<(std::ostream &o, hls::vector<T, N> const &v) {
-	char  c = '{';
-	for(auto const &e : v) {
-		o << c << e;
-		c = ',';
-	}
-	return  o << '}';
-}
+constexpr unsigned  REPS = 73;
+constexpr unsigned  SIMD = 3;
 
-int main() {
-	hls::stream<T> src;
-	hls::stream<T> dst[NUM_OUTPUTS];
-	hls::stream<T> exp[NUM_OUTPUTS];
+constexpr unsigned  NUM_OUTPUTS = 3;
+constexpr unsigned  NUM_FOLDS0 =  2;
+constexpr unsigned  NUM_FOLDS1 =  5;
+constexpr unsigned  NUM_FOLDS2 = 11;
+constexpr unsigned  FOLDS_PER_OUTPUT[NUM_OUTPUTS] = {
+	NUM_FOLDS0, NUM_FOLDS1, NUM_FOLDS2
+};
 
-	{ // prepare stimulus and expected output
-		unsigned  c = 0;
-		for(unsigned  r = 0; r < REPS; r++) {
-			for(unsigned  d = 0; d < NUM_OUTPUTS; d++) {
-				for(unsigned  i = 0; i < FOLDS_PER_OUTPUT[d]; i++) {
-					T const  x = T(c++);
-					src.write(x);
-					exp[d].write(x);
-				}
-			}
-		}
-	}
+using  T = hls::vector<ap_uint<5>, SIMD>;
 
-	unsigned  timeout = 0;
-	while(timeout < 100) {
-		split_top(src, dst);
-
-		bool  have = false;
-		for(unsigned  d = 0; d < NUM_OUTPUTS; d++) {
-			if(!dst[d].empty()) {
-				auto const  y = dst[d].read();
-				if(exp[d].empty()) {
-					std::cerr << "Spurious output: " << y << std::endl;
-					return  1;
-				}
-				auto const  ref = exp[d].read();
-				if(y != ref) {
-					std::cerr << "Output mismatch: " << y << " instead of " << ref << std::endl;
-					return  1;
-				}
-				have = true;
-			}
-		}
-		if(have)  timeout = 0;
-		else  timeout++;
-	}
-
-	for(auto &s : exp) {
-		if(!s.empty()) {
-			std::cerr << "Missing output." << std::endl;
-			return  1;
-		}
-	}
-
-	return  0;
-}
+void split_top(
+	hls::stream<T>  &src,
+	hls::stream<T> (&dst)[NUM_OUTPUTS]
+);
