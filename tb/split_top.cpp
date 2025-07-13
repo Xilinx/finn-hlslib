@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2024, Advanced Micro Devices, Inc.
+ *  Copyright (c) 2024-2025, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,36 +28,24 @@
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- ******************************************************************************/
-
-/*******************************************************************************
+ * @author	Michal Danilowicz <danilowi@agh.edu.pl>
+ * @author	Thomas B. Preußer <thomas.preusser@amd.com>
  *
- *  Authors: Michal Danilowicz <danilowi@agh.edu.pl>     
- *
- *  \file split_top.cpp
- *
- *  HLS Top function with channel split operation for unit testing
- *
+ * @brief	HLS Top function with channel split operation for unit testing
  *******************************************************************************/
 
-#include <hls_stream.h>
-#include <hls_vector.h>
-
-#include "data/split_config.h"
+#include "split_top.hpp"
 #include "split.hpp"
 
-void Testbench_split(hls::stream<IN_TYPE> &in0_V, hls::stream<IN_TYPE> (&out_arr)[NUM_OUTPUTS])
-{
-#pragma HLS INTERFACE axis port=in0_V
-#pragma HLS INTERFACE axis port=out_arr[0]
-#pragma HLS INTERFACE axis port=out_arr[1]
-#pragma HLS INTERFACE axis port=out_arr[2]
+
+void split_top(
+	hls::stream<T>  &src,
+	hls::stream<T> (&dst)[NUM_OUTPUTS]
+) {
+#pragma HLS INTERFACE axis port=src
+#pragma HLS INTERFACE axis port=dst
 #pragma HLS INTERFACE ap_ctrl_none port=return
 
-#pragma HLS aggregate variable=in0_V compact=bit
-#pragma HLS aggregate variable=out_arr[0] compact=bit
-#pragma HLS aggregate variable=out_arr[1] compact=bit
-#pragma HLS aggregate variable=out_arr[2] compact=bit
-
-StreamingSplit<NUM_FOLDS0, NUM_FOLDS1, NUM_FOLDS2>(in0_V, out_arr);
+#pragma HLS dataflow disable_start_propagation
+	StreamingSplit<NUM_FOLDS0, NUM_FOLDS1, NUM_FOLDS2>(src, dst);
 }
