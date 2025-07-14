@@ -102,6 +102,7 @@ namespace {
 	public:
 		template<typename TO>
 		bool read_nb(unsigned const  idx, TO &y, hls::stream<T0>& src0) {
+#pragma HLS inline
 			if(idx != IDX)  return  false;
 			else {
 				T0  y0;
@@ -120,6 +121,7 @@ namespace {
 	public:
 		template<typename TO>
 		bool read_nb(unsigned const  idx, TO &y, hls::stream<T0>& src0, hls::stream<TI>&... src) {
+#pragma HLS inline
 			if(idx != IDX)  return  inner.read_nb(idx, y, src...);
 			else {
 				T0  y0;
