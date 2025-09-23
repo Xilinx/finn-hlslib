@@ -11,7 +11,7 @@
 
 #include <ap_int.h>
 #include <hls_stream.h>
-#include "util.hpp"
+#include "utils.hpp"
 
 #include <algorithm>
 #include <tuple>
