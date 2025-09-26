@@ -53,6 +53,7 @@
 #include <cstddef>
 
 #include <ap_int.h>
+#include <ap_float.h>
 #include <hls_vector.h>
 #include <hls_stream.h>
 
@@ -119,6 +120,16 @@ void logStringStream(const char *layer_name, hls::stream<ap_uint<BitWidth> > &lo
 }
 
 //- Type Traits -------------------------------------------------------------
+
+template<typename T>
+struct is_ap_float : std::false_type {};
+
+template<int W, int I>
+struct is_ap_float<ap_float<W,I>> : std::true_type {};
+
+template<typename T>
+struct is_floating_point_or_ap_float
+    : std::integral_constant<bool, std::is_floating_point<T>::value || is_ap_float<T>::value> {};
 
 template<int  W>
 class std::numeric_limits<ap_uint<W>> : public std::numeric_limits<void> {
