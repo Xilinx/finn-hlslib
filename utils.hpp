@@ -154,6 +154,18 @@ public:
 	static ap_int<W> max   () { ap_int<W>  res = 0; res[W - 1] = 1; return ~res; }
 };
 
+//- Streaming Flit with `last` Marking --------------------------------------
+template<typename T>
+struct flit_t {
+        bool  last;
+        T     data;
+
+public:
+        flit_t() {}
+        flit_t(bool  last_, T const &data_) : last(last_), data(data_) {}
+        ~flit_t() {}
+};
+
 //- Zero-Width-Enabled Arbitrary-Precision Numbers ..........................
 
 // Non-zero-width instances as thinnest possible wrapper around ap_uint<N>.
@@ -199,6 +211,13 @@ public:
 	template<typename T> ap_zint& operator+=(T&&) { return *this; }
 	template<typename T> ap_zint& operator-=(T&&) { return *this; }
 };
+
+//- Streaming Copy ----------------------------------------------------------
+template<typename T>
+void move(hls::stream<T> &src, hls::stream<T> &dst) {
+#pragma HLS pipeline II=1 style=flp
+        if(!src.empty())  dst.write(src.read());
+}
 
 //- hls::vector<> Enablement ------------------------------------------------
 template<typename  T, size_t  N>
