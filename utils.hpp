@@ -53,6 +53,7 @@
 #include <cstddef>
 
 #include <ap_int.h>
+#include <ap_float.h>
 #include <hls_vector.h>
 #include <hls_stream.h>
 
@@ -119,6 +120,16 @@ void logStringStream(const char *layer_name, hls::stream<ap_uint<BitWidth> > &lo
 }
 
 //- Type Traits -------------------------------------------------------------
+
+template<typename T>
+struct is_ap_float : std::false_type {};
+
+template<int W, int I>
+struct is_ap_float<ap_float<W,I>> : std::true_type {};
+
+template<typename T>
+struct is_floating_point_or_ap_float
+    : std::integral_constant<bool, std::is_floating_point<T>::value || is_ap_float<T>::value> {};
 
 template<int  W>
 class std::numeric_limits<ap_uint<W>> : public std::numeric_limits<void> {
@@ -228,6 +239,28 @@ inline std::ostream& operator<<(std::ostream &o, hls::vector<T, N> const &v) {
 		delim = ':';
 	}
 	return (o << '}');
+}
+
+//- Tree Reduce -------------------------------------------------------------
+template<
+	size_t    N,
+	typename  TA,
+	typename  TR = TA,	// must be assignable from TA
+	typename  F			// (TR, TR) -> TR
+>
+TR tree_reduce(hls::vector<TA, N> const &v, F &&f = F()) {
+#pragma HLS inline
+	TR  tree[2*N-1];
+#pragma HLS array_partition complete dim=1 variable=tree
+	for(unsigned  i = N; i-- > 0;) {
+#pragma HLS unroll
+		tree[N-1 + i] = v[i];
+	}
+	for(unsigned  i = N-1; i-- > 0;) {
+#pragma HLS unroll
+		tree[i] = f(tree[2*i+1], tree[2*i+2]);
+	}
+	return  tree[0];
 }
 
 //- Modulus Counter ---------------------------------------------------------
