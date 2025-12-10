@@ -17,8 +17,8 @@
  *	  can be performed. It guarantees that there would be, at least, one
  *	  accumulation order over the original floating-point exponentials that
  *	  does not achieve a better numeric accuracy than the performed fixed-point
- *	  accumulation. This is also not restricted to standard C++ floating
- *	  point types, but also supports VitisHLS ap_float<W,I> datatypes:
+ *	  accumulation. In the future, this will also not be restricted to standard
+ *        C++ floating point types, but also will support VitisHLS ap_float<W,I> datatypes:
  *		- At least one exponential is 1 (corresponding to a maximum input).
  *		- Starting the accumulation with a 1 forces the unit of least precision
  *		  for the remainder of the accumulation process to, at best, 2^{W-I}
@@ -62,11 +62,10 @@
 
 #include "utils.hpp"
 #include <ap_fixed.h>
-#include <ap_float.h>
 #include <hls_math.h>
 
 // TI - The input datatype
-// TO - The output datatype must be a floating point type (float / ap_float)
+// TO - The output datatype must be a floating point type (float)
 // N - The size of the vector that the SoftMax is being performed over
 // SIMD - The amount of parallelism
 template<typename TI,
@@ -75,7 +74,7 @@ template<typename TI,
 	 size_t SIMD>
 class SoftMax {
 	public:
-		static_assert(is_floating_point_or_ap_float<TO>::value, "Internal datatype must be a float or ap_float type");
+		static_assert(std::is_floating_point<TO>::value, "Internal datatype must be a float");
 
 	public:
 		// Public API for executing the softmax dataflow pipeline
