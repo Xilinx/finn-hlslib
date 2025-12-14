@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2024 - 2025 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2024-2025, Advanced Micro Devices, Inc.
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -62,7 +62,6 @@
 
 #include "utils.hpp"
 #include <ap_fixed.h>
-#include <ap_float.h>
 #include <hls_math.h>
 
 // TI - The input datatype
