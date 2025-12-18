@@ -9,7 +9,7 @@
 #ifndef RMSNORM_HPP
 #define RMSNORM_HPP
 
-#include "util.hpp"
+#include "utils.hpp"
 #include <hls_math.h>
 
 template<size_t N, typename TI, typename TO, size_t SIMD>
