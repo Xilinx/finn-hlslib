@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2023, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -29,30 +29,45 @@
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ******************************************************************************/
+#include <hls_stream.h>
+using namespace hls;
+#include "ap_int.h"
 
-/******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *
- *  \file
- *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
- *
- ******************************************************************************/
+#include "bnn-library.h"
+#include "weights.hpp"
+#include "activations.hpp"
+#include "interpret.hpp"
+#include "mvau.hpp"
+#include "data/memdata_deconv2d.h"
+#include "data/config_deconv2d.h"
 
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
+constexpr unsigned  numReps = 1;
 
-#include <ap_int.h>
-
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
-    }
-};
-
-#endif
+void test_deconv2d(
+	stream<ap_uint<IFMCh1*IPrecision> > & src,
+	stream<ap_uint<OFMCh1*OPrecision> > & dst
+){
+#pragma HLS DATAFLOW
+	stream<ap_uint<IFMCh1*IPrecision> > conv_input("input_stream");
+	FMPadding_Pixel<
+		FMPadODim1, // dimension expected by direct conv
+		FMPadStride1, // stride along pixel padding
+		IFMCh1, // num channels expected by conv (input channels)
+		IFMCh1, // packing along the channel dim
+		ap_uint<IPrecision> // data type of values
+	>(src, conv_input);
+	// Note - would need to insert padding layer if padding is not 0, which is the
+	// case in this testbench top-level function
+	ConvLayer_Batch<
+		ConvKernel1,
+		ConvIFMCh1,
+		ConvIFMDim1,
+		ConvOFMCh1,
+		ConvOFMDim1,
+		ConvSIMD1,
+		ConvPE1,
+		Slice<ap_uint<IPrecision> >,
+		Slice<ap_uint<OPrecision> >,
+		Identity
+	>(conv_input, dst, PARAM::weights, PassThroughActivation<ap_uint<16> >(), numReps, ap_resource_dsp());
+}

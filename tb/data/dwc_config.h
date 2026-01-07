@@ -31,4 +31,5 @@
  ******************************************************************************/
 #define INPUT_WIDTH 8
 #define OUT_WIDTH 4
-#define NUM_REPEAT 4
+#define NumInWords 4
+#define NUM_REPEAT 1

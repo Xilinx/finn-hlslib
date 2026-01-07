@@ -86,6 +86,9 @@ node('finn-build || built-in') {
             stage('MAX_NORM') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_max_norm.tcl")
             }
+            stage('SOFTMAX') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_softmax.tcl")
+            }
         }, fifthBranch: {
             stage('DUP_STREAM') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dup_stream.tcl")
@@ -141,6 +144,13 @@ node('finn-build || built-in') {
         }, twelfthBranch: {
             stage('TMR CHECK') {
                 sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_tmrc_stmr.tcl")
+            }
+        }, thirteenthBranch: {
+            stage('FM_PIX_PAD') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_fm_pixel_padding.tcl")
+            }
+            stage('DECONV_2D') {
+                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_deconv2d.tcl")
             }
         }
     }

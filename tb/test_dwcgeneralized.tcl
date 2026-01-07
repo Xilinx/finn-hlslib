@@ -1,5 +1,5 @@
 ##############################################################################
- #  Copyright (c) 2019, Xilinx, Inc.
+ #  Copyright (c) 2024, Xilinx, Inc.
  #  All rights reserved.
  #
  #  Redistribution and use in source and binary forms, with or without
@@ -31,18 +31,17 @@
 ###############################################################################
 ###############################################################################
  #
- #  Authors: Giulio Gambardella <giuliog@xilinx.com>
- #           Felix Jentzsch <felixj@xilinx.com>
+ #  Authors: Lukas Stasytis <lukas.stasytis@amd.com>
  #
- # \file test_pool_1d.tcl
+ # \file test_dwcgeneralized.tcl
  #
- # Tcl script for HLS csim, synthesis and cosim of the 1d max pooling layer
+ # Tcl script for HLS csim, synthesis and cosim of the generalized datawidth converter block
  #
 ###############################################################################
-open_project hls-syn-pool-1d
-add_files pool_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
-add_files -tb maxpool_1d_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
-set_top Testbench_pool_1d
+open_project hls-syn-dwcgeneralized
+add_files dwcgeneralized_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+add_files -tb dwcgeneralized_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+set_top Testbench_dwcgeneralized
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}
 create_clock -period 5 -name default

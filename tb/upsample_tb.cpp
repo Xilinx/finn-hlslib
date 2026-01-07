@@ -14,22 +14,25 @@
 #include "ap_int.h"
 #include "data/upsample_config.h"
 
-
-using namespace hls;
 using namespace std;
 
 
+void Testbench_upsample(
+	hls::stream<ap_uint<PRECISION * FM_CHANNELS>> &in,
+	hls::stream<ap_uint<PRECISION * FM_CHANNELS>> &out
+);
 
-void Testbench_upsample(stream<ap_uint<PRECISION * FM_CHANNELS>> &in, stream<ap_uint<PRECISION * FM_CHANNELS>> &out);
-
-void Golden_upsample(ap_uint<PRECISION> in[IFMDIM][IFMDIM][FM_CHANNELS], ap_uint<PRECISION> out[OFMDIM][OFMDIM][FM_CHANNELS]);
+void Golden_upsample(
+	ap_uint<PRECISION> const (&src)[IFMDIM][IFMDIM][FM_CHANNELS],
+	ap_uint<PRECISION>       (&dst)[OFMDIM][OFMDIM][FM_CHANNELS]
+);
 
 int main(){
-  static ap_uint<PRECISION> golden_in[IFMDIM][IFMDIM][FM_CHANNELS];
-  static ap_uint<PRECISION> golden_out[OFMDIM][OFMDIM][FM_CHANNELS];
+  ap_uint<PRECISION> golden_in[IFMDIM][IFMDIM][FM_CHANNELS];
+  ap_uint<PRECISION> golden_out[OFMDIM][OFMDIM][FM_CHANNELS];
 
-  stream<ap_uint<PRECISION*FM_CHANNELS>> test_in("test_input");
-  stream<ap_uint<PRECISION*FM_CHANNELS>> test_out("test_ouput");
+  hls::stream<ap_uint<PRECISION*FM_CHANNELS>> test_in("test_input");
+  hls::stream<ap_uint<PRECISION*FM_CHANNELS>> test_out("test_ouput");
 
   for (int i = 0; i<IFMDIM; i++) {
     for (int j = 0; j<IFMDIM; j++) {
@@ -44,10 +47,8 @@ int main(){
     }
   }
 
-
   Golden_upsample(golden_in, golden_out);
   Testbench_upsample(test_in, test_out);
-
 
   ap_uint<PRECISION> out_channel;
   int err_counter = 0;
@@ -68,28 +69,17 @@ int main(){
   return err_counter;
 }
 
-
-
-
-
-void Golden_upsample(ap_uint<PRECISION> in[IFMDIM][IFMDIM][FM_CHANNELS], ap_uint<PRECISION> out[OFMDIM][OFMDIM][FM_CHANNELS]) {
-  const int scaling = OFMDIM / IFMDIM;
-  const int padding = OFMDIM % IFMDIM;
-  for (int i = 0; i<OFMDIM; i++) {
-    for (int j = 0; j<OFMDIM; j++) {
-
-      int dst_i = i-padding;
-      if (dst_i<0) dst_i = 0;
-      int dst_j = j - padding;
-      if (dst_j<0) dst_j = 0;
-
-      int src_i = dst_i/scaling;
-      int src_j = dst_j/scaling;
-      for (int k = 0; k<FM_CHANNELS; k++) {
-        out[i][j][k] = in[src_i][src_j][k];
-      }
-	  //std::cout << out[i][j][0] << " " ;
-    }
-	//std::cout << std::endl;
-  }
+void Golden_upsample(
+	ap_uint<PRECISION> const (&src)[IFMDIM][IFMDIM][FM_CHANNELS],
+	ap_uint<PRECISION>       (&dst)[OFMDIM][OFMDIM][FM_CHANNELS]
+) {
+	for(unsigned  i = 0; i < OFMDIM; i++) {
+		unsigned const  ii = unsigned((0.5f + i) * IFMDIM/OFMDIM);
+		for(unsigned  j = 0; j < OFMDIM; j++) {
+			unsigned const  jj = unsigned((0.5f + j) * IFMDIM/OFMDIM);
+			for (unsigned  k = 0; k < FM_CHANNELS; k++) {
+				dst[i][j][k] = src[ii][jj][k];
+			}
+		}
+	}
 }

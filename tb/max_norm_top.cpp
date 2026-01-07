@@ -49,6 +49,6 @@ void max_norm_top(
 		split[0].write(x);
 		split[1].write(x);
 	}
-	max_norm<FM_SIZE, NORMAX0>(split[0], dst[0]);
-	max_norm<FM_SIZE, NORMAX1>(split[1], dst[1]);
+	max_norm<FM_SIZE>(split[0], dst[0], SCALE0);
+	max_norm<FM_SIZE>(split[1], dst[1], SCALE1);
 }

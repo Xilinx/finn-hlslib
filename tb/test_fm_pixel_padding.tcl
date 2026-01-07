@@ -1,5 +1,5 @@
 ##############################################################################
- #  Copyright (c) 2019, Xilinx, Inc.
+ #  Copyright (c) 2023, Advanced Micro Devices, Inc.
  #  All rights reserved.
  #
  #  Redistribution and use in source and binary forms, with or without
@@ -29,27 +29,14 @@
  #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  #
 ###############################################################################
-###############################################################################
- #
- #  Authors: Giulio Gambardella <giuliog@xilinx.com>
- #           Tobias Alonso <tobiasa@xilinx.com>
- #
- # \file test_kernel_stride_pool.tcl
- #
- # Tcl script for HLS csim, synthesis and cosim of the MaxPool layer with 
- # kernel_size%stride !=0
- #
-###############################################################################
-
-
-open_project hls-syn-kernel_stride_pool
-add_files kernel_stride_maxpool_top.cpp -cflags "-fdiagnostics-color -std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
-add_files -tb kernel_stride_maxpool_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
-set_top Testbench_kernel_stride_pool
-open_solution sol1
-set_part {xczu3eg-sbva484-1-i}
-create_clock -period 5 -name default
-csim_design 
+open_project hls-syn-fmpp
+add_files fm_pixel_padding_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+add_files -tb fm_pixel_padding_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+set_top test_fm_pixel_padding
+open_solution "sol1"
+set_part {xck26-sfvc784-2LVI-i}
+create_clock -period 10 -name default
+csim_design
 csynth_design
 cosim_design
 exit

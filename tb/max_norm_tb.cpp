@@ -64,8 +64,8 @@ int main() {
 			max_norm_top(src, dst);
 
 			float const  ref_scale[2] = {
-				float((1uL<<WO)-1) / max,
-				float(NORMAX1)     / max
+				SCALE0 * float((1uL<<WO)-1) / max,
+				SCALE1 * float((1uL<<WO)-1) / max
 			};
 			for(unsigned  i = 0; i < FM_SIZE; i++) {
 				TI const  x = bypass.read();

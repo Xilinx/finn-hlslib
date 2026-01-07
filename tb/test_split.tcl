@@ -1,21 +1,20 @@
-##############################################################################
-# Copyright (c) 2019, Xilinx, Inc.
-# Copyright (c) 2025, AMD, Inc.
-# All rights reserved.
+###############################################################################
+#  Copyright (c) 2024-2025, Advanced Micro Devices, Inc.
+#  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are met:
 #
-#  1. Redistributions of source code must retain the above copyright notice,
+#  1.  Redistributions of source code must retain the above copyright notice,
 #     this list of conditions and the following disclaimer.
 #
-#  2. Redistributions in binary form must reproduce the above copyright
-#     notice, this list of conditions and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution.
+#  2.  Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
 #
-#  3. Neither the name of the copyright holder nor the names of its
-#     contributors may be used to endorse or promote products derived from
-#     this software without specific prior written permission.
+#  3.  Neither the name of the copyright holder nor the names of its
+#      contributors may be used to endorse or promote products derived from
+#      this software without specific prior written permission.
 #
 #  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 #  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
@@ -29,18 +28,16 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ###############################################################################
-# @author	Giulio Gambardella <giuliog@xilinx.com>
-# @author	Tobias Alonso <tobiasa@xilinx.com>
-# @author	Thomas B. Preußer <thomas.preusser@amd.com>
-###############################################################################
-open_project hls-syn-pool
-add_files pool_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb"
-add_files -tb pool_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb"
-set_top pool_top
+open_project hls-syn-split
+add_files split_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+add_files -tb split_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+set_top split_top
+
 open_solution sol1
 set_part xczu3eg-sbva484-1-i
 create_clock -period 5 -name default
 csim_design
 csynth_design
 cosim_design
+
 exit

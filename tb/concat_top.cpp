@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2024, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -30,21 +30,41 @@
  *
  ******************************************************************************/
 
+/*******************************************************************************
+ *
+ *  Authors: Michal Danilowicz <danilowi@agh.edu.pl>     
+ *
+ *  \file concat_top.cpp
+ *
+ *  HLS Top function with channel concatenation operation for unit testing
+ *
+ *******************************************************************************/
+
 #include <hls_stream.h>
-using namespace hls;
-#include "ap_int.h"
-#include "bnn-library.h"
-#include "pool.hpp"
+#include <hls_vector.h>
 
-#define KERNEL_DIM 3 
-#define FM_Channels1 16
-#define IFMDim1 16
-#define PADDING 2
-#define PoolInDim1 (IFMDim1+PADDING)
-#define STRIDE 2
-#define OFMDim1  (IFMDim1/STRIDE) //Using padding
-#define INPUT_PRECISION 4
-#define PE1 4
+#include "data/concat_config.h"
+#include "concat.hpp"
 
-void Testbench_kernel_stride_pool(stream<ap_uint<FM_Channels1*INPUT_PRECISION> > & in, 
-                stream<ap_uint<FM_Channels1*INPUT_PRECISION> > & out, unsigned int numReps);
+
+void Testbench_concat(hls::stream<IN_TYPE0> &in0_V,
+                      hls::stream<IN_TYPE1> &in1_V,
+                      hls::stream<IN_TYPE2> &in2_V,
+                      hls::stream<IN_TYPE3> &in3_V,
+                      hls::stream<OUT_TYPE> &out_V)
+{
+#pragma HLS INTERFACE axis port=in0_V
+#pragma HLS INTERFACE axis port=in1_V
+#pragma HLS INTERFACE axis port=in2_V
+#pragma HLS INTERFACE axis port=in3_V
+#pragma HLS INTERFACE axis port=out_V
+#pragma HLS INTERFACE ap_ctrl_none port=return
+
+#pragma HLS aggregate variable=in0_V compact=bit
+#pragma HLS aggregate variable=in1_V compact=bit
+#pragma HLS aggregate variable=in2_V compact=bit
+#pragma HLS aggregate variable=in3_V compact=bit
+#pragma HLS aggregate variable=out_V compact=bit
+
+StreamingConcat<NUM_FOLDS0, NUM_FOLDS1, NUM_FOLDS2, NUM_FOLDS3>(out_V, in0_V, in1_V, in2_V, in3_V);
+}

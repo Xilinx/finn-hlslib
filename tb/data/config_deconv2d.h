@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2023, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -29,64 +29,33 @@
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ******************************************************************************/
-/******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *           Felix Jentzsch <felixj@xilinx.com>
- *
- *  \file pool_tb.hpp
- *
- *  C++ Implementation of a max pool layer, used for testbench
- *
- *****************************************************************************/
 
-#ifndef POOL_TB_H
-#define POOL_TB_H
+#ifndef DECONV_CONF_H
+#define DECONV_CONF_H
 
-template<int MAX_IMAGE,
-	int IFMDim,
-	int OFMDim,
-	int FMCh,
-	int kernel,
-	int stride,
-	typename TI>
-	void pool(TI const img[MAX_IMAGE][IFMDim][IFMDim][FMCh], TI out[MAX_IMAGE][OFMDim][OFMDim][FMCh]){
-		for(int n=0;n<MAX_IMAGE;n++)
-			for(int x=0;x<OFMDim;x++)
-				for(int y=0;y<OFMDim;y++)
-					for(int h=0;h<FMCh;h++){
-						TI tmp = 0;
-						for (int ky=0;ky<kernel;ky++)
-							for (int kx=0;kx<kernel;kx++)
-								if(img[n][(y*stride+ky)][x*stride+kx][h]>tmp){
-									tmp=img[n][(y*stride+ky)][x*stride+kx][h];
-								}
-						out[n][x][y][h] = tmp;
-					}
-	}
+constexpr unsigned  IFDim1 = 4;
+constexpr unsigned  IFMCh1 = 1;
+constexpr unsigned  OFDim1 = 7;
+constexpr unsigned  OFMCh1 = 1;
+constexpr unsigned  Kernel1 = 4;
+constexpr unsigned  Stride1 = 3;
+constexpr unsigned  Padding1 = 3;
 
-template<int MAX_IMAGE,
-	int IFMDim,
-	int OFMDim,
-	int FMCh,
-	int kernel,
-	int stride,
-	typename TI>
-	void pool_1d(TI const img[MAX_IMAGE][IFMDim][FMCh], TI out[MAX_IMAGE][OFMDim][FMCh]){
-		for(int n=0;n<MAX_IMAGE;n++)
-			for(int x=0;x<OFMDim;x++)
-				for(int h=0;h<FMCh;h++){
-					TI tmp = 0;
-					for (int kx=0;kx<kernel;kx++){
-						unsigned const idx = x*stride+kx;
-						if (idx < IFMDim){
-							if(img[n][idx][h]>tmp){
-								tmp=img[n][idx][h];
-							}
-						}
-					}
-					out[n][x][h] = tmp;
-				}
-	}
+constexpr unsigned  FMPadODim1 = 10;
+constexpr unsigned  FMPadStride1 = 3;
+constexpr unsigned  FMPadSIMD1 = 1;
+
+constexpr unsigned  ConvKernel1 = 4;
+constexpr unsigned  ConvIFMCh1 = 1;
+constexpr unsigned  ConvIFMDim1 = 10;
+constexpr unsigned  ConvOFMCh1 = 1;
+constexpr unsigned  ConvOFMDim1 = 7;
+constexpr unsigned  ConvStride1 = 1;
+constexpr unsigned  ConvSIMD1 = 1;
+constexpr unsigned  ConvPE1 = 1;
+
+constexpr unsigned  IPrecision = 6;
+constexpr unsigned  OPrecision = 16;
+constexpr unsigned  WPrecision = 5;
 
 #endif

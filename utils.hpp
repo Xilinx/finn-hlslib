@@ -48,18 +48,34 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
-#include <ap_int.h>
-
-#include <iostream>
+#include <limits>
 #include <fstream>
 #include <cstddef>
 
-//- Static Evaluation of ceil(log2(x)) ---------------------------------------
+#include <ap_int.h>
+#include <hls_vector.h>
+#include <hls_stream.h>
+#include <utils/hls_version.h>
+#if XILINX_HLS_VERSION_RELEASE >= 20242
+#  include <ap_float.h>
+#endif
+
+//- Compile-Time Functions --------------------------------------------------
+
+// ceil(log2(x))
 template<typename T>
 constexpr unsigned clog2(T  x) {
   return  x<2? 0 : 1+clog2((x+1)/2);
 }
 
+template<typename T>
+constexpr unsigned gcd(T  a, T  b) {
+	if(b == 0)  return  a;
+	else {
+		T const  r = a%b;
+		return  (r == 0)? b : gcd(b, r);
+	}
+}
 //- Helpers to get hold of types ---------------------------------------------
 template<typename T> struct first_param {};
 template<typename R, typename A, typename... Args>
@@ -107,88 +123,140 @@ void logStringStream(const char *layer_name, hls::stream<ap_uint<BitWidth> > &lo
 
 //- Type Traits -------------------------------------------------------------
 
-/**
- * Retrieving the return type from a function (member) pointer type.
- */
-template<typename T>
-struct return_value {};
-template<typename  R, typename... Args>
-struct return_value<R(Args...)> {
-	using  type = R;
-};
-template<typename  R, typename... Args>
-struct return_value<R(Args...) const> {
-	using  type = R;
-};
-template<typename C, typename  R, typename... Args>
-struct return_value<R (C::*)(Args...)> {
-	using  type = R;
-};
-template<typename C, typename  R, typename... Args>
-struct return_value<R (C::*)(Args...) const> {
-	using  type = R;
-};
-
-/**
- * Scaling type bitwidths
- */
-template<typename TI, int S, int O>
-struct scale_width_trait;
-template<int S, int O>
-struct scale_width_trait<float, S, O> {
-    using type = float;
-};
-template<int S, int O>
-struct scale_width_trait<int, S, O> {
-    using type = ap_int<sizeof(int) * S + O>;
-};
-template<int S, int O>
-struct scale_width_trait<unsigned int, S, O> {
-    using type = ap_uint<sizeof(unsigned int) * S + O>;
-};
-template<int W, int S, int O>
-struct scale_width_trait<ap_int<W>, S, O> {
-    using type = ap_int<W * S + O>;
-};
-template<int W, int S, int O>
-struct scale_width_trait<ap_uint<W>, S, O> {
-    using type = ap_uint<W * S + O>;
-};
-template<typename TI, int S = 1, int O = 0>
-using scale_width = typename scale_width_trait<TI, S, O>::type; // Comfort trait for easy usage
-
 template<typename T>
 struct is_ap_float : std::false_type {};
 
+#ifdef __AP_FLOAT_H__
 template<int W, int I>
 struct is_ap_float<ap_float<W,I>> : std::true_type {};
+#endif
 
 template<typename T>
 struct is_floating_point_or_ap_float
     : std::integral_constant<bool, std::is_floating_point<T>::value || is_ap_float<T>::value> {};
 
+//- Custom std::numeric_limits<ap_(u)int<W>> for releases prior to 2025.2.
+#if XILINX_HLS_VERSION_RELEASE < 20252
+template<int  W>
+class std::numeric_limits<ap_uint<W>> : public std::numeric_limits<void> {
+public:
+	static constexpr bool  is_specialized = true;
+	static constexpr bool  is_signed = false;
+	static constexpr bool  is_integer = true;
+	static constexpr bool  is_exact = true;
+	static constexpr bool  is_bounded = true;
+	static constexpr bool  is_modulo = true;
+	static constexpr unsigned  digits = W;
+	static constexpr unsigned  radix  = 2;
+
+	static ap_uint<W> min   () { return  0; }
+	static ap_uint<W> lowest() { return  0; }
+	static ap_uint<W> max   () { return  ap_uint<W>(0) - 1; }
+};
+
+template<int  W>
+class std::numeric_limits<ap_int<W>> : public std::numeric_limits<void> {
+public:
+	static constexpr bool  is_specialized = true;
+	static constexpr bool  is_signed = true;
+	static constexpr bool  is_integer = true;
+	static constexpr bool  is_exact = true;
+	static constexpr bool  is_bounded = true;
+	static constexpr bool  is_modulo = true;
+	static constexpr unsigned  digits = W-1;
+	static constexpr unsigned  radix  = 2;
+
+	static ap_int<W> min   () { ap_int<W>  res = 0; res[W - 1] = 1; return  res; }
+	static ap_int<W> lowest() { ap_int<W>  res = 0; res[W - 1] = 1; return  res; }
+	static ap_int<W> max   () { ap_int<W>  res = 0; res[W - 1] = 1; return ~res; }
+};
+#endif
+
+//- Streaming Flit with `last` Marking --------------------------------------
 template<typename T>
-struct is_ap_int : std::false_type {};
+struct flit_t {
+	bool  last;
+	T     data;
 
-template <int W>
-struct is_ap_int<ap_int<W>> : std::true_type {};
+public:
+	flit_t() {}
+	flit_t(bool  last_, T const &data_) : last(last_), data(data_) {}
+	~flit_t() {}
+};
 
-template <int W>
-struct is_ap_int<ap_uint<W>> : std::true_type {};
+//- Zero-Width-Enabled Arbitrary-Precision Numbers ..........................
 
+// Non-zero-width instances as thinnest possible wrapper around ap_uint<N>.
+template<unsigned N> class ap_uzint : public ap_uint<N> {
+public:
+	template<typename... T> ap_uzint(T&&... val) : ap_uint<N>(std::forward<T>(val)...) {}
+};
+
+// Zero-width specialization avoiding the illegal ap_uint<0> parametrization.
+template<> class ap_uzint<0> : public std::false_type {
+	// Enable initialization and assignment from any source type with complete truncation.
+public:
+	template<typename... T> ap_uzint(T&&...) {}
+	template<typename T> ap_uzint& operator=(T&&) { return *this; }
+
+	// Allow but neutralize increment operators
+	ap_uzint& operator++()    { return *this; }
+	ap_uzint& operator++(int) { return *this; }
+	ap_uzint& operator--()    { return *this; }
+	ap_uzint& operator--(int) { return *this; }
+	template<typename T> ap_uzint& operator+=(T&&) { return *this; }
+	template<typename T> ap_uzint& operator-=(T&&) { return *this; }
+};
+
+// Non-zero-width instances as thinnest possible wrapper around ap_uint<N>.
+template<unsigned N> class ap_zint : public ap_int<N> {
+public:
+	template<typename... T> ap_zint(T&&... val) : ap_int<N>(std::forward<T>(val)...) {}
+};
+
+// Zero-width specialization avoiding the illegal ap_uint<0> parametrization.
+template<> class ap_zint<0> : public std::false_type {
+	// Enable initialization and assignment from any source type with complete truncation.
+public:
+	template<typename... T> ap_zint(T&&...) {}
+	template<typename T> ap_zint& operator=(T&&) { return *this; }
+
+	// Allow but neutralize increment operators
+	ap_zint& operator++()    { return *this; }
+	ap_zint& operator++(int) { return *this; }
+	ap_zint& operator--()    { return *this; }
+	ap_zint& operator--(int) { return *this; }
+	template<typename T> ap_zint& operator+=(T&&) { return *this; }
+	template<typename T> ap_zint& operator-=(T&&) { return *this; }
+};
+
+//- hls::vector<> Enablement ------------------------------------------------
+template<typename  T, size_t  N>
+inline std::ostream& operator<<(std::ostream &o, hls::vector<T, N> const &v) {
+	char  delim = '{';
+	for(auto const &x : v) {
+		o << delim << x;
+		delim = ':';
+	}
+	return (o << '}');
+}
+
+//- Streaming Copy ----------------------------------------------------------
 template<typename T>
-struct is_integer_or_ap_int
-    : std::integral_constant<bool, std::is_integral<T>::value || is_ap_int<T>::value> {};
+void move(hls::stream<T> &src, hls::stream<T> &dst) {
+#pragma HLS pipeline II=1 style=flp
+	if(!src.empty())  dst.write(src.read());
+}
 
 //- Tree Reduce -------------------------------------------------------------
 template<
 	size_t    N,
 	typename  TA,
+	typename  TR = TA,	// must be assignable from TA
 	typename  F			// (TR, TR) -> TR
 >
-auto tree_reduce(hls::vector<TA, N> const &v, F &&f = F()) {
+TR tree_reduce(hls::vector<TA, N> const &v, F &&f = F()) {
 #pragma HLS inline
-	using TR = decltype(f(v[0], v[1]));
 	TR  tree[2*N-1];
 #pragma HLS array_partition complete dim=1 variable=tree
 	for(unsigned  i = N; i-- > 0;) {

@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2024-2025, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,31 +28,77 @@
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- ******************************************************************************/
-
-/******************************************************************************
+ * @author	Michal Danilowicz <danilowi@agh.edu.pl>
+ * @author	Thomas B. Preußer <thomas.preusser@amd.com>
  *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *
- *  \file
- *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
- *
- ******************************************************************************/
+ * @brief Testbench for the channel split operation.
+ *******************************************************************************/
 
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
+#include "split_top.hpp"
+#include <iostream>
 
-#include <ap_int.h>
 
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
-    }
-};
+template<
+	typename  T,
+	size_t    N
+>
+std::ostream& operator<<(std::ostream &o, hls::vector<T, N> const &v) {
+	char  c = '{';
+	for(auto const &e : v) {
+		o << c << e;
+		c = ',';
+	}
+	return  o << '}';
+}
 
-#endif
+int main() {
+	hls::stream<T> src;
+	hls::stream<T> dst[NUM_OUTPUTS];
+	hls::stream<T> exp[NUM_OUTPUTS];
+
+	{ // prepare stimulus and expected output
+		unsigned  c = 0;
+		for(unsigned  r = 0; r < REPS; r++) {
+			for(unsigned  d = 0; d < NUM_OUTPUTS; d++) {
+				for(unsigned  i = 0; i < FOLDS_PER_OUTPUT[d]; i++) {
+					T const  x = T(c++);
+					src.write(x);
+					exp[d].write(x);
+				}
+			}
+		}
+	}
+
+	unsigned  timeout = 0;
+	while(timeout < 100) {
+		split_top(src, dst);
+
+		bool  have = false;
+		for(unsigned  d = 0; d < NUM_OUTPUTS; d++) {
+			if(!dst[d].empty()) {
+				auto const  y = dst[d].read();
+				if(exp[d].empty()) {
+					std::cerr << "Spurious output: " << y << std::endl;
+					return  1;
+				}
+				auto const  ref = exp[d].read();
+				if(y != ref) {
+					std::cerr << "Output mismatch: " << y << " instead of " << ref << std::endl;
+					return  1;
+				}
+				have = true;
+			}
+		}
+		if(have)  timeout = 0;
+		else  timeout++;
+	}
+
+	for(auto &s : exp) {
+		if(!s.empty()) {
+			std::cerr << "Missing output." << std::endl;
+			return  1;
+		}
+	}
+
+	return  0;
+}

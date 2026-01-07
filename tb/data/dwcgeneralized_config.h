@@ -30,29 +30,33 @@
  *
  ******************************************************************************/
 
-/******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *
- *  \file
- *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
- *
- ******************************************************************************/
+// pad larger output width
+#define INPUT_WIDTH 4
+#define OUT_WIDTH 13
+#define NumInWords 6
+#define NumOutWords 2
+#define NUM_REPEAT 4
 
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
+/* pad words on equal widths
+#define INPUT_WIDTH 4
+#define OUT_WIDTH 4
+#define NumInWords 2
+#define NumOutWords 4
+#define NUM_REPEAT 4
+*/
 
-#include <ap_int.h>
+/* pad smaller output width
+#define INPUT_WIDTH 10
+#define OUT_WIDTH 6
+#define NumInWords 1
+#define NumOutWords 2
+#define NUM_REPEAT 4
+*/
 
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
-    }
-};
-
-#endif
+/* crop smaller output width
+#define INPUT_WIDTH 10
+#define OUT_WIDTH 4
+#define NumInWords 1
+#define NumOutWords 2
+#define NUM_REPEAT 4
+*/

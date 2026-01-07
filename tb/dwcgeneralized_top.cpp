@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2024, Xilinx, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -29,30 +29,23 @@
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ******************************************************************************/
-
 /******************************************************************************
  *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ *  Authors: Lukas Stasytis <lukas.stasytis@amd.com>
  *
- *  \file
+ *  \file dwcgeneralized_tb.cpp
  *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
+ *  Testbench for the generalized data-width converter HLS block unit testing
  *
- ******************************************************************************/
+ *****************************************************************************/
+#include <hls_stream.h>
+using namespace hls;
+#include "ap_int.h"
+#include "bnn-library.h"
 
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
 
-#include <ap_int.h>
+#include "data/dwcgeneralized_config.h"
 
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
-    }
-};
-
-#endif
+void Testbench_dwcgeneralized(stream<ap_uint<INPUT_WIDTH> > & in, stream<ap_uint<OUT_WIDTH> > & out, unsigned int numReps){
+	StreamingDataWidthConverterGeneralized_Batch<INPUT_WIDTH, OUT_WIDTH, NumInWords, NumOutWords>(in, out, numReps);
+}

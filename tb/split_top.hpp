@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2024-2025, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,31 +28,29 @@
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- ******************************************************************************/
-
-/******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *
- *  \file
- *
- *  This file described the MultiChanData class used for MMV, whenever we exploit
- *  the pixel level of parallelism.
- *
- ******************************************************************************/
-
-#ifndef MMVCLASS_H
-#define MMVCLASS_H
+ * @author	Michal Danilowicz <danilowi@agh.edu.pl>
+ * @author	Thomas B. Preußer <thomas.preusser@amd.com>
+ *******************************************************************************/
 
 #include <ap_int.h>
+#include <hls_vector.h>
+#include <hls_stream.h>
 
-template <unsigned int NumChannels, unsigned int DataWidth>
-class MultiChanData {
-public: ap_uint<DataWidth> data[NumChannels];
-    auto operator[](unsigned const  mm) -> decltype(data[mm]) {
-#pragma HLS inline
-      return  data[mm];
-    }
+
+constexpr unsigned  REPS = 73;
+constexpr unsigned  SIMD = 3;
+
+constexpr unsigned  NUM_OUTPUTS = 3;
+constexpr unsigned  NUM_FOLDS0 =  2;
+constexpr unsigned  NUM_FOLDS1 =  5;
+constexpr unsigned  NUM_FOLDS2 = 11;
+constexpr unsigned  FOLDS_PER_OUTPUT[NUM_OUTPUTS] = {
+	NUM_FOLDS0, NUM_FOLDS1, NUM_FOLDS2
 };
 
-#endif
+using  T = hls::vector<ap_uint<5>, SIMD>;
+
+void split_top(
+	hls::stream<T>  &src,
+	hls::stream<T> (&dst)[NUM_OUTPUTS]
+);
