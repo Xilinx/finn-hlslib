@@ -15,7 +15,7 @@
 
 
 constexpr unsigned  N    = 384;
-constexpr unsigned  SIMD =  4;
+constexpr unsigned  SIMD =   4;
 using  TI = float;
 using  TO = float;
 

@@ -7,223 +7,189 @@
  * @author	Leah Sieder <leah-louisa.sieder@amd.com>
  * @author	Thomas B. Preußer <thomas.preusser@amd.com>
  ****************************************************************************/
-#ifndef LAYERNORM_QUANTIZED_HPP
-#define LAYERNORM_QUANTIZED_HPP
+#ifndef LAYERNORM_HPP
+#define LAYERNORM_HPP
 
 #include "utils.hpp"
 #include <hls_math.h>
 
-template<size_t N, typename TI, typename TO, size_t SIMD>
-void first_diamond(
-	hls::stream<hls::vector<TI, SIMD>> &in_s,
-	hls::stream<hls::vector<TO, SIMD>> &out_s,
-	hls::stream<TO> &sum_s
+
+template<
+	size_t    N,     // size of feature vector
+	typename  TI,    // [inferred] feature data type
+	typename  TS,    // [inferred] sum data type
+	size_t    SIMD,  // [inferred] feature parallelism
+	typename  F_PRE  // [inferred] functor for feature refinement prior to accumulation: (TI) -> TS
+>
+static void sum_statistics(
+	hls::stream<hls::vector<TI, SIMD>> &src,
+	hls::stream<hls::vector<TI, SIMD>> &dst,
+	hls::stream<TS>                    &sum,
+	F_PRE && fpre
 ){
-#pragma HLS pipeline II=1 style=frp
-    static_assert(N%SIMD == 0, "SIMD parallelism must divide vector length.");
-    constexpr size_t  NN = N / SIMD;
-	constexpr float INVN = 1.0f / N;
-
-	static ModCounter<NN>  count;
-	static TO  sum = TO(0);
-#pragma HLS reset variable=count
-#pragma HLS reset variable=sum off
-
-	if(!in_s.empty()){
-		hls::vector<TI, SIMD> in = in_s.read();
-
-		// bypass
-		hls::vector<TO, SIMD> out;
-		for(unsigned i=0; i<SIMD; i++) {
-#pragma HLS UNROLL
-			out[i] = TO(in[i]);	
-		}
-		out_s.write(out);
-
-		// statistics
-		sum += tree_reduce(in, [](TO const &a, TO const &b) -> TO { return  a+b; });
-		if (count.tick()) {
-			sum_s.write(sum * INVN); 
-			sum = TO(0);
-		}
-
-	}
-
-}
-
-template<size_t N, typename T, size_t SIMD>
-void sub(
-	hls::stream<hls::vector<T, SIMD>> &in_s,
-	hls::stream<T> &sum_s,
-	hls::stream<hls::vector<T, SIMD>> &out_s
-){
+#pragma HLS function_instantiate variable=fpre
 #pragma HLS pipeline II=1 style=frp
 	static_assert(N%SIMD == 0, "SIMD parallelism must divide vector length.");
-    constexpr size_t  NN = N / SIMD;
+	constexpr size_t  NN = N / SIMD;
 
 	static ModCounter<NN>  count;
-	static bool valid = false;
-	static T sum;
+	static TS  accu = TS(0);
+#pragma HLS reset variable=count
+#pragma HLS reset variable=accu
+
+	if(!src.empty()){
+		hls::vector<TI, SIMD> const  x = src.read();
+		hls::vector<TS, SIMD>  t;
+
+		// Bypass
+		dst.write(x);
+
+		// Statistics Accumulation
+		for(size_t  i = 0; i < SIMD; i++) {
+#pragma HLS unroll
+			t[i] = fpre(x[i]);
+		}
+		accu += tree_reduce(t, [](TS const &a, TS const &b) -> TS { return  a+b; });
+		if(count.tick()) {
+			sum.write(accu);
+			accu = TS(0);
+		}
+	}
+
+} // sum_statistics()
+
+template<
+	size_t    N,     // size of feature vector
+	typename  TI,    // [inferred] input feature data type
+	typename  TN,    // [inferred] norm data type
+	typename  TO,    // [inferred] normalized output feature data type
+	size_t    SIMD,  // [inferred] feature parallelism
+	typename  F_NORM // [inferred] functor for feature normalization: (TI, TN) -> TO
+>
+static void normalize(
+	hls::stream<hls::vector<TI, SIMD>> &src,
+	hls::stream<TN>                    &norm,
+	hls::stream<hls::vector<TO, SIMD>> &dst,
+	F_NORM &&fnorm
+) {
+#pragma HLS function_instantiate variable=fnorm
+#pragma HLS pipeline II=1 style=frp
+	static_assert(N%SIMD == 0, "SIMD parallelism must divide vector length.");
+	constexpr size_t  NN = N / SIMD;
+
+	static ModCounter<NN>  count;
+	static bool  valid = false;
+	static TN  nrm;
 #pragma HLS reset variable=count
 #pragma HLS reset variable=valid
-#pragma HLS reset variable=sum
+#pragma HLS reset variable=nrm off
 
-	if(!valid && !sum_s.empty()){
-		sum = sum_s.read();
-		valid = true;
-	}
-
-	if(valid && !in_s.empty()){
-		hls::vector<T, SIMD> in = in_s.read();
-		hls::vector<T, SIMD> out;
+	if(!valid)  valid = norm.read_nb(nrm);
+	if(valid && !src.empty()){
+		hls::vector<TI, SIMD> const  x = src.read();
+		hls::vector<TO, SIMD>  y;
 		for(unsigned i=0; i<SIMD; i++) {
 #pragma HLS UNROLL
-			out[i] = in[i] - sum;
+			y[i] = fnorm(x[i], nrm);
 		}
-		out_s.write(out);
-		if(count.tick()) {
-			valid = false;
-		}
-	}
-}
-
-template<size_t N, typename TI, typename TO, size_t SIMD>
-void second_diamond(
-	hls::stream<hls::vector<TI, SIMD>> &in_s,
-	hls::stream<hls::vector<TI, SIMD>> &out_s,
-	hls::stream<TO> &sqrsumrsqrt_s,
-	const TO eps
-){
-#pragma HLS pipeline II=1 style=frp
-	static_assert(N%SIMD == 0, "SIMD parallelism must divide vector length.");
-    constexpr size_t  NN = N / SIMD;
-	constexpr float INVN = 1.0f / N; 
-
-	using TSQR = scale_width<TI, 2>;
-	using TSQRSUM = scale_width<TI, 2, clog2(N)>;
-
-	static ModCounter<NN>  count;
-	static TSQRSUM  sqrsum = TO(0);
-#pragma HLS reset variable=count
-#pragma HLS reset variable=sqrsum
-
-	if(!in_s.empty()){
-		hls::vector<TI, SIMD> in = in_s.read();
-
-		// bypass
-		hls::vector<TI, SIMD> out;
-		for(unsigned i=0; i<SIMD; i++) {
-#pragma HLS UNROLL
-			out[i] = in[i];	
-		}
-		out_s.write(out);
-
-		// statistics
-		hls::vector<TSQR, SIMD> sqr;
-		for(unsigned i=0; i<SIMD; i++) {
-#pragma HLS UNROLL
-			sqr[i] = in[i] * in[i];	
-		}
-		sqrsum += tree_reduce(sqr, [](TSQR const &a, TSQR const &b) -> TSQRSUM { return  a+b; });
-		if (count.tick()) {
-			TO normsum = TO(sqrsum) * INVN;
-			TO sqrsumrsqrt = hls::rsqrt(normsum + eps);
-			sqrsumrsqrt_s.write(sqrsumrsqrt); 
-			sqrsum = TO(0);
-		}
-	}
-}
-
-template<size_t N, typename TI, typename TO, size_t SIMD>
-void mult(
-	hls::stream<hls::vector<TI, SIMD>> &in_s,
-	hls::stream<TO> &sqrsumrsqrt_s,
-	hls::stream<hls::vector<TO, SIMD>> &out_s
-){
-#pragma HLS pipeline II=1 style=frp
-	static_assert(N%SIMD == 0, "SIMD parallelism must divide vector length.");
-    constexpr size_t  NN = N / SIMD;
-
-	static ModCounter<NN>  count;
-	static bool valid = false;
-	static TO sqrsumrsqrt;
-#pragma HLS reset variable=count
-#pragma HLS reset variable=valid
-#pragma HLS reset variable=sqrsumrsqrt off
-
-	if(!valid && !sqrsumrsqrt_s.empty()){
-		sqrsumrsqrt = sqrsumrsqrt_s.read();
-		valid = true;
+		dst.write(y);
+		if(count.tick())  valid = false;
 	}
 
-	if(valid && !in_s.empty()){
-		hls::vector<TI, SIMD> in = in_s.read();
-		hls::vector<TO, SIMD> out;
-		for(unsigned i=0; i<SIMD; i++) {
-#pragma HLS UNROLL
-			out[i] = TO(in[i]) * sqrsumrsqrt;
-		}
-		out_s.write(out);
-		if(count.tick()) {
-			valid = false;
-		}
-	}
-
-}
-
+} // normalize()
 
 
 template<
-    size_t N,
-    typename TI, // Input type must be an integer
-    typename TO, // Output type must be a floating point
-    size_t SIMD
+	size_t    N,
+	typename  TI,
+	typename  TO,
+	size_t    SIMD
 >
 void layernorm(
-    hls::stream<hls::vector<TI, SIMD>> &src,
-    hls::stream<hls::vector<TO, SIMD>> &dst,
-    TO const eps = 1e-5f
+	hls::stream<hls::vector<TI, SIMD>> &src,
+	hls::stream<hls::vector<TO, SIMD>> &dst,
+	TO const eps = 1e-5f
 ){
-	static_assert(is_floating_point_or_ap_float<TI>::value, "Input datatype must be a float or ap_float type");
-	static_assert(is_floating_point_or_ap_float<TO>::value, "Output datatype must be a float or ap_float type");
-
-	using TSUM = scale_width<TI, 1, clog2(N)>;
-
-	constexpr size_t NN = N / SIMD;
-	constexpr size_t STATISTICS_LATENCY_DIAMOND_1 = 26;
-	constexpr size_t STATISTICS_LATENCY_DIAMOND_2 = 82;
-	constexpr size_t STAT_STREAM_LEN = 2;
-	constexpr size_t DIAMOND_1_BYPASS_STREAM_LEN = NN + STATISTICS_LATENCY_DIAMOND_1;
-	constexpr size_t DIAMOND_2_BYPASS_STREAM_LEN = NN + STATISTICS_LATENCY_DIAMOND_2;
-
+#pragma HLS function_instantiate variable=eps
 #pragma HLS DATAFLOW disable_start_propagation
 
-	static hls::stream<hls::vector<TSUM, SIMD>> x0_s;
-#pragma HLS stream variable=x0_s depth=DIAMOND_1_BYPASS_STREAM_LEN
+	//-----------------------------------------------------------------------
+	// Derive Types for Intermediates:
+	//  - integer inputs: widened safely,
+	//  - otherwise: TO is used.
+	using  TI_LIMITS = typename std::numeric_limits<TI>;
+	// Sum over N inputs
+	using  TS = typename std::conditional<
+		TI_LIMITS::is_integer,
+		typename std::conditional<
+			TI_LIMITS::is_signed,
+			ap_int< clog2(N) + TI_LIMITS::digits>,
+			ap_uint<clog2(N) + TI_LIMITS::digits>
+		>::type,
+		TO
+	>::type;
+	// Scaled, mean-normalized data: N*x[i] - sum
+	using  TN = typename std::conditional<
+		TI_LIMITS::is_integer,
+		ap_int<1 + clog2(N) + TI_LIMITS::digits>,
+		TO
+	>::type;
+	// Sum of Squares of mean-normalized data
+	using  TQS = typename std::conditional<
+		TI_LIMITS::is_integer,
+		ap_uint<clog2(N) + 2*(clog2(N) + TI_LIMITS::digits) + 1>,
+		TO
+	>::type;
 
-	static hls::stream<TSUM> sum0_s;
-#pragma HLS stream variable=sum0_s depth=STAT_STREAM_LEN
+	//-----------------------------------------------------------------------
+	// Derive Needed Stream Depths
+	constexpr size_t  NN = N / SIMD;
+	constexpr size_t  STATISTICS_LATENCY_DIAMOND_0 = 30; // worst seen so far after synthesis: 26;
+	constexpr size_t  STATISTICS_LATENCY_DIAMOND_1 = 90; // worst seen so far after synthesis: 82;
+	constexpr size_t  BYPASS_DEPTH_0 = NN + STATISTICS_LATENCY_DIAMOND_0;
+	constexpr size_t  BYPASS_DEPTH_1 = NN + STATISTICS_LATENCY_DIAMOND_1;
 
-	static hls::stream<hls::vector<TSUM, SIMD>> y_s;
-#pragma HLS stream variable=y_s depth=STAT_STREAM_LEN
+	//-----------------------------------------------------------------------
+	// First Diamond for Means Normalization
+	static hls::stream<hls::vector<TI, SIMD>>  bypass0;
+#pragma HLS stream variable=bypass0 depth=BYPASS_DEPTH_0
+	static hls::stream<TS>  sum0;
+#pragma HLS stream variable=sum0 depth=2
+	static hls::stream<hls::vector<TN, SIMD>> norm0;
+#pragma HLS stream variable=norm0 depth=2
 
-	static hls::stream<hls::vector<TSUM, SIMD>> x1_s;
-#pragma HLS stream variable=x1_s depth=DIAMOND_2_BYPASS_STREAM_LEN
+	sum_statistics<N>(
+		src, bypass0, sum0,
+		[](TI const &x) -> TS { return  TS(x); }
+	);
+	normalize<N>(
+		bypass0, sum0, norm0,
+		[](TI const &x, TS const &m) -> TN { return  TN(N*x) - TN(m); }
+	);
 
-	static hls::stream<TO> sum1_s;
-#pragma HLS stream variable=sum1_s depth=STAT_STREAM_LEN
+	//-----------------------------------------------------------------------
+	// Second Diamond for Variance Normalization
+	static hls::stream<hls::vector<TN, SIMD>>  bypass1;
+#pragma HLS stream variable=bypass1 depth=BYPASS_DEPTH_1
+	static hls::stream<TQS>  sum1;
+#pragma HLS stream variable=sum1 depth=2
+	static hls::stream<TO>  coeff1;
+#pragma HLS stream variable=coeff1 depth=2
+	sum_statistics<N>(
+		norm0, bypass1, sum1,
+		[](TN const &x) -> TQS { return  TQS(x*x); }
+	);
+	[](hls::stream<TQS> &src, hls::stream<TO> &dst, TO const  eps) {
+#pragma HLS function_instantiate variable=eps
+#pragma HLS pipeline II=NN
+		constexpr TO  INVN = TO(1) / N;
+		if(!src.empty())  dst.write(hls::rsqrt(INVN * TO(src.read()) + eps));
+	}(sum1, coeff1, eps);
+	normalize<N>(
+		bypass1, coeff1, dst,
+		[](TN const &x, TO const &m) -> TO { return  m * TO(x); }
+	);
 
-
-
-
-
-
-	first_diamond<N>(src, x0_s, sum0_s);
-	sub<N>(x0_s, sum0_s, y_s);
-	second_diamond<N>(y_s, x1_s, sum1_s, eps);
-	mult<N>(x1_s, sum1_s, dst);
-
-
-}
+} // layernorm()
 
 #endif

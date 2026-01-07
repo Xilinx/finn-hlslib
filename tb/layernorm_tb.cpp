@@ -9,11 +9,11 @@
  ****************************************************************************/
 #include "layernorm_top.hpp"
 #include <cstdlib>
-#include <ctime>
 #include <cmath>
 
+
 // how much to test
-constexpr unsigned ROUNDS = 3;
+constexpr unsigned  ROUNDS = 7;
 
 
 // Function to calculate mean
