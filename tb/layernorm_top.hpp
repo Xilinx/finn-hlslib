@@ -12,11 +12,12 @@
 
 #include <hls_stream.h>
 #include <hls_vector.h>
+#include <ap_int.h>
 
 
 constexpr unsigned  N    = 384;
 constexpr unsigned  SIMD =   4;
-using  TI = float;
+using  TI = ap_int<5>;
 using  TO = float;
 
 void layernorm_top(
