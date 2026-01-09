@@ -123,7 +123,7 @@ void layernorm(
 		TI_LIMITS::is_integer,
 		typename std::conditional<
 			TI_LIMITS::is_signed,
-			ap_int< clog2(N) + TI_LIMITS::digits>,
+			ap_int<clog2(N) + TI_LIMITS::digits + 1>,
 			ap_uint<clog2(N) + TI_LIMITS::digits>
 		>::type,
 		TO
@@ -131,13 +131,13 @@ void layernorm(
 	// Scaled, mean-normalized data: N*x[i] - sum
 	using  TN = typename std::conditional<
 		TI_LIMITS::is_integer,
-		ap_int<1 + clog2(N) + TI_LIMITS::digits>,
+		ap_int<1 + clog2(N) + TI_LIMITS::digits + TI_LIMITS::is_signed>,
 		TO
 	>::type;
 	// Sum of Squares of mean-normalized data
 	using  TQS = typename std::conditional<
 		TI_LIMITS::is_integer,
-		ap_uint<clog2(N) + 2*(clog2(N) + TI_LIMITS::digits) + 1>,
+		ap_uint<clog2(N) + 2*(clog2(N) + TI_LIMITS::digits + TI_LIMITS::is_signed)>,
 		TO
 	>::type;
 
