@@ -79,16 +79,19 @@ ap_uint<W> to_bitimage(ap_float<W, E> const &val) {
 #endif
 
 // Floating-point Specializations
+inline
 ap_uint<16> to_bitimage(half const &val) {
 #pragma HLS inline
 	union { uint16_t  i; half  f; } const  conv = { .f = val };
 	return  to_bitimage(conv.i);
 }
+inline
 ap_uint<32> to_bitimage(float const &val) {
 #pragma HLS inline
 	union { uint32_t  i; float  f; } const  conv = { .f = val };
 	return  to_bitimage(conv.i);
 }
+inline
 ap_uint<64> to_bitimage(double const &val) {
 #pragma HLS inline
 	union { uint64_t  i; double  f; } const  conv = { .f = val };
