@@ -786,59 +786,6 @@ void StreamingDataWidthConverterNoMultiple(
 
 }
 
-
-/**
- * \brief   Stream Duplicator - Reads in a stream and writes the data into two identical streams
- *
- * Used to generate the inputs to the bypass and convolutional branches in Resnet-50
- *
- * \tparam     DataWidth    Width, in number of bits, of the streams
- * \tparam     NumTotal     Total number of words in the input stream
- *
- * \param      in           Input stream
- * \param      out1         Output stream I
- * \param      out2         Output stream II
- *
- */
-template<unsigned int DataWidth,
-		unsigned int NumTotal
->
-void DuplicateStreams(hls::stream<ap_uint<DataWidth> > & in, hls::stream<ap_uint<DataWidth> > & out1,
-		hls::stream<ap_uint<DataWidth> > & out2) {
-	
-	for (unsigned int i = 0; i < NumTotal; i++) {
-#pragma HLS pipeline style=flp II=1
-		ap_uint<DataWidth> e = in.read();
-		
-		out1.write(e);
-		out2.write(e);
-	}
-}
-
-/**
- * \brief   Batch Stream Duplicator - Reads in a stream multiple times and writes the data into two identical streams
- *
- * Used to generate the inputs to the bypass and convolutional branches in Resnet-50 when dealing with multiple 'frames'
- *
- * \tparam     DataWidth    Width, in number of bits, of the streams
- * \tparam     NumTotal     Total number of words in the input stream
- *
- * \param      in           Input stream
- * \param      out1         Output stream I
- * \param      out2         Output stream II
- * \param      numReps      Number of frames / images
- *
- */
-template<unsigned int DataWidth,
-		unsigned int NumTotal
->
-void DuplicateStreams_Batch(hls::stream<ap_uint<DataWidth> > & in, hls::stream<ap_uint<DataWidth> > & out1,
-		hls::stream<ap_uint<DataWidth> > & out2, const unsigned int numReps) {
-	for (unsigned int image = 0; image < numReps; image++) {
-		DuplicateStreams<DataWidth, NumTotal>(in, out1, out2);
-	}
-}
-
 /**
  * \brief   Element-Wise Addition - Reads in data elements from two streams and writes the sum of these elements to an output
  *
