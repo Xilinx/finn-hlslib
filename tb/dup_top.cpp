@@ -21,6 +21,6 @@ void dup_top(
 #pragma HLS interface ap_ctrl_none port=return
 #pragma HLS dataflow disable_start_propagation
 
-	dup(src, dst);
+	StreamingDup(src, dst);
 
 } // dup()
