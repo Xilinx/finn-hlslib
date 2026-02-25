@@ -57,10 +57,8 @@ void StreamingDup(
 	hls::stream<TI>    &src,
 	hls::stream<TO>&... dst
 ){
-	constexpr unsigned  N = sizeof...(TO);
-	static PackWriter<TO...>  writer;
-
 #pragma HLS pipeline II=1 style=flp
+	static PackWriter<TO...>  writer;
 
 	if(!src.empty()) {
 		TI const  x = src.read();
