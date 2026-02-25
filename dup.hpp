@@ -10,62 +10,28 @@
 #define DUP_HPP
 
 #include <hls_stream.h>
-#include <algorithm>
+#include <utility>
 
 
 //---------------------------------------------------------------------------
-// Ultimate backing implementation with destination streams as parameter pack.
-
-// Helper for parameter pack indexing.
-namespace {
-	/** Recursive writing to all streams in pack. */
-	template<typename... TO>
-	class PackWriter {};
-
-	/** Terminating with last stream in stream pack. */
-	template<typename  T0>
-	class PackWriter<T0> {
-	public:
-		template<typename TI>
-		void write(TI &x, hls::stream<T0>& dst0) {
-#pragma HLS inline
-			dst0.write(x);
-		}
-	};
-
-	/** Write and pass recursively further into the pack. */
-	template<typename  T0, typename... TO>
-	class PackWriter<T0, TO...> {
-		PackWriter<TO...>  inner;
-
-	public:
-		template<typename TI>
-		void write(TI &x, hls::stream<T0>& dst0, hls::stream<TO>&... dst) {
-#pragma HLS inline
-			dst0.write(x);
-			inner.write(x, dst...);
-		}
-	};
-}
+// Variadic dup() implementation with destination streams as parameter pack.
 
 // Main dup implementation.
 template<
-	typename    TI,
-	typename... TO
+	typename    TI, // [inferred] Type carried on input stream
+	typename... TO  // [inferred] Types carried on output streams, must be assignable from TI
 >
 void StreamingDup(
 	hls::stream<TI>    &src,
 	hls::stream<TO>&... dst
 ){
 #pragma HLS pipeline II=1 style=flp
-	static PackWriter<TO...>  writer;
 
 	if(!src.empty()) {
 		TI const  x = src.read();
-		writer.write(x, dst...);
+		(void)std::initializer_list<int>{(dst.write(x), 0)...};
 	}
 }
-
 
 //---------------------------------------------------------------------------
 // Adapter to facilitate the use of an array of destination streams.
@@ -73,9 +39,9 @@ void StreamingDup(
 // Indirection to unpack array into a list of arguments.
 namespace {
 	template<
-		typename    TI,
-		typename    TO,
-		size_t...   Idxs
+		typename       TI,
+		typename       TO,
+		std::size_t... Idxs
 	>
 	void StreamingDup0(
 		hls::stream<TI>  &src,
@@ -88,9 +54,9 @@ namespace {
 }
 
 template<
-	typename    TI,
-	typename    TO,
-	size_t      N
+	typename     TI, // [inferred] Type carried on input stream
+	typename     TO, // [inferred] Type carried on output streams, must be assignable from TI
+	std::size_t  N   // [inferred] Number of output streams
 >
 void StreamingDup(
 	hls::stream<TI>  &src,
