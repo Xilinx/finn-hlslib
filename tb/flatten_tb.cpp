@@ -12,7 +12,6 @@
 #include <ap_float.h>
 #include "flatten.hpp"
 
-#include <cmath>
 #include <cstring>
 #include <iostream>
 
