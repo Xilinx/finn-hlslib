@@ -55,6 +55,5 @@
 #include "dma.h"
 #include "slidingwindow.h"
 #include "maxpool.h"
-#include "convlayer.h"
 #include "vvau.hpp"
 #include "upsample.hpp"
