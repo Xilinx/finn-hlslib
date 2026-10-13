@@ -49,7 +49,7 @@ void mac(TAcc &acc, TW w, TI a, ap_resource_dflt const&) {
 template<typename TAcc, typename TW, typename TI>
 void mac(TAcc &acc, TW w, TI a, ap_resource_lut const&) {
 #pragma HLS inline
-#pragma HLS BIND_OP variable=acc op=macc impl=fabric
+#pragma HLS BIND_OP variable=acc op=mul impl=fabric
 	acc += w * a;
 }
 
@@ -57,7 +57,7 @@ void mac(TAcc &acc, TW w, TI a, ap_resource_lut const&) {
 template<typename TAcc, typename TW, typename TI>
 void mac(TAcc &acc, TW w, TI a, ap_resource_dsp const&) {
 #pragma HLS inline
-#pragma HLS BIND_OP variable=acc op=macc impl=dsp
+#pragma HLS BIND_OP variable=acc op=mul impl=dsp
 	acc += w * a;
 }
 
