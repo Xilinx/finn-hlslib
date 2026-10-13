@@ -59,6 +59,7 @@ class Bipolar {
 	ap_uint<1>  v;
 
 public:
+	static const int  width = 1;
 	Bipolar() : v(0) {}
 	Bipolar(float f) : v(f != 0? 1 : 0) {}
 	Bipolar(ap_uint<1> b) : v(b) {}

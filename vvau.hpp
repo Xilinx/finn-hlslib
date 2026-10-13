@@ -49,6 +49,7 @@
 
 #include "activations.hpp"
 #include "mac.hpp"
+#include "tensor.hpp"
 
 
 //---------------------------------------------------------------------------
@@ -156,7 +157,7 @@ template<
 void Vector_Vector_Activate_Stream_Batch(
 	hls::stream<hls::vector<hls::vector<TI, SIMD>, PE>> &in,
 	hls::stream<hls::vector<TO, PE>>                    &out,
-	hls::stream<hls::vector<hls::vector<TW, SIMD>, PE>> &weights,
+	hls::stream<tensor<TW, PE, SIMD>>                   &weights,
 	TA const                                            &activation,
 	TR const                                            &res = {}
 ) {

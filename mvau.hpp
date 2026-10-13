@@ -46,6 +46,7 @@
 
 #include "activations.hpp"
 #include "mac.hpp"
+#include "tensor.hpp"
 
 
 //---------------------------------------------------------------------------
@@ -168,11 +169,11 @@ template<
 	typename  TR = ap_resource_dflt
 >
 void Matrix_Vector_Activate_Stream_Batch(
-	hls::stream<hls::vector<TI, SIMD>>                  &in,
-	hls::stream<hls::vector<TO, PE>>                    &out,
-	hls::stream<hls::vector<hls::vector<TW, SIMD>, PE>> &weights,
-	TA const                                            &activation,
-	TR const                                            &res = {}
+	hls::stream<hls::vector<TI, SIMD>>  &in,
+	hls::stream<hls::vector<TO, PE>>   &out,
+	hls::stream<tensor<TW, PE, SIMD>>  &weights,
+	TA const                                 &activation,
+	TR const                                 &res = {}
 ) {
 #pragma HLS pipeline II=1 style=flp
 
