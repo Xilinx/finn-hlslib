@@ -32,19 +32,10 @@
  *******************************************************************************/
 
 /*******************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *           Thomas B. Preusser <thomas.preusser@amd.com>
- *           Christoph Doehring <cdoehrin@xilinx.com>
- *
- *  \file mvau.hpp
- *
- *  Matrix-Vector-Activation Unit — function-pipelined implementation.
- *
- *  The function body is the pipeline stage: no loop, no reps parameter.
- *  Under ap_ctrl_none, it runs every cycle, processing one (sf, nf) fold
- *  beat per invocation. Data flow self-regulates via stream back-pressure.
- *
+ * @brief	Matrix-Vector-Activation Unit
+ * @author	Giulio Gambardella <giuliog@xilinx.com>
+ * @author	Thomas B. Preusser <thomas.preusser@amd.com>
+ * @author	Christoph Doehring <cdoehrin@xilinx.com>
  *******************************************************************************/
 
 #ifndef MVAU_HPP
@@ -54,6 +45,7 @@
 #include <hls_vector.h>
 
 #include "activations.hpp"
+#include "mac.hpp"
 
 
 //---------------------------------------------------------------------------
@@ -73,13 +65,15 @@ template<
 	typename  TI,        // input activation element type
 	typename  TO,        // output element type
 	typename  TW_arr,    // weight array type: operator[](tile) -> vector<vector<TW, SIMD>, PE>-like
-	typename  TA         // activation class
+	typename  TA,        // activation class
+	typename  TR = ap_resource_dflt  // compute resource
 >
 void Matrix_Vector_Activate_Batch(
-	hls::stream<hls::vector<TI, SIMD>>  &in,
-	hls::stream<hls::vector<TO, PE>>    &out,
-	TW_arr const                        &weights,
-	TA const                            &activation
+	hls::stream<hls::vector<TI, SIMD>> &in,
+	hls::stream<hls::vector<TO, PE>>   &out,
+	TW_arr const                       &weights,
+	TA const                           &activation,
+	TR const                           &res = {}
 ) {
 #pragma HLS pipeline II=1 style=flp
 
@@ -142,7 +136,7 @@ void Matrix_Vector_Activate_Batch(
 			auto const  w = weights[tile][pe];
 			for(unsigned  i = 0; i < SIMD; i++) {
 #pragma HLS unroll
-				accu[pe] += w[i] * inElem[i];
+				mac(accu[pe], w[i], inElem[i], res);
 			}
 		}
 
@@ -151,9 +145,7 @@ void Matrix_Vector_Activate_Batch(
 			sf = 0;
 			nf_out = nf;
 			push = true;
-			if(++nf == NF) {
-				nf = 0;
-			}
+			if(++nf == NF)  nf = 0;
 		}
 	}
 }
@@ -172,13 +164,15 @@ template<
 	typename  TW,
 	typename  TI,
 	typename  TO,
-	typename  TA
+	typename  TA,
+	typename  TR = ap_resource_dflt
 >
 void Matrix_Vector_Activate_Stream_Batch(
 	hls::stream<hls::vector<TI, SIMD>>                  &in,
-	hls::stream<hls::vector<TO, PE>>                     &out,
+	hls::stream<hls::vector<TO, PE>>                    &out,
 	hls::stream<hls::vector<hls::vector<TW, SIMD>, PE>> &weights,
-	TA const                                             &activation
+	TA const                                            &activation,
+	TR const                                            &res = {}
 ) {
 #pragma HLS pipeline II=1 style=flp
 
@@ -240,7 +234,7 @@ void Matrix_Vector_Activate_Stream_Batch(
 			auto const  w = ww[pe];
 			for(unsigned  i = 0; i < SIMD; i++) {
 #pragma HLS unroll
-				accu[pe] += w[i] * inElem[i];
+				mac(accu[pe], w[i], inElem[i], res);
 			}
 		}
 
@@ -249,9 +243,7 @@ void Matrix_Vector_Activate_Stream_Batch(
 			sf = 0;
 			nf_out = nf;
 			push = true;
-			if(++nf == NF) {
-				nf = 0;
-			}
+			if(++nf == NF)  nf = 0;
 		}
 	}
 }

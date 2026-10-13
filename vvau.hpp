@@ -32,21 +32,13 @@
  *******************************************************************************/
 
 /*******************************************************************************
+ * @brief	Vector-Vector-Activation Unit (depthwise separable convolutions).
+ * @author	Giulio Gambardella <giuliog@xilinx.com>
+ * @author	Thomas B. Preusser <thomas.preusser@amd.com>
  *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *           Thomas B. Preusser <thomas.preusser@amd.com>
- *
- *  \file vvau.hpp
- *
- *  Vector-Vector-Activation Unit (depthwise separable convolutions) —
- *  function-pipelined implementation.
- *
- *  Same pattern as mvau.hpp: no loop, no reps, static state,
- *  function-level pipeline II=1.
- *
+ * @description
  *  Key difference from MVU: each PE processes its own dedicated input
  *  activation slice (no input broadcasting/reuse across neuron folds).
- *
  *******************************************************************************/
 
 #ifndef VVAU_HPP
@@ -56,6 +48,7 @@
 #include <hls_vector.h>
 
 #include "activations.hpp"
+#include "mac.hpp"
 
 
 //---------------------------------------------------------------------------
@@ -70,13 +63,15 @@ template<
 	typename  TI,        // input activation element type
 	typename  TO,        // output element type
 	typename  TW_arr,    // weight array type: operator[](tile) -> vector<vector<TW, SIMD>, PE>-like
-	typename  TA         // activation class
+	typename  TA,        // activation class
+	typename  TR = ap_resource_dflt  // compute resource
 >
 void Vector_Vector_Activate_Batch(
 	hls::stream<hls::vector<hls::vector<TI, SIMD>, PE>> &in,
-	hls::stream<hls::vector<TO, PE>>                     &out,
-	TW_arr const                                         &weights,
-	TA const                                             &activation
+	hls::stream<hls::vector<TO, PE>>                    &out,
+	TW_arr const                                        &weights,
+	TA const                                            &activation,
+	TR const                                            &res = {}
 ) {
 #pragma HLS pipeline II=1 style=flp
 
@@ -129,7 +124,7 @@ void Vector_Vector_Activate_Batch(
 			auto const  a = inElem[pe];
 			for(unsigned  i = 0; i < SIMD; i++) {
 #pragma HLS unroll
-				accu[pe] += w[i] * a[i];
+				mac(accu[pe], w[i], a[i], res);
 			}
 		}
 
@@ -138,9 +133,7 @@ void Vector_Vector_Activate_Batch(
 			sf = 0;
 			nf_out = nf;
 			push = true;
-			if(++nf == NF) {
-				nf = 0;
-			}
+			if(++nf == NF)  nf = 0;
 		}
 	}
 }
@@ -157,13 +150,15 @@ template<
 	typename  TW,
 	typename  TI,
 	typename  TO,
-	typename  TA
+	typename  TA,
+	typename  TR = ap_resource_dflt
 >
 void Vector_Vector_Activate_Stream_Batch(
 	hls::stream<hls::vector<hls::vector<TI, SIMD>, PE>> &in,
-	hls::stream<hls::vector<TO, PE>>                     &out,
+	hls::stream<hls::vector<TO, PE>>                    &out,
 	hls::stream<hls::vector<hls::vector<TW, SIMD>, PE>> &weights,
-	TA const                                             &activation
+	TA const                                            &activation,
+	TR const                                            &res = {}
 ) {
 #pragma HLS pipeline II=1 style=flp
 
@@ -216,7 +211,7 @@ void Vector_Vector_Activate_Stream_Batch(
 			auto const  a = inElem[pe];
 			for(unsigned  i = 0; i < SIMD; i++) {
 #pragma HLS unroll
-				accu[pe] += w[i] * a[i];
+				mac(accu[pe], w[i], a[i], res);
 			}
 		}
 
@@ -225,9 +220,7 @@ void Vector_Vector_Activate_Stream_Batch(
 			sf = 0;
 			nf_out = nf;
 			push = true;
-			if(++nf == NF) {
-				nf = 0;
-			}
+			if(++nf == NF)  nf = 0;
 		}
 	}
 }
