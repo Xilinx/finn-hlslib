@@ -1,5 +1,6 @@
 /******************************************************************************
  *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (C) Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -23,7 +24,7 @@
  *  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  *  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- *  OR BUSINESS INTERRUPTION). HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ *  OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
  *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -48,7 +49,7 @@
  *  the Marie Skłodowska-Curie Grant Agreement No. 751339.
  *
  *****************************************************************************/
- 
+
 /*****************************************************************************
  * MAC operation template:
  *
@@ -59,7 +60,7 @@
  *
  *   mac<ap_uint<14>>(0, c, d)
  *****************************************************************************/
- 
+
 #ifndef MAC_HPP
 #define MAC_HPP
 
@@ -68,16 +69,10 @@
 
 /**
  * \brief      Multipliy operation between 2 operands, HLS choose the best resource
- * 
- * The same multiply operation can be implemented using multiple Vivado HLS pragmas to select the 
- * hardware resource to be used:
- * ap_resource_dflt will let HLS choose the best one
- * ap_resource_lut will force HLS to implement the multiplier in LUTs
- * ap_resource_dsp will force HLS to implement the multiplier in DSP48
  *
  * \tparam     TC    First operand datatype (weights)
  * \tparam     TD    Second operand datatype (input)
- * 
+ *
  * \param      c     First operand (array of weights)
  * \param      d     Second operand (array of input activation)
  * \param      r     Resource type for the hardware implementation of the MAC block
@@ -93,21 +88,6 @@ auto mul(TC const &c, TD const &d, ap_resource_dflt const&) -> decltype(c*d) {
 
 /**
  * \brief      Multiply operation between 2 operands, implemented in LUT
- * 
- * The same multiply operation can be implemented using multiple Vivado HLS pragmas to select the 
- * hardware resource to be used:
- * ap_resource_dflt will let HLS choose the best one
- * ap_resource_lut will force HLS to implement the multiplier in LUTs
- * ap_resource_dsp will force HLS to implement the multiplier in DSP48
- *
- * \tparam     TC    First operand datatype (weights)
- * \tparam     TD    Second operand datatype (input)
- * 
- * \param      c     First operand (array of weights)
- * \param      d     Second operand (array of input activation)
- * \param      r     Resource type for the hardware implementation of the MAC block
- *
- * \return     Result of the multiply operation
  */
 template<typename TC, typename TD>
 auto mul(TC const &c, TD const &d, ap_resource_lut const&) -> decltype(c*d) {
@@ -119,21 +99,6 @@ auto mul(TC const &c, TD const &d, ap_resource_lut const&) -> decltype(c*d) {
 
 /**
  * \brief      Multipliy operation between 2 operands, implemented in a DSP48
- * 
- * The same multiply operation can be implemented using multiple Vivado HLS pragmas to select the 
- * hardware resource to be used:
- * ap_resource_dflt will let HLS choose the best one
- * ap_resource_lut will force HLS to implement the multiplier in LUTs
- * ap_resource_dsp will force HLS to implement the multiplier in DSP48
- *
- * \tparam     TC    First operand datatype (weights)
- * \tparam     TD    Second operand datatype (input)
- * 
- * \param      c     First operand (array of weights)
- * \param      d     Second operand (array of input activation)
- * \param      r     Resource type for the hardware implementation of the MAC block
- *
- * \return     Result of the multiply operation
  */
 template<typename TC, typename TD>
 auto mul(TC const &c, TD const &d, ap_resource_dsp const&) -> decltype(c*d) {
@@ -150,8 +115,8 @@ auto mul(TC const &c, TD const &d, ap_resource_dsp const&) -> decltype(c*d) {
  * \tparam     T     Accumulator datatype
  * \tparam     TC    First operand datatype (weights)
  * \tparam     TD    Second operand datatype (input)
- * \tparam     R     Datatype for the resource used for FPGA implementation of the MAC  - safely deducible from the paramaters
- * 
+ * \tparam     R     Datatype for the resource used for FPGA implementation of the MAC
+ *
  * \param      a     Initialization value of the accumulation
  * \param      c     First operand (array of weights)
  * \param      d     Second operand (array of input activation)
@@ -172,20 +137,7 @@ T mac(T const &a, TC const &c, TD const &d, R const &r, unsigned mmv) {
 }
 
 /**
- * \brief      MAC with selectable implementation resource, used by Matrix_Vector_Activate_Batch
- *
- * \tparam     N     Number of MAC to be performed (equals to SIMD in mvau)
- * \tparam     T     Accumulator datatype
- * \tparam     TC    First operand datatype (weights)
- * \tparam     TD    Second operand datatype (input)
- * \tparam     R     Datatype for the resource used for FPGA implementation of the MAC  - safely deducible from the paramaters
- * 
- * \param      a     Initialization value of the accumulation
- * \param      c     First operand (array of weights)
- * \param      d     Second operand (array of input activation)
- * \param      r     Resource type for the hardware implementation of the MAC block
- *
- * \return     Result of the MAC operation
+ * \brief      MAC with selectable implementation resource (no mmv variant)
  */
 template<unsigned N, typename T, typename TC, typename TD, typename R>
 T mac(T const &a, TC const &c, TD const &d, R const &r) {
