@@ -132,12 +132,16 @@ void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
     }
 
     // compute vector-vector product for each processing element
-    constexpr unsigned  ACT_PE_WIDTH = SIMD * TSrcI::width;
     auto const &w = weights.weights(nf * SF + sf);
     for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS UNROLL
       auto const  wgt = TWeightI()(w[pe]);
-      ap_uint<ACT_PE_WIDTH> const  act_simd = inElem((pe+1)*ACT_PE_WIDTH-1, pe*ACT_PE_WIDTH);
+
+      ap_uint<SIMD*TSrcI::width> act_simd = 0;
+      for(unsigned int simd = 0; simd < SIMD; simd++) {
+        act_simd(TSrcI::width*(simd+1)-1, TSrcI::width*simd) = (Slice<ap_uint<PE*TSrcI::width>>()(inElem)(SIMD - simd - 1, 0))
+                                                               (TSrcI::width*(pe+1)-1, TSrcI::width*pe);
+      }
 
       for(unsigned mmv = 0; mmv < MMV; mmv++) {
         auto const  act = TSrcI()(act_simd, mmv);
@@ -247,11 +251,15 @@ void Vector_Vector_Activate_Stream_Batch(
 			w.m_weights[pe] = W_packed((pe+1)*SIMD*TW::width-1, pe*SIMD*TW::width);
 		}
 
-		constexpr unsigned  ACT_PE_WIDTH = SIMD * TSrcI::width;
 		for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS UNROLL
 			auto const  wgt = TWeightI()(w[pe]);
-			ap_uint<ACT_PE_WIDTH> const  act_simd = inElem((pe+1)*ACT_PE_WIDTH-1, pe*ACT_PE_WIDTH);
+
+			ap_uint<SIMD*TSrcI::width> act_simd = 0;
+			for(unsigned int simd = 0; simd < SIMD; simd++) {
+				act_simd(TSrcI::width*(simd+1)-1, TSrcI::width*simd) = (Slice<ap_uint<PE*TSrcI::width>>()(inElem)(SIMD - simd - 1, 0))
+																	   (TSrcI::width*(pe+1)-1, TSrcI::width*pe);
+			}
 
 			for(unsigned mmv = 0; mmv < MMV; mmv++) {
 				auto const  act = TSrcI()(act_simd, mmv);
