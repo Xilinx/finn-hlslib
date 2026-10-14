@@ -11,7 +11,6 @@
 
 #include <ap_int.h>
 #include <hls_stream.h>
-#include <hls_vector.h>
 
 // Test configuration: MatrixW=8, MatrixH=4, SIMD=2, PE=2
 // => NF=2, SF=4  (exercises folding in both dimensions)
@@ -26,9 +25,10 @@ using TW = ap_int<4>;   // 4-bit signed weights
 using TI = ap_uint<8>;  // 8-bit unsigned activations
 using TO = ap_int<16>;  // 16-bit signed output (accumulator passthrough)
 
-using wgt_t = hls::vector<hls::vector<TW, SIMD>, PE>;
-using act_t = hls::vector<TI, SIMD>;
-using out_t = hls::vector<TO, PE>;
+// Flat ap_uint stream types matching kernel expectations
+using act_t = ap_uint<SIMD * TI::width>;           // 16 bits
+using out_t = ap_uint<PE * TO::width>;              // 32 bits
+using wgt_t = ap_uint<PE * SIMD * TW::width>;      // 16 bits
 
 void mvau_top(
 	hls::stream<act_t> &in,

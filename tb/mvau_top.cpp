@@ -24,7 +24,7 @@ void mvau_top(
 #pragma HLS interface ap_ctrl_none port=return
 #pragma HLS dataflow disable_start_propagation
 
-	Matrix_Vector_Activate_Stream_Batch<MW, MH, SIMD, PE, TW, TI, TO>(
-		in, out, weights, PassThroughActivation<TO>()
+	Matrix_Vector_Activate_Stream_Batch<MW, MH, SIMD, PE, Slice<TI>, Slice<TO>, Identity, TW>(
+		in, out, weights, PassThroughActivation<TO>(), ap_resource_dflt()
 	);
 }

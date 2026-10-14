@@ -11,7 +11,6 @@
 
 #include <ap_int.h>
 #include <hls_stream.h>
-#include <hls_vector.h>
 
 // Test configuration: Channels=4, Kernel_2=6, SIMD=2, PE=2
 // => NF=2, SF=3  (exercises folding in both dimensions)
@@ -26,9 +25,11 @@ using TW = ap_int<4>;   // 4-bit signed weights
 using TI = ap_uint<8>;  // 8-bit unsigned activations
 using TO = ap_int<16>;  // 16-bit signed output
 
-using wgt_t = hls::vector<hls::vector<TW, SIMD>, PE>;
-using act_t = hls::vector<hls::vector<TI, SIMD>, PE>;
-using out_t = hls::vector<TO, PE>;
+// Flat ap_uint stream types matching kernel expectations
+// VVAU input carries PE groups of SIMD activations per beat
+using act_t = ap_uint<PE * SIMD * TI::width>;     // 32 bits
+using out_t = ap_uint<PE * TO::width>;             // 32 bits
+using wgt_t = ap_uint<PE * SIMD * TW::width>;     // 16 bits
 
 void vvau_top(
 	hls::stream<act_t> &in,
