@@ -48,7 +48,7 @@ int main() {
 		for(unsigned  r = 0; r < REPS; r++) {
 			for(unsigned  d = 0; d < NUM_OUTPUTS; d++) {
 				for(unsigned  i = 0; i < FOLDS_PER_OUTPUT[d]; i++) {
-					T const  x(ap_uint<T::TOTAL>(c++));
+					T const  x(ap_uint<T::width>(c++));
 					src.write(x);
 					exp[d].write(x);
 				}
@@ -69,7 +69,7 @@ int main() {
 					return  1;
 				}
 				auto const  ref = exp[d].read();
-				if(ap_uint<T::TOTAL>(y) != ap_uint<T::TOTAL>(ref)) {
+				if(y != ref) {
 					std::cerr << "Output mismatch: " << y << " instead of " << ref << std::endl;
 					return  1;
 				}

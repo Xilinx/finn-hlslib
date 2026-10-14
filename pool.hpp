@@ -115,10 +115,7 @@ public:
 	T init() {
 #pragma HLS inline
 		T  y;
-		for(unsigned  i = 0; i < PE; i++) {
-#pragma HLS unroll
-			y[i] = std::numeric_limits<E>::min();
-		}
+		for(auto e : y)  e = std::numeric_limits<E>::min();
 		return  y;
 	}
 

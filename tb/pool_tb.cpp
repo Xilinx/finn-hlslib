@@ -111,7 +111,7 @@ int main() {
 		if(!ref_empty && !dst_empty) {
 			auto const  exp = ref.read();
 			auto const  act = dst.read();
-			if(ap_uint<vec_t::TOTAL>(act) != ap_uint<vec_t::TOTAL>(exp)) {
+			if(act != exp) {
 				std::cerr
 					<< "Output mismatch:\n\t"
 					<< act << "\n\t"

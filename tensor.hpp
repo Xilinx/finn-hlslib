@@ -209,8 +209,9 @@ T from_bitimage(ap_uint<width_v<T>> const &bits) {
 template<typename T, unsigned ...DIMS>
 class tensor;
 
-//-- Leaf write-through proxy ------------------------------------------------
+//-- Write-through proxy -----------------------------------------------------
 //  References W bits within an arbitrary-width ap_uint at a computed offset.
+//  Works for both scalar and tensor inner types via BitImage/to_bitimage.
 template<typename T, unsigned W, unsigned HOST_W>
 class tensor_ref {
 	ap_uint<HOST_W>  &m_host;
@@ -226,62 +227,110 @@ public:
 		m_host(m_off + W - 1, m_off) = to_bitimage(val);
 		return  *this;
 	}
+
+	// Chained indexing for tensor inner types (SFINAE: only when T has ref_at_static)
+	template<typename U = T>
+	auto operator[](unsigned i) -> decltype(U::template ref_at_static<HOST_W>(std::declval<ap_uint<HOST_W>&>(), 0u, 0u)) {
+#pragma HLS inline
+		return  T::template ref_at_static<HOST_W>(m_host, m_off, i);
+	}
 };
 
-//-- N-D write-through proxy ------------------------------------------------
-//  References INNER_W bits for a sub-tensor within an arbitrary-width ap_uint.
-template<typename INNER_T, unsigned INNER_W, unsigned HOST_W>
-class tensor_nd_ref {
-	ap_uint<HOST_W>  &m_host;
-	unsigned const    m_off;
+//-- CRTP base: shared comparison, iteration, and size -----------------------
+template<typename Derived, typename InnerT, unsigned Count>
+class tensor_common {
+	static constexpr unsigned  InnerW = width_v<InnerT>;
+	static constexpr unsigned  width  = Count * InnerW;
+
+	auto&       data()       { return  static_cast<Derived*>(this)->m_data; }
+	auto const& data() const { return  static_cast<Derived const*>(this)->m_data; }
+
 public:
-	tensor_nd_ref(ap_uint<HOST_W> &host, unsigned off) : m_host(host), m_off(off) {}
-	operator INNER_T() const {
+	//-- Comparison (unsigned bit-image order) --------------------------------
+	bool operator==(Derived const &o) const { return  data() == o.m_data; }
+	bool operator!=(Derived const &o) const { return  data() != o.m_data; }
+	bool operator< (Derived const &o) const { return  data() <  o.m_data; }
+	bool operator<=(Derived const &o) const { return  data() <= o.m_data; }
+	bool operator> (Derived const &o) const { return  data() >  o.m_data; }
+	bool operator>=(Derived const &o) const { return  data() >= o.m_data; }
+
+	//-- Size ----------------------------------------------------------------
+	static constexpr unsigned size() { return  Count; }
+
+	//-- Const iteration: yields InnerT by value -----------------------------
+	class const_iterator {
+		ap_uint<width> const  &m_data;
+		unsigned               m_idx;
+	public:
+		const_iterator(ap_uint<width> const &data, unsigned idx) : m_data(data), m_idx(idx) {}
+		InnerT operator*() const { return  BitImage<InnerT>::from(ap_uint<InnerW>(m_data((m_idx+1)*InnerW - 1, m_idx*InnerW))); }
+		const_iterator& operator++() { ++m_idx; return  *this; }
+		bool operator!=(const_iterator const &o) const { return  m_idx != o.m_idx; }
+	};
+	const_iterator begin() const { return  { data(), 0 }; }
+	const_iterator end()   const { return  { data(), Count }; }
+
+	//-- Mutable iteration: yields tensor_ref write-through proxies ----------
+	class iterator {
+		ap_uint<width>  &m_data;
+		unsigned         m_idx;
+	public:
+		iterator(ap_uint<width> &data, unsigned idx) : m_data(data), m_idx(idx) {}
+		tensor_ref<InnerT, InnerW, width> operator*() { return  { m_data, m_idx * InnerW }; }
+		iterator& operator++() { ++m_idx; return  *this; }
+		bool operator!=(iterator const &o) const { return  m_idx != o.m_idx; }
+	};
+	iterator begin() { return  { data(), 0 }; }
+	iterator end()   { return  { data(), Count }; }
+
+	//-- Balanced binary tree reduction over all Count elements ---------------
+	template<typename TR = InnerT, typename F>
+	TR reduce(F &&f) const {
 #pragma HLS inline
-		return  INNER_T(ap_uint<INNER_W>(m_host(m_off + INNER_W - 1, m_off)));
-	}
-	tensor_nd_ref& operator=(INNER_T const &val) {
-#pragma HLS inline
-		m_host(m_off + INNER_W - 1, m_off) = ap_uint<INNER_W>(val);
-		return  *this;
-	}
-	// Chained indexing: delegate to the inner tensor's ref_at_static
-	// Template parameter defers instantiation until call site (after tensor is defined)
-	template<typename IT = INNER_T>
-	auto operator[](unsigned i) -> decltype(IT::template ref_at_static<HOST_W>(std::declval<ap_uint<HOST_W>&>(), 0u, 0u)) {
-#pragma HLS inline
-		return  IT::template ref_at_static<HOST_W>(m_host, m_off, i);
+		TR  tree[2*Count-1];
+#pragma HLS array_partition complete dim=1 variable=tree
+		for(unsigned  i = Count; i-- > 0;) {
+#pragma HLS unroll
+			tree[Count-1 + i] = static_cast<Derived const*>(this)->operator[](i);
+		}
+		for(unsigned  i = Count-1; i-- > 0;) {
+#pragma HLS unroll
+			tree[i] = f(tree[2*i+1], tree[2*i+2]);
+		}
+		return  tree[0];
 	}
 };
+
 
 //-- 1-D base case -----------------------------------------------------------
 template<typename T, unsigned N>
-class tensor<T, N> {
+class tensor<T, N> : public tensor_common<tensor<T, N>, T, N> {
+	friend class tensor_common<tensor<T, N>, T, N>;
 	static constexpr unsigned  W = width_v<T>;
 
 	ap_uint<N * W>  m_data;
 
 public:
-	static constexpr unsigned  TOTAL = N * W;
+	static constexpr unsigned  width = N * W;
 
 	tensor() = default;
-	explicit tensor(ap_uint<TOTAL> const &raw) : m_data(raw) {}
+	explicit tensor(ap_uint<width> const &raw) : m_data(raw) {}
 	tensor(std::initializer_list<T> elems) : m_data(0) {
 		auto  it = elems.begin();
 		for(unsigned i = 0; i < N && it != elems.end(); i++, ++it) {
 			m_data((i+1)*W - 1, i*W) = to_bitimage(*it);
 		}
 	}
-	operator ap_uint<TOTAL>() const { return  m_data; }
+	operator ap_uint<width>() const { return  m_data; }
 
 	T operator[](unsigned i) const {
 #pragma HLS inline
 		return  BitImage<T>::from(ap_uint<W>(m_data((i+1)*W - 1, i*W)));
 	}
 
-	tensor_ref<T, W, TOTAL> operator[](unsigned i) {
+	tensor_ref<T, W, width> operator[](unsigned i) {
 #pragma HLS inline
-		return  tensor_ref<T, W, TOTAL>(m_data, i * W);
+		return  tensor_ref<T, W, width>(m_data, i * W);
 	}
 
 	// Static helper for chained ref_at from a parent's data store
@@ -291,63 +340,73 @@ public:
 		return  tensor_ref<T, W, HOST_W>(host, base + i * W);
 	}
 
-	// Balanced binary tree reduction over all N elements
-	template<typename TR = T, typename F>
-	TR reduce(F &&f) const {
-#pragma HLS inline
-		TR  tree[2*N-1];
-#pragma HLS array_partition complete dim=1 variable=tree
-		for(unsigned  i = N; i-- > 0;) {
-#pragma HLS unroll
-			tree[N-1 + i] = (*this)[i];
-		}
-		for(unsigned  i = N-1; i-- > 0;) {
-#pragma HLS unroll
-			tree[i] = f(tree[2*i+1], tree[2*i+2]);
-		}
-		return  tree[0];
-	}
+	// Pull in base-class begin/end (hidden by operator[] overloads)
+	using tensor_common<tensor, T, N>::begin;
+	using tensor_common<tensor, T, N>::end;
 };
 
 //-- N-D recursive case ------------------------------------------------------
 template<typename T, unsigned DIM0, unsigned ...REST>
-class tensor<T, DIM0, REST...> {
+class tensor<T, DIM0, REST...> : public tensor_common<tensor<T, DIM0, REST...>, tensor<T, REST...>, DIM0> {
 public:
 	using inner_t = tensor<T, REST...>;
 
 private:
-	static constexpr unsigned  INNER_W = inner_t::TOTAL;
+	friend class tensor_common<tensor, inner_t, DIM0>;
+	static constexpr unsigned  INNER_W = inner_t::width;
 
 	ap_uint<DIM0 * INNER_W>  m_data;
 
 public:
-	static constexpr unsigned  TOTAL = DIM0 * INNER_W;
+	static constexpr unsigned  width = DIM0 * INNER_W;
 
 	tensor() = default;
-	explicit tensor(ap_uint<TOTAL> const &raw) : m_data(raw) {}
+	explicit tensor(ap_uint<width> const &raw) : m_data(raw) {}
 	tensor(std::initializer_list<inner_t> elems) : m_data(0) {
 		auto  it = elems.begin();
 		for(unsigned i = 0; i < DIM0 && it != elems.end(); i++, ++it) {
 			m_data((i+1)*INNER_W - 1, i*INNER_W) = ap_uint<INNER_W>(*it);
 		}
 	}
-	operator ap_uint<TOTAL>() const { return  m_data; }
+	operator ap_uint<width>() const { return  m_data; }
 
 	inner_t const operator[](unsigned i) const {
 #pragma HLS inline
-		return  inner_t(ap_uint<INNER_W>(m_data((i+1)*INNER_W - 1, i*INNER_W)));
+		return  BitImage<inner_t>::from(ap_uint<INNER_W>(m_data((i+1)*INNER_W - 1, i*INNER_W)));
 	}
 
-	tensor_nd_ref<inner_t, INNER_W, TOTAL> operator[](unsigned i) {
+	tensor_ref<inner_t, INNER_W, width> operator[](unsigned i) {
 #pragma HLS inline
-		return  tensor_nd_ref<inner_t, INNER_W, TOTAL>(m_data, i * INNER_W);
+		return  tensor_ref<inner_t, INNER_W, width>(m_data, i * INNER_W);
 	}
 
 	// Static helper for chained ref_at from a parent's data store
 	template<unsigned HOST_W>
-	static tensor_nd_ref<inner_t, INNER_W, HOST_W> ref_at_static(ap_uint<HOST_W> &host, unsigned base, unsigned i) {
+	static tensor_ref<inner_t, INNER_W, HOST_W> ref_at_static(ap_uint<HOST_W> &host, unsigned base, unsigned i) {
 #pragma HLS inline
-		return  tensor_nd_ref<inner_t, INNER_W, HOST_W>(host, base + i * INNER_W);
+		return  tensor_ref<inner_t, INNER_W, HOST_W>(host, base + i * INNER_W);
+	}
+
+	// Pull in base-class begin/end (hidden by operator[] overloads)
+	using tensor_common<tensor, inner_t, DIM0>::begin;
+	using tensor_common<tensor, inner_t, DIM0>::end;
+};
+
+
+//===========================================================================
+// Bit-image support for tensor types (width_trait is above, before tensor_common)
+//===========================================================================
+template<typename T, unsigned ...DIMS>
+ap_uint<tensor<T, DIMS...>::width> to_bitimage(tensor<T, DIMS...> const &val) {
+#pragma HLS inline
+	return  val;
+}
+
+template<typename T, unsigned ...DIMS>
+struct BitImage<tensor<T, DIMS...>> {
+	static tensor<T, DIMS...> from(ap_uint<tensor<T, DIMS...>::width> const &bits) {
+#pragma HLS inline
+		return  tensor<T, DIMS...>(bits);
 	}
 };
 
@@ -358,8 +417,8 @@ public:
 template<typename  T, unsigned  N>
 inline std::ostream& operator<<(std::ostream &o, tensor<T, N> const &v) {
 	char  delim = '{';
-	for(unsigned  i = 0; i < N; i++) {
-		o << delim << v[i];
+	for(auto const &e : v) {
+		o << delim << e;
 		delim = ':';
 	}
 	return (o << '}');

@@ -103,7 +103,7 @@ int main()
 		else{
 			OUT_TYPE y = out_V.read();
 			OUT_TYPE exp = expected.read();
-			if(ap_uint<OUT_TYPE::TOTAL>(y) != ap_uint<OUT_TYPE::TOTAL>(exp))
+			if(y != exp)
 				std::cerr << "ERROR! Unexpected output nr " << out_cnt << ". Got: " << y << " Expected: " << exp << std::endl;
 			out_cnt++;
 		}
