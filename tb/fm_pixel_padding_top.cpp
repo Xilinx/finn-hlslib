@@ -34,9 +34,11 @@
 #include "streamtools.hpp"
 #include "data/config_fmpp.h"
 
+using  vec_t = tensor<ap_uint<INPUT_WIDTH>, SIMD1>;
+
 void test_fm_pixel_padding(
-	hls::stream<ap_uint<SIMD1*INPUT_WIDTH>> &src,
-	hls::stream<ap_uint<SIMD1*INPUT_WIDTH>> &dst
+	hls::stream<vec_t> &src,
+	hls::stream<vec_t> &dst
 ) {
 #pragma HLS DATAFLOW
 	FMPadding_Pixel_Nonsquare<

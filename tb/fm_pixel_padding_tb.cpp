@@ -33,14 +33,17 @@
 #include <hls_stream.h>
 
 #include "data/config_fmpp.h"
+#include "tensor.hpp"
 
 #include <iostream>
 #include <random>
 
 
+using  vec_t = tensor<ap_uint<INPUT_WIDTH>, SIMD1>;
+
 void test_fm_pixel_padding(
-	hls::stream<ap_uint<SIMD1*INPUT_WIDTH>> &src,
-	hls::stream<ap_uint<SIMD1*INPUT_WIDTH>> &dst
+	hls::stream<vec_t> &src,
+	hls::stream<vec_t> &dst
 );
 
 
@@ -48,8 +51,8 @@ int main() {
 	std::cout << "Starting testbench for fm_pixel_padding" << std::endl;
 
 	using T = ap_uint<SIMD1*INPUT_WIDTH>;
-	hls::stream<T> input_stream("input_stream");
-	hls::stream<T> output_stream("output_stream");
+	hls::stream<vec_t> input_stream("input_stream");
+	hls::stream<vec_t> output_stream("output_stream");
 	T  expected[OUTPUT_DIM_Y][OUTPUT_DIM_X][CHANNELS];
 
 	{ // Feed random input sequence
@@ -63,7 +66,7 @@ int main() {
 					T  val = 0;
 					if(((y % YSTRIDE) == 0) && ((x % XSTRIDE) == 0)) {
 						val = dist(rd);
-						input_stream.write(val);
+						input_stream.write(vec_t(val));
 						input_counter++;
 					}
 					expected[y][x][c] = val;
