@@ -46,11 +46,10 @@
  *
  ******************************************************************************/
 
-#ifndef STREAMTOOLS_H
-#define STREAMTOOLS_H
+#ifndef STREAMTOOLS_HPP
+#define STREAMTOOLS_HPP
 
 #include "ap_axi_sdata.h"
-#include "mmv.hpp"
 #include "utils.hpp"
 
 /**
@@ -72,8 +71,8 @@ template<unsigned int DataWidth,
 		unsigned int NumAllowed, 	
 		unsigned int NumTotal       
 >
-void StreamLimiter(hls::stream<ap_uint<DataWidth> > & in,
-		hls::stream<ap_uint<DataWidth> > & out) {
+void StreamLimiter(hls::stream<ap_uint<DataWidth>> & in,
+		hls::stream<ap_uint<DataWidth>> & out) {
   static_assert(NumTotal >= NumAllowed, "");
   unsigned int numLeft = NumAllowed;
   for (unsigned int i = 0; i < NumTotal; i++) {
@@ -106,8 +105,8 @@ template<unsigned int DataWidth,
 		unsigned int NumAllowed, 	
 		unsigned int NumTotal       
 >
-void StreamLimiter_Batch(hls::stream<ap_uint<DataWidth> > & in,
-		hls::stream<ap_uint<DataWidth> > & out, unsigned int numReps) {
+void StreamLimiter_Batch(hls::stream<ap_uint<DataWidth>> & in,
+		hls::stream<ap_uint<DataWidth>> & out, unsigned int numReps) {
   for (unsigned int rep = 0; rep < numReps; rep++) {
     StreamLimiter<DataWidth, NumAllowed, NumTotal>(in, out);
   }
@@ -137,8 +136,8 @@ template<	unsigned int ImgDim,
 			unsigned int NumChannels,
 			typename In_t,
       unsigned int PaddingStyle=2>
-void SameResize(hls::stream<ap_uint<NumChannels* In_t::width> > &in,
-		hls::stream<ap_uint<NumChannels* In_t::width> > &out){
+void SameResize(hls::stream<ap_uint<NumChannels* In_t::width>> &in,
+		hls::stream<ap_uint<NumChannels* In_t::width>> &out){
 
 	// Number of "same" windows over the input data
 	constexpr unsigned int SameWindows = (ImgDim) / Stride + ((ImgDim % Stride) > 0);
@@ -206,8 +205,8 @@ template<	unsigned int ImgDim,
 			unsigned int NumChannels,
 			typename In_t,
       unsigned int PaddingStyle=2>
-void SameResize_Batch(hls::stream<ap_uint<NumChannels* In_t::width> > &in,
-		hls::stream<ap_uint<NumChannels* In_t::width> > &out,
+void SameResize_Batch(hls::stream<ap_uint<NumChannels* In_t::width>> &in,
+		hls::stream<ap_uint<NumChannels* In_t::width>> &out,
 		const unsigned int numReps) {
 	for (unsigned int rep = 0; rep < numReps; rep++) {
 		SameResize<ImgDim, KernelDim, Stride, NumChannels, In_t, PaddingStyle>(in, out);
@@ -516,8 +515,8 @@ template<unsigned int InWidth,
 		unsigned int OutWidth,		
 		unsigned int NumInWords		
 >
-void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth> > & in,
-		hls::stream<ap_uint<OutWidth> > & out, const unsigned int numReps) {
+void StreamingDataWidthConverter_Batch(hls::stream<ap_uint<InWidth>> & in,
+		hls::stream<ap_uint<OutWidth>> & out, const unsigned int numReps) {
   static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0), "");
 
   if (InWidth > OutWidth) {
@@ -733,8 +732,8 @@ template<
     unsigned int OutWidth
 >
 void StreamingDataWidthConverterNoMultiple(
-    hls::stream<ap_uint<InWidth> > & in,
-    hls::stream<ap_uint<OutWidth> > & out) {
+    hls::stream<ap_uint<InWidth>> & in,
+    hls::stream<ap_uint<OutWidth>> & out) {
     static_assert((InWidth % 2) == 0, "");
     static_assert((OutWidth % 2) == 0, "");
     static_assert(InWidth != OutWidth, "");
@@ -898,177 +897,18 @@ void AddStreamsLayer_Batch(hls::stream<ap_uint<NumChannels * In1_t::width>> &in1
 }
 
 
-/**
- * \brief   Stream Multi Chan Data Width Converter - Converts the width of the input stream in the output stream, working on multiple parallel streams
- *
- * Used to upscale or downscale a stream, without any loss of data in the procedure. 
- * For downscaling (InWidth > OutWidth), InWidth has to be a multiple of OutWidth.
- * For upscaling (InWidth < OutWidth), OutWidth has to be a multiple of InWidth.
- * This version works on the MMV structure, with multiple parallel streams
- *
- * \tparam     InWidth      Width, in number of bits, of the input stream
- * \tparam     OutWidth     Width, in number of bits, of the output stream 
- * \tparam     NumInWords   Number of input words to process
- * \tparam     NumVecs      Number of parallel vectors MMV
- *
- * \param      in           Input stream
- * \param      out          Output stream
- * \param      numReps      Number of times the function has to be called
- *
- */
-template<unsigned int InWidth,		// width of input stream
-		unsigned int OutWidth,		// width of output stream
-		unsigned int NumInWords,		// number of input words to process
-		unsigned int NumVecs
->
-void MultiChanDataWidthConverter_Batch(
-	hls::stream<MultiChanData<NumVecs, InWidth> > & in,
-	hls::stream<MultiChanData<NumVecs, OutWidth> > & out,
-	const unsigned int numReps) {
-	static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0), "");
-	if (InWidth > OutWidth) {
-		// emit multiple output words per input word read
-		const unsigned int outPerIn = InWidth / OutWidth;
-		const unsigned int totalIters = NumInWords * outPerIn * numReps;
-		unsigned int o = 0;
-		MultiChanData<NumVecs, InWidth> ei;
-		for (unsigned int t = 0; t < totalIters; t++) {
-#pragma HLS pipeline style=flp II=1
-			// read new input word if current out count is zero
-			if (o == 0)
-				ei = in.read();
-			// pick output word from the rightmost position
-			MultiChanData<NumVecs, OutWidth> eo;
-			for(unsigned int v = 0; v < NumVecs; v++) {
-#pragma HLS UNROLL
-				eo.data[v] = (ei.data[v])(OutWidth - 1, 0);
-				// shift input to get new output word for next iteration
-				ei.data[v] = ei.data[v] >> OutWidth;
-			}
-			out.write(eo);
-			// increment written output count
-			o++;
-			// wraparound indices to recreate the nested loop structure
-			if (o == outPerIn) {
-				o = 0;
-			}
-		}
-	} else if (InWidth == OutWidth) {
-		// straight-through copy
-		for (unsigned int i = 0; i < NumInWords * numReps; i++) {
-#pragma HLS pipeline style=flp II=1
-			MultiChanData<NumVecs, InWidth> e = in.read();
-			MultiChanData<NumVecs, OutWidth> eo;
-			// we don't support typecasting between templated types, so explicitly
-			// transfer vector-by-vector here
-			for(unsigned int v=0; v < NumVecs; v++) {
-#pragma HLS UNROLL
-				eo.data[v] = e.data[v];
-			}
-			out.write(eo);
-		}
-	} else { // InWidth < OutWidth
-		// read multiple input words per output word emitted
-		const unsigned int inPerOut = OutWidth / InWidth;
-		const unsigned int totalIters = NumInWords * numReps;
-		unsigned int i = 0;
-		MultiChanData<NumVecs, OutWidth> eo;
-		for (unsigned int t = 0; t < totalIters; t++) {
-#pragma HLS pipeline style=flp II=1
-			// read input and shift into output buffer
-			MultiChanData<NumVecs, InWidth> ei = in.read();
-			for(unsigned int v = 0; v < NumVecs; v++) {
-#pragma HLS UNROLL
-				eo.data[v] = eo.data[v] >> InWidth;
-				(eo.data[v])(OutWidth - 1, OutWidth - InWidth) = ei.data[v];
-			}
-			// increment read input count
-			i++;
-			// wraparound logic to recreate nested loop functionality
-			if (i == inPerOut) {
-				i = 0;
-				out.write(eo);
-			}
-		}
-	}
-}
-
-
-/**
- * \brief   Flatten Multi Chan Data - Converts the parallel input stream in a flatten output stream
- *
- * Used to pach a flattened stream into a structure with multiple parallel streams
- *
- * \tparam     NumChannels  Number of channels flattened in the input stream
- * \tparam     DataWidth    Width, in number of bits, of each stream
- *
- * \param      in           Input parallel stream
- * \param      out          Output stream
- * \param      numReps      Number of times the function has to be called
- *
- */
-template <unsigned int NumChannels, unsigned int DataWidth>
-void FlattenMultiChanData(
-	hls::stream<MultiChanData<NumChannels, DataWidth> > & in,
-	hls::stream<ap_uint<NumChannels*DataWidth> > & out,
-	const unsigned int numReps
-) {
-	for(unsigned int r = 0; r < numReps; r++) {
-#pragma HLS pipeline style=flp II=1
-		MultiChanData<NumChannels, DataWidth> e = in.read();
-		ap_uint<NumChannels*DataWidth> o = 0;
-		for(unsigned int v = 0; v < NumChannels; v++) {
-#pragma HLS UNROLL
-			o(DataWidth*(v+1)-1, DataWidth*v) = e.data[v];
-		}
-		out.write(o);
-	}
-}
-
-/**
- * \brief   Pack Multi Chan Data - Converts the flatten input stream into a parallel output stream
- *
- * Used to pach a flattened stream into a structure with multiple parallel streams
- *
- * \tparam     NumChannels  Number of channels flattened in the input stream
- * \tparam     DataWidth    Width, in number of bits, of each stream
- *
- * \param      in           Input stream
- * \param      out          Output parallel stream
- * \param      numReps      Number of times the function has to be called
- *
- */
-template <unsigned int NumChannels, unsigned int DataWidth>
-void PackMultiChanData(
-	hls::stream<ap_uint<NumChannels*DataWidth> > & in,
-	hls::stream<MultiChanData<NumChannels, DataWidth> > & out,
-	const unsigned int numReps
-) {
-	for(unsigned int r = 0; r < numReps; r++) {
-#pragma HLS pipeline style=flp II=1
-		ap_uint<NumChannels*DataWidth> e = in.read();
-		MultiChanData<NumChannels, DataWidth> o;
-		for(unsigned int v = 0; v < NumChannels; v++) {
-#pragma HLS UNROLL
-			o.data[v] = e(DataWidth*(v+1)-1, DataWidth*v);
-		}
-		out.write(o);
-	}
-}
-
-
 template<unsigned IW, unsigned OW, unsigned N>
  class WidthAdjustedInputStream {
   hls::stream<ap_uint<OW>>  m_target;
 
  public:
-  WidthAdjustedInputStream(hls::stream<ap_uint<IW> >&  source, unsigned const  reps) {
+  WidthAdjustedInputStream(hls::stream<ap_uint<IW>>&  source, unsigned const  reps) {
     StreamingDataWidthConverter_Batch<IW, OW, N>(source, m_target, reps);
   }
   ~WidthAdjustedInputStream() {}
 
  public:
-  operator hls::stream<ap_uint<OW> >&() {
+  operator hls::stream<ap_uint<OW>>&() {
     return  m_target;
   }
 };
@@ -1078,11 +918,11 @@ template<unsigned W, unsigned N>
   hls::stream<ap_uint<W>> &m_source;
 
  public:
-  WidthAdjustedInputStream(hls::stream<ap_uint<W> >&  source, __attribute__((unused)) unsigned const  reps) : m_source(source) {}
+  WidthAdjustedInputStream(hls::stream<ap_uint<W>>&  source, __attribute__((unused)) unsigned const  reps) : m_source(source) {}
   ~WidthAdjustedInputStream() {}
 
  public:
-  operator hls::stream<ap_uint<W> >&() {
+  operator hls::stream<ap_uint<W>>&() {
     return  m_source;
   }
 };
@@ -1095,13 +935,13 @@ class WidthAdjustedOutputStream {
   unsigned const  m_reps;
   
  public:
-  WidthAdjustedOutputStream(hls::stream<ap_uint<OW> >&  target, unsigned const  reps) : m_target(target), m_reps(reps) {}
+  WidthAdjustedOutputStream(hls::stream<ap_uint<OW>>&  target, unsigned const  reps) : m_target(target), m_reps(reps) {}
   ~WidthAdjustedOutputStream() {
     StreamingDataWidthConverter_Batch<IW, OW, N>(m_buffer, m_target, m_reps);
   }
 
  public:
-  operator hls::stream<ap_uint<IW> >&() {
+  operator hls::stream<ap_uint<IW>>&() {
     return  m_buffer;
   }
 };
@@ -1110,12 +950,12 @@ template<unsigned W, unsigned N>
   hls::stream<ap_uint<W>> &m_target;
 
  public:
-  WidthAdjustedOutputStream(hls::stream<ap_uint<W> >&  target, __attribute__((unused)) unsigned const  reps)
+  WidthAdjustedOutputStream(hls::stream<ap_uint<W>>&  target, __attribute__((unused)) unsigned const  reps)
     : m_target(target) {}
   ~WidthAdjustedOutputStream() {}
 
  public:
-  operator hls::stream<ap_uint<W> >&() {
+  operator hls::stream<ap_uint<W>>&() {
     return  m_target;
   }
 };
@@ -1134,7 +974,7 @@ template<unsigned W, unsigned N>
  *
  */
 template<unsigned int DataWidth, unsigned int NumTotal>
-void Qdma2Stream_Batch(hls::stream<qdma_axis<DataWidth,0,0,0> > & in, hls::stream<ap_uint<DataWidth> > & out, const unsigned int numReps){
+void Qdma2Stream_Batch(hls::stream<qdma_axis<DataWidth,0,0,0>> & in, hls::stream<ap_uint<DataWidth>> & out, const unsigned int numReps){
 	//TODO: static_assert to ensure DataWidth is power of 2 between 8 and 512
 	for (unsigned int image = 0; image < numReps; image++) {
 		for (unsigned int word = 0; word < NumTotal; word++) {
@@ -1158,7 +998,7 @@ void Qdma2Stream_Batch(hls::stream<qdma_axis<DataWidth,0,0,0> > & in, hls::strea
  *
  */
 template<unsigned int DataWidth, unsigned int NumTotal>
-void Stream2Qdma_Batch(hls::stream<ap_uint<DataWidth> > & in, hls::stream<qdma_axis<DataWidth,0,0,0> > & out, const unsigned int numReps){
+void Stream2Qdma_Batch(hls::stream<ap_uint<DataWidth>> & in, hls::stream<qdma_axis<DataWidth,0,0,0>> & out, const unsigned int numReps){
 	for (unsigned int image = 0; image < numReps; image++) {
 		for (unsigned int word = 0; word < NumTotal; word++) {
 #pragma HLS pipeline style=flp II=1

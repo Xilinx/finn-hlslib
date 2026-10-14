@@ -42,15 +42,14 @@
 
 
 #include <hls_stream.h>
-using namespace hls;
 
 #include "ap_int.h"
-#include "bnn-library.h"
+#include "upsample.hpp"
 
 #include "data/upsample_config.h"
 
 
 
-void Testbench_upsample(stream<ap_uint<PRECISION * FM_CHANNELS>> &in, stream<ap_uint<PRECISION * FM_CHANNELS>> &out) {
-	UpsampleNearestNeighbour<OFMDIM, IFMDIM, FM_CHANNELS, ap_uint<PRECISION> >(in,out);
+void Testbench_upsample(hls::stream<ap_uint<PRECISION * FM_CHANNELS>> &in, hls::stream<ap_uint<PRECISION * FM_CHANNELS>> &out) {
+	UpsampleNearestNeighbour<OFMDIM, IFMDIM, FM_CHANNELS, ap_uint<PRECISION>>(in,out);
 }

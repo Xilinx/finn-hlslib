@@ -1,5 +1,4 @@
 #include "eltwise.hpp"
-#include "interpret.hpp"
 
 #include <cassert>
 
@@ -8,23 +7,23 @@
 
 void Testbench_Eltwise(
 	int  mode,
-	hls::stream<ap_uint<NUM_CHANNELS * INPUT_1_WIDTH>> &in0,
-	hls::stream<ap_uint<NUM_CHANNELS * INPUT_2_WIDTH>> &in1,
-	hls::stream<ap_uint<NUM_CHANNELS * OUTPUT_WIDTH>>  &out
+	hls::stream<tensor<ap_int<INPUT_1_WIDTH>, NUM_CHANNELS>> &in0,
+	hls::stream<tensor<ap_int<INPUT_2_WIDTH>, NUM_CHANNELS>> &in1,
+	hls::stream<tensor<ap_int<OUTPUT_WIDTH>,  NUM_CHANNELS>> &out
 ) {
 	switch(mode) {
 	case 0:
-		StreamingEltwise<NUM_CHANNELS, NUM_CHANNELS, NUM_WORDS, Slice<ap_int<INPUT_1_WIDTH>>, Slice<ap_int<INPUT_2_WIDTH>>, Slice<ap_int<OUTPUT_WIDTH>>>(
+		StreamingEltwise<NUM_CHANNELS, NUM_CHANNELS, NUM_WORDS>(
 			in0, in1, out, [](auto a, auto b) { return  a + b; }
 		);
 		break;
 	case 1:
-		StreamingEltwise<NUM_CHANNELS, NUM_CHANNELS, NUM_WORDS, Slice<ap_int<INPUT_1_WIDTH>>, Slice<ap_int<INPUT_2_WIDTH>>, Slice<ap_int<OUTPUT_WIDTH>>>(
+		StreamingEltwise<NUM_CHANNELS, NUM_CHANNELS, NUM_WORDS>(
 			in0, in1, out, [](auto a, auto b) { return  a - b; }
 		);
 		break;
 	case 2:
-		StreamingEltwise<NUM_CHANNELS, NUM_CHANNELS, NUM_WORDS, Slice<ap_int<INPUT_1_WIDTH>>, Slice<ap_int<INPUT_2_WIDTH>>, Slice<ap_int<OUTPUT_WIDTH>>>(
+		StreamingEltwise<NUM_CHANNELS, NUM_CHANNELS, NUM_WORDS>(
 			in0, in1, out, [](auto a, auto b) { return  a>b? a-b : b-a; }
 		);
 		break;

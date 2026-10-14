@@ -46,23 +46,21 @@
 #include <cstdlib>
 #define AP_INT_MAX_W 8191
 #include "ap_int.h"
-#include "weights.hpp"
-#include "bnn-library.h"
+
+
 
 #include "data/dwcgeneralized_config.h"
 
 #include "activations.hpp"
-#include "interpret.hpp"
 
-using namespace hls;
-using namespace std;
 
-void Testbench_dwcgeneralized(stream<ap_uint<INPUT_WIDTH> > & in, stream<ap_uint<OUT_WIDTH> > & out, unsigned int numReps);
+
+void Testbench_dwcgeneralized(hls::stream<ap_uint<INPUT_WIDTH>> & in, hls::stream<ap_uint<OUT_WIDTH>> & out, unsigned int numReps);
 
 int main()
 {
-	stream<ap_uint<INPUT_WIDTH> > input_stream("input_stream");
-	stream<ap_uint<OUT_WIDTH> > output_stream("output_stream");
+	hls::stream<ap_uint<INPUT_WIDTH>> input_stream("input_stream");
+	hls::stream<ap_uint<OUT_WIDTH>> output_stream("output_stream");
 	static ap_uint<OUT_WIDTH> expected[NumOutWords*NUM_REPEAT];
 	static ap_uint<INPUT_WIDTH+OUT_WIDTH> expected_buffer[NumOutWords*NUM_REPEAT];
 	// extremely over-provisioned vector for accumulating transaction words for InWidth > OutWidth case
@@ -135,7 +133,7 @@ int main()
 		ap_uint<OUT_WIDTH> value = output_stream.read();
 		if(value!= expected[counter])
 		{
-			cout << "ERROR with counter " << counter << std::hex << " expected " << expected[counter] << " value " << value << std::dec <<  endl;
+			std::cout << "ERROR with counter " << counter << std::hex << " expected " << expected[counter] << " value " << value << std::dec <<  std::endl;
 			return(1);
 		}
 	}

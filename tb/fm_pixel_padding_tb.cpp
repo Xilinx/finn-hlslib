@@ -32,7 +32,6 @@
 #include <ap_int.h>
 #include <hls_stream.h>
 
-#include "bnn-library.h"
 #include "data/config_fmpp.h"
 
 #include <iostream>

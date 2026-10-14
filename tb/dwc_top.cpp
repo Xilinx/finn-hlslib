@@ -39,13 +39,12 @@
  *
  *****************************************************************************/
 #include <hls_stream.h>
-using namespace hls;
 #include "ap_int.h"
-#include "bnn-library.h"
+#include "streamtools.hpp"
 
 
 #include "data/dwc_config.h"
 
-void Testbench_dwc(stream<ap_uint<INPUT_WIDTH> > & in, stream<ap_uint<OUT_WIDTH> > & out, unsigned int numReps){
+void Testbench_dwc(hls::stream<ap_uint<INPUT_WIDTH>> &in, hls::stream<ap_uint<OUT_WIDTH>> &out, unsigned int numReps){
 	StreamingDataWidthConverter_Batch<INPUT_WIDTH, OUT_WIDTH, NumInWords>(in, out, numReps);
 }

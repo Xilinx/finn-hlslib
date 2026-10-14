@@ -48,18 +48,16 @@
 #include <cstdlib>
 #define AP_INT_MAX_W 8191
 #include "ap_int.h"
-#include "bnn-library.h"
+#include "streamtools.hpp"
 
-using namespace hls;
-using namespace std;
 
-void Testbench_dwcnm(stream<ap_uint<INPUT_WIDTH> > & in, stream<ap_uint<OUT_WIDTH> > & out);
+void Testbench_dwcnm(hls::stream<ap_uint<INPUT_WIDTH>> & in, hls::stream<ap_uint<OUT_WIDTH>> & out);
 
 int main() {
-	stream<ap_uint<INPUT_WIDTH> > input_stream("input_stream");
-	stream<ap_uint<OUT_WIDTH> >   output_stream("output_stream");
-	stream<ap_uint<OUT_WIDTH> >   input_stream_aux("input_stream_aux");
-	stream<ap_uint<INPUT_WIDTH> > output_stream_aux("output_stream_aux");
+	hls::stream<ap_uint<INPUT_WIDTH>> input_stream("input_stream");
+	hls::stream<ap_uint<OUT_WIDTH>>   output_stream("output_stream");
+	hls::stream<ap_uint<OUT_WIDTH>>   input_stream_aux("input_stream_aux");
+	hls::stream<ap_uint<INPUT_WIDTH>> output_stream_aux("output_stream_aux");
 	ap_uint<OUT_WIDTH>            expected[IMAGE_SIZE/OUT_WIDTH];
 	ap_uint<INPUT_WIDTH>          expected_dwc[IMAGE_SIZE/INPUT_WIDTH];
 	unsigned int count_out  = 0;
@@ -129,7 +127,7 @@ int main() {
 		ap_uint<OUT_WIDTH> value = output_stream.read();
 		input_stream_aux.write(value);
 		if(value!= expected[count_out]) {
-			std::cerr << "ERROR with regular output No. " << std::dec << count_out << " expected " << std::hex << expected[count_out] << " got " << value <<  endl;
+			std::cerr << "ERROR with regular output No. " << std::dec << count_out << " expected " << std::hex << expected[count_out] << " got " << value <<  std::endl;
 			return -1;
 		}
 		count_out++;
@@ -148,7 +146,7 @@ int main() {
 	while (!output_stream_aux.empty()){
 		ap_uint<INPUT_WIDTH> value = output_stream_aux.read();
 		if(value!= expected_dwc[count_out]) {
-			std::cerr << "ERROR with other way output No. " << std::dec << count_out << " expected " << std::hex << expected_dwc[count_out] << " got " << value <<  endl;
+			std::cerr << "ERROR with other way output No. " << std::dec << count_out << " expected " << std::hex << expected_dwc[count_out] << " got " << value <<  std::endl;
 			return -3;
 		}
 		count_out++;

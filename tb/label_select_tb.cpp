@@ -47,13 +47,10 @@
 #include <cstdlib>
 #define AP_INT_MAX_W 8191
 #include "ap_int.h"
-#include "weights.hpp"
-#include "bnn-library.h"
+
 
 #include "label_select_top.h"
 
-using namespace hls;
-using namespace std;
 
 #define MAX_IMAGES 2
 
@@ -98,8 +95,8 @@ int main(int argc, char const *argv[])
             #endif
 
             if (outElem != expected){
-                cout<<"ERROR: top "<<i+1<<" was expected to be "<< expected <<
-                    " but got "<<outElem <<endl;
+                std::cout<<"ERROR: top "<<i+1<<" was expected to be "<< expected <<
+                    " but got "<<outElem <<std::endl;
                 err_cnt++;
             }
 

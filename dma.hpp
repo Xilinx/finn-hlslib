@@ -62,7 +62,7 @@
  * \param out Output HLS stream
  */
 template<unsigned int DataWidth, unsigned int numBytes>
-void Mem2Stream(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth> > & out);
+void Mem2Stream(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth>> & out);
 
 /*!
  * \brief DMA block accessing AXI4 memory and output HLS streams multiple times
@@ -78,7 +78,7 @@ void Mem2Stream(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth> > & out)
  * \param numReps Number of times the Stream2Mem function has to be called
  */
 template<unsigned int DataWidth, unsigned int numBytes>
-void Mem2Stream_Batch(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth> > & out, const unsigned int numReps);
+void Mem2Stream_Batch(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth>> & out, const unsigned int numReps);
 
 /*!
  * \brief DMA block writing HLS streams content in AXI4 pointed memory
@@ -91,7 +91,7 @@ void Mem2Stream_Batch(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth> > 
  * \param out Output memory pointer
  */
 template<unsigned int DataWidth, unsigned int numBytes>
-void Stream2Mem(hls::stream<ap_uint<DataWidth> > & in, ap_uint<DataWidth> * out);
+void Stream2Mem(hls::stream<ap_uint<DataWidth>> & in, ap_uint<DataWidth> * out);
 
 /*!
  * \brief DMA block that accesses the external memory and outputs HLS streams multiple times
@@ -108,7 +108,7 @@ void Stream2Mem(hls::stream<ap_uint<DataWidth> > & in, ap_uint<DataWidth> * out)
  */
 template<unsigned int DataWidth, unsigned int numBytes>
 void Mem2Stream_Batch_external_wmem(ap_uint<DataWidth> * in,
-        hls::stream<ap_uint<DataWidth> > & out, const unsigned int numReps) {
+        hls::stream<ap_uint<DataWidth>> & out, const unsigned int numReps) {
     unsigned int rep = 0;
     while (rep != numReps) {
         Mem2Stream<DataWidth, numBytes>(&in[0], out);
@@ -130,10 +130,10 @@ void Mem2Stream_Batch_external_wmem(ap_uint<DataWidth> * in,
  * \param numReps Number of times the Stream2Mem function has to be called
  */
 template<unsigned int DataWidth, unsigned int numBytes>
-void Stream2Mem_Batch(hls::stream<ap_uint<DataWidth> > & in, ap_uint<DataWidth> * out, const unsigned int numReps);
+void Stream2Mem_Batch(hls::stream<ap_uint<DataWidth>> & in, ap_uint<DataWidth> * out, const unsigned int numReps);
 
 template<unsigned int DataWidth, unsigned int numBytes>
-void Mem2Stream(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth> > & out) {
+void Mem2Stream(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth>> & out) {
   static_assert(DataWidth % 8 == 0, "");
   const unsigned int numWords = numBytes / (DataWidth / 8);
   static_assert(numWords != 0, "");
@@ -146,7 +146,7 @@ void Mem2Stream(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth> > & out)
 
 
 template<unsigned int DataWidth, unsigned int numBytes>
-void Stream2Mem(hls::stream<ap_uint<DataWidth> > & in, ap_uint<DataWidth> * out) {
+void Stream2Mem(hls::stream<ap_uint<DataWidth>> & in, ap_uint<DataWidth> * out) {
   static_assert(DataWidth % 8 == 0, "");
   const unsigned int numWords = numBytes / (DataWidth / 8);
   static_assert(numWords != 0, "");
@@ -158,7 +158,7 @@ void Stream2Mem(hls::stream<ap_uint<DataWidth> > & in, ap_uint<DataWidth> * out)
 }
 
 template<unsigned int DataWidth, unsigned int numBytes>
-void Mem2Stream_Batch(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth> > & out, const unsigned int numReps) {
+void Mem2Stream_Batch(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth>> & out, const unsigned int numReps) {
   const unsigned int indsPerRep = numBytes / (DataWidth / 8);
   unsigned int rep = 0;
   // make sure Mem2Stream does not get inlined here
@@ -179,7 +179,7 @@ void Mem2Stream_Batch(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth> > 
 
 
 template<unsigned int DataWidth, unsigned int numBytes>
-void Stream2Mem_Batch(hls::stream<ap_uint<DataWidth> > & in, ap_uint<DataWidth> * out, const unsigned int numReps) {
+void Stream2Mem_Batch(hls::stream<ap_uint<DataWidth>> & in, ap_uint<DataWidth> * out, const unsigned int numReps) {
   const unsigned int indsPerRep = numBytes / (DataWidth / 8);
   unsigned int rep = 0;
   // make sure Stream2Mem does not get inlined here

@@ -14,7 +14,6 @@
 #include "ap_int.h"
 #include "data/upsample_config.h"
 
-using namespace std;
 
 
 void Testbench_upsample(
@@ -59,7 +58,7 @@ int main(){
         ap_uint<PRECISION> expect = golden_out[i][j][k];
         out_channel(PRECISION-1,0) = out_elem((k+1)*PRECISION-1, k*PRECISION);
         if (expect != out_channel) {
-          cout << "ERROR: Expected["<<i<<"]["<<j<<"]["<<k<<"]=" <<expect <<" actual " <<out_channel <<endl;
+          std::cout << "ERROR: Expected["<<i<<"]["<<j<<"]["<<k<<"]=" <<expect <<" actual " <<out_channel <<std::endl;
           err_counter++;
         }
       }

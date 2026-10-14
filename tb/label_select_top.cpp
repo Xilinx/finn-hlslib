@@ -40,12 +40,13 @@
  *****************************************************************************/
 
 #include "label_select_top.h"
+#include "streamtools.hpp"
 
-void Testbench_label_select(stream<ap_uint<INPUT_PRECISION> > & in, 
-                stream<Out_T> & out, unsigned int numReps){
+void Testbench_label_select(hls::stream<ap_uint<INPUT_PRECISION>> &in,
+                hls::stream<Out_T> &out, unsigned int numReps){
     #pragma HLS DATAFLOW
 
-    hls::stream<ap_uint<PE1*INPUT_PRECISION> > wa_input("wa_input");
+    hls::stream<ap_uint<PE1*INPUT_PRECISION>> wa_input("wa_input");
     StreamingDataWidthConverter_Batch<INPUT_PRECISION,PE1*INPUT_PRECISION, FM_Channels1>
                                 (in, wa_input, numReps);
     LabelSelect_Batch<NumClasses,PE1,NumTop,In_T,Out_T> (wa_input,out,numReps);

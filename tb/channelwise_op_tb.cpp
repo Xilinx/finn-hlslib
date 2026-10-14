@@ -47,12 +47,10 @@
 #include <cstdlib>
 #define AP_INT_MAX_W 8191
 #include "ap_int.h"
-#include "weights.hpp"
-#include "bnn-library.h"
+
+
 #include "activations.hpp"
-#include "interpret.hpp"
-using namespace hls;
-using namespace std;
+
   
 #include "channelwise_op_top.h"  
 
@@ -66,8 +64,8 @@ int main()
     int IMAGE[ROUNDS][MAX_IMAGES][IFMDim][IFMDim][IFM_Channels];
 
     // input and output of DUT
-    stream<ap_uint<IFM_Channels*INPUT_BITS> > input_stream[ROUNDS];
-    stream<ap_uint<IFM_Channels*OUTPUT_BITS> > output_stream[ROUNDS];
+    hls::stream<ap_uint<IFM_Channels*INPUT_BITS>> input_stream[ROUNDS];
+    hls::stream<ap_uint<IFM_Channels*OUTPUT_BITS>> output_stream[ROUNDS];
 
     // generate image and load input stream 
     unsigned int counter = 0;

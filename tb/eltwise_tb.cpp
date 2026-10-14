@@ -5,12 +5,14 @@
 #include <iomanip>
 
 #include "data/eltwise_config.h"
+#include "tensor.hpp"
 
 
-using namespace hls;
+using in0_t = tensor<ap_int<INPUT_1_WIDTH>, NUM_CHANNELS>;
+using in1_t = tensor<ap_int<INPUT_2_WIDTH>, NUM_CHANNELS>;
+using out_t = tensor<ap_int<OUTPUT_WIDTH>,  NUM_CHANNELS>;
 
-
-void Testbench_Eltwise(int mode, stream<ap_uint<NUM_CHANNELS * INPUT_1_WIDTH> > & in0, stream<ap_uint<NUM_CHANNELS * INPUT_2_WIDTH> > & in1, stream<ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> > & out);
+void Testbench_Eltwise(int mode, hls::stream<in0_t> &in0, hls::stream<in1_t> &in1, hls::stream<out_t> &out);
 
 void sw_golden(int mode, ap_uint<NUM_CHANNELS * INPUT_1_WIDTH> val1, ap_uint<NUM_CHANNELS * INPUT_2_WIDTH> val2, ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> & out) {
 	for (int i = 0; i < NUM_CHANNELS; i++) {
@@ -29,32 +31,30 @@ void sw_golden(int mode, ap_uint<NUM_CHANNELS * INPUT_1_WIDTH> val1, ap_uint<NUM
 				break;
 			default:
 				break;
-		} 
+		}
 		out((i+1)*OUTPUT_WIDTH-1,i*OUTPUT_WIDTH)  = sum;
 	}
 }
 
 int main() {
 
-	stream<ap_uint<NUM_CHANNELS * INPUT_1_WIDTH>> input_stream1("input_stream1");
-	stream<ap_uint<NUM_CHANNELS * INPUT_2_WIDTH>> input_stream2("input_stream2");
-	stream<ap_uint<NUM_CHANNELS * OUTPUT_WIDTH>>  output_stream("output_stream");
+	hls::stream<in0_t> input_stream1("input_stream1");
+	hls::stream<in1_t> input_stream2("input_stream2");
+	hls::stream<out_t> output_stream("output_stream");
 	ap_uint<NUM_CHANNELS * OUTPUT_WIDTH>  expected[NUM_REPEAT*NUM_WORDS];
 
 	for(int mode = 0; mode < 3; mode++) {
-		unsigned int count_out = 0;
-		unsigned int count_in = 0;
 		for (unsigned int counter = 0; counter < NUM_REPEAT*NUM_WORDS; counter++) {
-			ap_uint<NUM_CHANNELS * INPUT_1_WIDTH> value1 = (ap_uint<NUM_CHANNELS * INPUT_1_WIDTH>) (counter);
-			ap_uint<NUM_CHANNELS * INPUT_2_WIDTH> value2 = (ap_uint<NUM_CHANNELS * INPUT_2_WIDTH>) (counter + 1);
+			ap_uint<NUM_CHANNELS * INPUT_1_WIDTH> value1 = counter;
+			ap_uint<NUM_CHANNELS * INPUT_2_WIDTH> value2 = counter + 1;
 			sw_golden(mode, value1, value2, expected[counter]);
-			input_stream1.write(value1);
-			input_stream2.write(value2);		
+			input_stream1.write(in0_t(value1));
+			input_stream2.write(in1_t(value2));
 		}
 		Testbench_Eltwise(mode, input_stream1, input_stream2, output_stream);
 		for (unsigned int counter = 0; counter < NUM_REPEAT*NUM_WORDS; counter++) {
 			ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> value = output_stream.read();
-			if(value!= expected[counter]) {
+			if(value != expected[counter]) {
 				std::cout << "ERROR with mode " << mode << " counter " << counter << std::hex << " expected " << expected[counter] << " value " << value << std::dec << std::endl;
 				return  1;
 			}

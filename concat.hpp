@@ -46,7 +46,7 @@
 #include <ap_int.h>
 #include <algorithm>
 
-#include "utils.hpp"
+#include "tensor.hpp"
 
 
 /** For inputs of the same datatype */
@@ -82,13 +82,13 @@ void StreamingConcat(
 } // StreamingConcat()
 
 namespace {
-	/** Type conversion between vectors */
-	template<typename TI, typename TO, size_t N>
-	void convert_vector(hls::vector<TI, N>& src, hls::vector<TO, N>& dst){
+	/** Type conversion between tensors */
+	template<typename TI, typename TO, unsigned N>
+	void convert_tensor(tensor<TI, N> const &src, tensor<TO, N> &dst){
 #pragma HLS inline
-		for(size_t i = 0; i < N; i++){
+		for(unsigned i = 0; i < N; i++){
 #pragma HLS UNROLL
-			dst[i] = src[i];
+			dst[i] = TO(src[i]);
 		}
 	}
 
@@ -107,7 +107,7 @@ namespace {
 			else {
 				T0  y0;
 				if(!src0.read_nb(y0))  return  false;
-				convert_vector(y0, y);
+				convert_tensor(y0, y);
 				return  true;
 			}
 		}
@@ -126,7 +126,7 @@ namespace {
 			else {
 				T0  y0;
 				if(!src0.read_nb(y0))  return  false;
-				convert_vector(y0, y);
+				convert_tensor(y0, y);
 				return  true;
 			}
 		}

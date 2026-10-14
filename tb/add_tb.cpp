@@ -6,19 +6,15 @@
 #include <cstdlib>
 #define AP_INT_MAX_W 8191
 #include "ap_int.h"
-#include "weights.hpp"
-#include "bnn-library.h"
+
 
 #include "data/add_config.h"
 
 #include "activations.hpp"
-#include "interpret.hpp"
 
-using namespace hls;
-using namespace std;
 
-void Testbench_add(stream<ap_uint<NUM_CHANNELS * INPUT_WIDTH>> &in1, stream<ap_uint<NUM_CHANNELS * INPUT_WIDTH>> &in2,
-	stream<ap_uint<NUM_CHANNELS * OUTPUT_WIDTH>> &out, unsigned int numReps);
+void Testbench_add(hls::stream<ap_uint<NUM_CHANNELS * INPUT_WIDTH>> &in1, hls::stream<ap_uint<NUM_CHANNELS * INPUT_WIDTH>> &in2,
+	hls::stream<ap_uint<NUM_CHANNELS * OUTPUT_WIDTH>> &out, unsigned int numReps);
 
 void sw_add(ap_uint<NUM_CHANNELS * INPUT_WIDTH> val1, ap_uint<NUM_CHANNELS * INPUT_WIDTH> val2, ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> & out) {
 	for (int i = 0; i < NUM_CHANNELS; i++) {
@@ -36,9 +32,9 @@ void sw_add(ap_uint<NUM_CHANNELS * INPUT_WIDTH> val1, ap_uint<NUM_CHANNELS * INP
 
 int main()
 {
-	stream<ap_uint<NUM_CHANNELS * INPUT_WIDTH> > input_stream1("input_stream1");
-	stream<ap_uint<NUM_CHANNELS * INPUT_WIDTH>> input_stream2("input_stream2");
-	stream<ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> > output_stream("output_stream");
+	hls::stream<ap_uint<NUM_CHANNELS * INPUT_WIDTH>> input_stream1("input_stream1");
+	hls::stream<ap_uint<NUM_CHANNELS * INPUT_WIDTH>> input_stream2("input_stream2");
+	hls::stream<ap_uint<NUM_CHANNELS * OUTPUT_WIDTH>> output_stream("output_stream");
 	static ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> expected[NUM_REPEAT*NUM_WORDS];
 	unsigned int count_out = 0;
 	unsigned int count_in = 0;
@@ -55,7 +51,7 @@ int main()
 		ap_uint<NUM_CHANNELS * OUTPUT_WIDTH> value = output_stream.read();
 		if(value!= expected[counter])
 		{
-			cout << "ERROR with counter " << counter << std::hex << " expected " << expected[counter] << " value " << value << std::dec <<  endl;
+			std::cout << "ERROR with counter " << counter << std::hex << " expected " << expected[counter] << " value " << value << std::dec <<  std::endl;
 			return(1);
 		}
 	}

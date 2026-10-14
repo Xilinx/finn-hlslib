@@ -31,13 +31,9 @@
  ******************************************************************************/
 
 #include <hls_stream.h>
-using namespace hls;
 #include "ap_int.h"
-#include "bnn-library.h"
 
 #include "activations.hpp"
-#include "weights.hpp"
-#include "interpret.hpp"
 
 
 #define PE 4
@@ -85,5 +81,5 @@ struct per_channel_neg
 };
 
 
-void Testbench_channelwise_op(stream<ap_uint<IFM_Channels*INPUT_BITS> > & in, 
-                    stream<ap_uint<OFM_Channels*OUTPUT_BITS> > & out, unsigned int numReps);
+void Testbench_channelwise_op(hls::stream<ap_uint<IFM_Channels*INPUT_BITS>> &in,
+                    hls::stream<ap_uint<OFM_Channels*OUTPUT_BITS>> &out, unsigned int numReps);

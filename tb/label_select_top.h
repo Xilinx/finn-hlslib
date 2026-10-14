@@ -31,9 +31,8 @@
  ******************************************************************************/
 
 #include <hls_stream.h>
-using namespace hls;
 #include "ap_int.h"
-#include "bnn-library.h"
+#include "maxpool.hpp"
 
 #define SIGNED_INPUT 1
 #define NumClasses 10
@@ -52,6 +51,6 @@ using namespace hls;
 
 #define Out_T ap_uint<OUT_WIDTH> 
 
-void Testbench_label_select(stream<ap_uint<INPUT_PRECISION> > & in, 
-                stream<Out_T> & out, unsigned int numReps);
+void Testbench_label_select(hls::stream<ap_uint<INPUT_PRECISION>> &in,
+                hls::stream<Out_T> & out, unsigned int numReps);
 

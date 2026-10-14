@@ -30,14 +30,13 @@
  *
  ******************************************************************************/
 #include <hls_stream.h>
-using namespace hls;
 #include "ap_int.h"
-#include "bnn-library.h"
+#include "streamtools.hpp"
 #include "data/config_fmpp.h"
 
 void test_fm_pixel_padding(
-	stream<ap_uint<SIMD1*INPUT_WIDTH>> &src,
-	stream<ap_uint<SIMD1*INPUT_WIDTH>> &dst
+	hls::stream<ap_uint<SIMD1*INPUT_WIDTH>> &src,
+	hls::stream<ap_uint<SIMD1*INPUT_WIDTH>> &dst
 ) {
 #pragma HLS DATAFLOW
 	FMPadding_Pixel_Nonsquare<

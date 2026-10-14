@@ -32,7 +32,7 @@
 
 /*******************************************************************************
  *
- *  Authors: Michal Danilowicz <danilowi@agh.edu.pl>     
+ *  Authors: Michal Danilowicz <danilowi@agh.edu.pl>
  *
  *  \file concat_tb.cpp
  *
@@ -43,7 +43,6 @@
 #include <iostream>
 
 #include <hls_stream.h>
-#include <hls_vector.h>
 
 #include "data/concat_config.h"
 #include "concat.hpp"
@@ -63,22 +62,30 @@ int main()
 
 	for (unsigned int counter = 0; counter < REP_COUNT; counter++){
 		for(unsigned int f = 0; f < NUM_FOLDS0; f++){
-			IN_TYPE0 el0 = (EL_TYPE0)1;
+			IN_TYPE0 el0;
+			el0[0] = EL_TYPE0(1);
+			if(SIMD > 1)  el0[1] = EL_TYPE0(1);
 			in0_V.write(el0);
 			expected.write(el0);
 		}
 		for(unsigned int f = 0; f < NUM_FOLDS1; f++){
-			IN_TYPE1 el1 = (EL_TYPE1)2;
+			IN_TYPE1 el1;
+			el1[0] = EL_TYPE1(2);
+			if(SIMD > 1)  el1[1] = EL_TYPE1(2);
 			in1_V.write(el1);
 			expected.write(el1);
 		}
 		for(unsigned int f = 0; f < NUM_FOLDS2; f++){
-			IN_TYPE2 el2 = (EL_TYPE2)3;
+			IN_TYPE2 el2;
+			el2[0] = EL_TYPE2(3);
+			if(SIMD > 1)  el2[1] = EL_TYPE2(3);
 			in2_V.write(el2);
 			expected.write(el2);
 		}
 		for(unsigned int f = 0; f < NUM_FOLDS3; f++){
-			IN_TYPE3 el3 = (EL_TYPE3)4;
+			IN_TYPE3 el3;
+			el3[0] = EL_TYPE3(4);
+			if(SIMD > 1)  el3[1] = EL_TYPE3(4);
 			in3_V.write(el3);
 			expected.write(el3);
 		}
@@ -96,7 +103,7 @@ int main()
 		else{
 			OUT_TYPE y = out_V.read();
 			OUT_TYPE exp = expected.read();
-			if(y != exp)
+			if(ap_uint<OUT_TYPE::TOTAL>(y) != ap_uint<OUT_TYPE::TOTAL>(exp))
 				std::cerr << "ERROR! Unexpected output nr " << out_cnt << ". Got: " << y << " Expected: " << exp << std::endl;
 			out_cnt++;
 		}
