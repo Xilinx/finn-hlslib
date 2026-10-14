@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) Xilinx, Inc.
+ *  Copyright (c) 2019, Xilinx, Inc.
  *  Copyright (C) Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
@@ -32,11 +32,13 @@
  *******************************************************************************/
 
 /*******************************************************************************
- * @brief	Vector-Vector-Activation Unit (depthwise separable convolutions).
+ * @brief	Vector-Vector-Activation Unit (function-pipelined).
  * @author	Giulio Gambardella <giuliog@xilinx.com>
  * @author	Thomas B. Preusser <thomas.preusser@amd.com>
  *
  * @description
+ *  Function-pipelined VVU for depthwise separable convolutions.
+ *  Each call processes one clock cycle's worth of work.
  *  Key difference from MVU: each PE processes its own dedicated input
  *  activation slice (no input broadcasting/reuse across neuron folds).
  *******************************************************************************/
@@ -44,122 +46,148 @@
 #ifndef VVAU_HPP
 #define VVAU_HPP
 
-#include <hls_stream.h>
-#include <hls_vector.h>
+#include "hls_stream.h"
 
-#include "activations.hpp"
 #include "mac.hpp"
-#include "tensor.hpp"
+#include "interpret.hpp"
 
 
-//---------------------------------------------------------------------------
-// VVU with embedded (internal) weights
-//
+/**
+ * \brief Vector-vector-activate with embedded (internal) weights.
+ *
+ * Function-pipelined variant: no reps loop, static state, non-blocking reads.
+ *
+ * \tparam Channels   Number of channels
+ * \tparam Kernel_2   Kernel * Kernel dimension (Kernel ^ 2 if square)
+ * \tparam SIMD       Number of input columns computed in parallel
+ * \tparam PE         Number of output rows computed in parallel
+ * \tparam MMV        Number of output pixels computed in parallel
+ * \tparam TSrcI      DataType of the input activation
+ * \tparam TDstI      DataType of the output activation
+ * \tparam TWeightI   DataType of the weights
+ * \tparam TI         DataType of the input stream
+ * \tparam TO         DataType of the output stream
+ * \tparam TW         DataType of the weights matrix
+ * \tparam TA         DataType of the activation class
+ * \tparam R          Resource type for the MAC block
+ */
 template<
-	unsigned  Channels,  // total output channels
-	unsigned  Kernel_2,  // kernel elements (k_h * k_w)
-	unsigned  SIMD,      // input parallelism (kernel elements per cycle)
-	unsigned  PE,        // output parallelism (channels per cycle)
-	typename  TW,        // weight element type
-	typename  TI,        // input activation element type
-	typename  TO,        // output element type
-	typename  TW_arr,    // weight array type: operator[](tile) -> vector<vector<TW, SIMD>, PE>-like
-	typename  TA,        // activation class
-	typename  TR = ap_resource_dflt  // compute resource
+  unsigned Channels, unsigned Kernel_2, unsigned SIMD, unsigned PE, unsigned MMV,
+  typename TSrcI = Identity, typename TDstI = Identity, typename TWeightI = Identity,
+  typename TI, typename TO, typename TW, typename TA, typename R
 >
-void Vector_Vector_Activate_Batch(
-	hls::stream<hls::vector<hls::vector<TI, SIMD>, PE>> &in,
-	hls::stream<hls::vector<TO, PE>>                    &out,
-	TW_arr const                                        &weights,
-	TA const                                            &activation,
-	TR const                                            &res = {}
-) {
+void Vector_Vector_Activate_Batch(hls::stream<TI> &in,
+				  hls::stream<TO> &out,
+				  TW  const &weights,
+				  TA  const &activation,
+				  R const &r) {
 #pragma HLS pipeline II=1 style=flp
 
-	constexpr unsigned  NF = Channels / PE;
-	constexpr unsigned  SF = Kernel_2 / SIMD;
+  constexpr unsigned  NF = Channels / PE;
+  constexpr unsigned  SF = Kernel_2 / SIMD;
 
-	using TAcc = decltype(activation.init(0, 0));
+  using TAcc = decltype(activation.init(0, 0));
 
-	static TAcc  accu[PE];
-	static unsigned  sf = 0;
-	static unsigned  nf = 0;
-	static unsigned  nf_out = 0;
-	static bool  push = false;
-#pragma HLS array_partition variable=accu complete
+  static TAcc  accu[MMV][PE];
+  static unsigned  sf = 0;
+  static unsigned  nf = 0;
+  static unsigned  nf_out = 0;
+  static bool  push = false;
+#pragma HLS ARRAY_PARTITION variable=accu complete dim=0
 #pragma HLS reset variable=accu off
 #pragma HLS reset variable=sf
 #pragma HLS reset variable=nf
 #pragma HLS reset variable=nf_out off
 #pragma HLS reset variable=push
 
-	// Output phase
-	if(push) {
-		hls::vector<TO, PE>  y;
-		for(unsigned  pe = 0; pe < PE; pe++) {
-#pragma HLS unroll
-			y[pe] = activation.activate(nf_out, pe, accu[pe]);
-			accu[pe] = 0;
-		}
-		out.write(y);
-		push = false;
-	}
+  // Output phase — one cycle after the last SF beat
+  if(push) {
+    auto  outElem = TDstI().template operator()<TO>();
+    for(unsigned  pe = 0; pe < PE; pe++) {
+#pragma HLS UNROLL
+      for(unsigned mmv = 0; mmv < MMV; mmv++) {
+#pragma HLS UNROLL
+        outElem(pe, mmv, 1) = activation.activate(nf_out, pe, accu[mmv][pe]);
+      }
+    }
+    out.write(outElem);
+    push = false;
+  }
 
-	// Compute phase — non-blocking: only proceed when input is available
-	if(!in.empty()) {
-		auto const  inElem = in.read();
+  // Compute phase — non-blocking
+  if(!in.empty()) {
+    TI  inElem;
+    inElem = in.read();
 
-		// Initialize accumulators
-		if(sf == 0) {
-			for(unsigned  pe = 0; pe < PE; pe++) {
-#pragma HLS unroll
-				accu[pe] = activation.init(nf, pe);
-			}
-		}
+    // Threshold Initialisation
+    if(sf == 0) {
+      for(unsigned  pe = 0; pe < PE; pe++) {
+        for(unsigned mmv = 0; mmv < MMV; mmv++) {
+#pragma HLS UNROLL
+          accu[mmv][pe] = activation.init(nf, pe);
+        }
+      }
+    }
 
-		// MAC — each PE gets its own input activation slice
-		unsigned const  tile = nf * SF + sf;
-		for(unsigned  pe = 0; pe < PE; pe++) {
-#pragma HLS unroll
-			auto const  w = weights[tile][pe];
-			auto const  a = inElem[pe];
-			for(unsigned  i = 0; i < SIMD; i++) {
-#pragma HLS unroll
-				mac(accu[pe], w[i], a[i], res);
-			}
-		}
+    // compute vector-vector product for each processing element
+    auto const &w = weights.weights(nf * SF + sf);
+    for(unsigned  pe = 0; pe < PE; pe++) {
+#pragma HLS UNROLL
+      auto const  wgt = TWeightI()(w[pe]);
 
-		// Advance fold counters
-		if(++sf == SF) {
-			sf = 0;
-			nf_out = nf;
-			push = true;
-			if(++nf == NF)  nf = 0;
-		}
-	}
+      ap_uint<SIMD*TSrcI::width> act_simd = 0;
+      for(unsigned int simd = 0; simd < SIMD; simd++) {
+        act_simd(TSrcI::width*(simd+1)-1, TSrcI::width*simd) = (Slice<ap_uint<PE*TSrcI::width>>()(inElem)(SIMD - simd - 1, 0))
+                                                               (TSrcI::width*(pe+1)-1, TSrcI::width*pe);
+      }
+
+      for(unsigned mmv = 0; mmv < MMV; mmv++) {
+        auto const  act = TSrcI()(act_simd, mmv);
+        accu[mmv][pe] = mac<SIMD>(accu[mmv][pe], wgt, act, r, mmv);
+      }
+    }
+
+    // Advance fold counters
+    if(++sf == SF) {
+      sf = 0;
+      nf_out = nf;
+      push = true;
+      if(++nf == NF)  nf = 0;
+    }
+  }
 }
 
 
-//---------------------------------------------------------------------------
-// VVU with streaming (decoupled/external) weights
-//
+/**
+ * \brief Vector-vector-activate with streaming (decoupled/external) weights.
+ *
+ * Function-pipelined variant: no reps loop, static state, non-blocking reads.
+ *
+ * \tparam Channels   Number of channels
+ * \tparam Kernel_2   Kernel * Kernel dimension
+ * \tparam SIMD       Number of input columns computed in parallel
+ * \tparam PE         Number of output rows computed in parallel
+ * \tparam MMV        Number of output pixels computed in parallel
+ * \tparam TSrcI      DataType of the input activation
+ * \tparam TDstI      DataType of the output activation
+ * \tparam TWeightI   DataType of the weights
+ * \tparam TW         Weight element type (not deducible)
+ * \tparam TI         DataType of the input stream
+ * \tparam TO         DataType of the output stream
+ * \tparam TA         DataType of the activation class
+ * \tparam R          Resource type for the MAC block
+ */
 template<
-	unsigned  Channels,
-	unsigned  Kernel_2,
-	unsigned  SIMD,
-	unsigned  PE,
-	typename  TW,
-	typename  TI,
-	typename  TO,
-	typename  TA,
-	typename  TR = ap_resource_dflt
+	unsigned Channels, unsigned Kernel_2, unsigned SIMD, unsigned PE, unsigned MMV,
+	typename TSrcI = Identity, typename TDstI = Identity, typename TWeightI = Identity, typename TW,
+	typename TI, typename TO, typename TA, typename R
 >
 void Vector_Vector_Activate_Stream_Batch(
-	hls::stream<hls::vector<hls::vector<TI, SIMD>, PE>> &in,
-	hls::stream<hls::vector<TO, PE>>                    &out,
-	hls::stream<tensor<TW, PE, SIMD>>                   &weights,
-	TA const                                            &activation,
-	TR const                                            &res = {}
+	hls::stream<TI> &in,
+	hls::stream<TO> &out,
+	hls::stream<ap_uint<PE*SIMD*TW::width>> &weights,
+	TA  const &activation,
+	R const &r
 ) {
 #pragma HLS pipeline II=1 style=flp
 
@@ -168,51 +196,71 @@ void Vector_Vector_Activate_Stream_Batch(
 
 	using TAcc = decltype(activation.init(0, 0));
 
-	static TAcc  accu[PE];
+	static TAcc  accu[MMV][PE];
 	static unsigned  sf = 0;
 	static unsigned  nf = 0;
 	static unsigned  nf_out = 0;
 	static bool  push = false;
-#pragma HLS array_partition variable=accu complete
+#pragma HLS ARRAY_PARTITION variable=accu complete dim=0
 #pragma HLS reset variable=accu off
 #pragma HLS reset variable=sf
 #pragma HLS reset variable=nf
 #pragma HLS reset variable=nf_out off
 #pragma HLS reset variable=push
 
+	// unpacked and packed buffers for weight stream
+	Weights_Tile<SIMD, TW, PE>  w;
+#pragma HLS ARRAY_PARTITION variable=w.m_weights complete dim=0
+
 	// Output phase
 	if(push) {
-		hls::vector<TO, PE>  y;
+		auto  outElem = TDstI().template operator()<TO>();
 		for(unsigned  pe = 0; pe < PE; pe++) {
-#pragma HLS unroll
-			y[pe] = activation.activate(nf_out, pe, accu[pe]);
-			accu[pe] = 0;
+#pragma HLS UNROLL
+			for(unsigned mmv = 0; mmv < MMV; mmv++) {
+#pragma HLS UNROLL
+				outElem(pe, mmv, 1) = activation.activate(nf_out, pe, accu[mmv][pe]);
+			}
 		}
-		out.write(y);
+		out.write(outElem);
 		push = false;
 	}
 
 	// Compute phase — non-blocking: need both input and weights
 	if(!in.empty() && !weights.empty()) {
-		auto const  inElem = in.read();
-		auto const  ww = weights.read();
+		TI  inElem;
+		inElem = in.read();
 
-		// Initialize accumulators
+		// Threshold Initialisation
 		if(sf == 0) {
 			for(unsigned  pe = 0; pe < PE; pe++) {
-#pragma HLS unroll
-				accu[pe] = activation.init(nf, pe);
+				for(unsigned mmv = 0; mmv < MMV; mmv++) {
+#pragma HLS UNROLL
+					accu[mmv][pe] = activation.init(nf, pe);
+				}
 			}
 		}
 
-		// MAC
+		// Packed and unpacked weight representations
+		ap_uint<PE * SIMD * TW::width> const  W_packed = weights.read();
+		for(unsigned pe = 0; pe < PE; pe++) {
+#pragma HLS UNROLL
+			w.m_weights[pe] = W_packed((pe+1)*SIMD*TW::width-1, pe*SIMD*TW::width);
+		}
+
 		for(unsigned  pe = 0; pe < PE; pe++) {
-#pragma HLS unroll
-			auto const  w = ww[pe];
-			auto const  a = inElem[pe];
-			for(unsigned  i = 0; i < SIMD; i++) {
-#pragma HLS unroll
-				mac(accu[pe], w[i], a[i], res);
+#pragma HLS UNROLL
+			auto const  wgt = TWeightI()(w[pe]);
+
+			ap_uint<SIMD*TSrcI::width> act_simd = 0;
+			for(unsigned int simd = 0; simd < SIMD; simd++) {
+				act_simd(TSrcI::width*(simd+1)-1, TSrcI::width*simd) = (Slice<ap_uint<PE*TSrcI::width>>()(inElem)(SIMD - simd - 1, 0))
+																	   (TSrcI::width*(pe+1)-1, TSrcI::width*pe);
+			}
+
+			for(unsigned mmv = 0; mmv < MMV; mmv++) {
+				auto const  act = TSrcI()(act_simd, mmv);
+				accu[mmv][pe] = mac<SIMD>(accu[mmv][pe], wgt, act, r, mmv);
 			}
 		}
 
@@ -225,5 +273,4 @@ void Vector_Vector_Activate_Stream_Batch(
 		}
 	}
 }
-
 #endif
