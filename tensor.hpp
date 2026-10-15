@@ -205,9 +205,18 @@ T from_bitimage(ap_uint<width_v<T>> const &bits) {
 // Tensor
 //===========================================================================
 
-// Forward declaration
+// Forward declarations
 template<typename T, unsigned ...DIMS>
 class tensor;
+
+template<typename T, unsigned HOST_W, unsigned ...DIMS>
+class tensor_view;
+
+template<unsigned ...Is>
+struct perm;
+
+template<typename T, unsigned HOST_W, typename Perm, unsigned ...DIMS>
+class tensor_transpose;
 
 //-- Write-through proxy -----------------------------------------------------
 //  References W bits within an arbitrary-width ap_uint at a computed offset.
@@ -242,10 +251,10 @@ class tensor_common {
 	static constexpr unsigned  InnerW = width_v<InnerT>;
 	static constexpr unsigned  width  = Count * InnerW;
 
+public:
 	auto&       data()       { return  static_cast<Derived*>(this)->m_data; }
 	auto const& data() const { return  static_cast<Derived const*>(this)->m_data; }
 
-public:
 	//-- Comparison (unsigned bit-image order) --------------------------------
 	bool operator==(Derived const &o) const { return  data() == o.m_data; }
 	bool operator!=(Derived const &o) const { return  data() != o.m_data; }
@@ -282,6 +291,13 @@ public:
 	};
 	iterator begin() { return  { data(), 0 }; }
 	iterator end()   { return  { data(), Count }; }
+
+	//-- Reshape: reinterpret bits under new shape (defined in tensor_view.hpp)
+	template<typename T_new, unsigned ...NEW_DIMS>
+	tensor_view<T_new, width, NEW_DIMS...> reshape();
+
+	template<typename T_new, unsigned ...NEW_DIMS>
+	tensor<T_new, NEW_DIMS...> reshape() const;
 
 	//-- Balanced binary tree reduction over all Count elements ---------------
 	template<typename TR = InnerT, typename F>
@@ -340,6 +356,10 @@ public:
 		return  tensor_ref<T, W, HOST_W>(host, base + i * W);
 	}
 
+	// View conversion (defined in tensor_view.hpp)
+	operator tensor_view<T, width, N>();
+	operator tensor_view<T, width, N>() const;
+
 	// Pull in base-class begin/end (hidden by operator[] overloads)
 	using tensor_common<tensor, T, N>::begin;
 	using tensor_common<tensor, T, N>::end;
@@ -386,6 +406,18 @@ public:
 #pragma HLS inline
 		return  tensor_ref<inner_t, INNER_W, HOST_W>(host, base + i * INNER_W);
 	}
+
+	// Slice: fix leading index, return view of remainder (defined in tensor_view.hpp)
+	tensor_view<T, width, REST...> slice(unsigned i);
+	inner_t slice(unsigned i) const;
+
+	// Transpose: permuted view (defined in tensor_view.hpp)
+	template<unsigned ...PERM>
+	tensor_transpose<T, width, perm<PERM...>, DIM0, REST...> transpose();
+
+	// View conversion (defined in tensor_view.hpp)
+	operator tensor_view<T, width, DIM0, REST...>();
+	operator tensor_view<T, width, DIM0, REST...>() const;
 
 	// Pull in base-class begin/end (hidden by operator[] overloads)
 	using tensor_common<tensor, inner_t, DIM0>::begin;
