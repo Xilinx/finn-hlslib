@@ -50,6 +50,7 @@
 
 #include <ap_int.h>
 #include <hls_stream.h>
+#include "ap_axi_sdata.h"
 
 /*!
  * \brief DMA block accessing AXI4 memory and output HLS streams
@@ -233,6 +234,58 @@ void GenParamStream(TW const &W_in, hls::stream<ap_uint<SIMD * PE * WP>> &paramS
       paramStreamOut.write(strMem);
     }
   }
+}
+
+
+/**
+ * \brief   QDMA stream to normal stream conversion - Reads in a QDMA stream and strips metadata (TLAST, TKEEP)
+ *
+ * Used as an adapter when connecting blocks through top-level Vitis streams (kernel to kernel or host to plaform streaming)
+ *
+ * \tparam     DataWidth    Width, in number of bits, of the data on streams
+ * \tparam     NumTotal     Total number of words in the input stream
+ *
+ * \param      in           Input stream
+ * \param      out          Output stream
+ * \param      numReps      Number of frames / images
+ *
+ */
+template<unsigned int DataWidth, unsigned int NumTotal>
+void Qdma2Stream_Batch(hls::stream<qdma_axis<DataWidth,0,0,0>> & in, hls::stream<ap_uint<DataWidth>> & out, const unsigned int numReps){
+	//TODO: static_assert to ensure DataWidth is power of 2 between 8 and 512
+	for (unsigned int image = 0; image < numReps; image++) {
+		for (unsigned int word = 0; word < NumTotal; word++) {
+#pragma HLS pipeline style=flp II=1
+			out.write(in.read().get_data());
+		}
+	}
+}
+
+/**
+ * \brief   Normal stream to QDMA stream conversion - Reads in a stream and outputs a QDMA stream including metadata (TLAST, TKEEP)
+ *
+ * Used as an adapter when connecting blocks through top-level Vitis streams (kernel to kernel or host to plaform streaming)
+ *
+ * \tparam     DataWidth    Width, in number of bits, of the data on streams
+ * \tparam     NumTotal     Total number of words in the input stream
+ *
+ * \param      in           Input stream
+ * \param      out          Output stream
+ * \param      numReps      Number of frames / images
+ *
+ */
+template<unsigned int DataWidth, unsigned int NumTotal>
+void Stream2Qdma_Batch(hls::stream<ap_uint<DataWidth>> & in, hls::stream<qdma_axis<DataWidth,0,0,0>> & out, const unsigned int numReps){
+	for (unsigned int image = 0; image < numReps; image++) {
+		for (unsigned int word = 0; word < NumTotal; word++) {
+#pragma HLS pipeline style=flp II=1
+			qdma_axis<DataWidth,0,0,0> temp;
+			temp.set_data(in.read());
+			temp.set_keep(-1);
+			temp.set_last(word == NumTotal-1);
+			out.write(temp);
+		}
+	}
 }
 
 #endif

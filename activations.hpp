@@ -256,9 +256,8 @@ public:
 };
 
 /*!
- * \brief Thresholding function for multiple images
+ * \brief Thresholding function (function-pipelined)
  *
- * \tparam ImgDim         Total spatial size of input feature map
  * \tparam NumChannels    Number of channels in input feature map
  * \tparam PE             Number of output rows computed in parallel
  * \tparam TI             Element type of the input activations
@@ -268,22 +267,20 @@ public:
  * \param in              Input stream
  * \param out             Output stream
  * \param activation      Activation class
- * \param reps            Number of time the function has to be repeatedly executed
  */
 template <
-    unsigned ImgDim, unsigned NumChannels, unsigned PE,
+    unsigned NumChannels, unsigned PE,
     typename TI, typename TO, typename TA>
 void Thresholding_Batch(hls::stream<tensor<TI, PE>> &in,
                         hls::stream<tensor<TO, PE>> &out,
-                        TA const &activation,
-                        int const reps)
+                        TA const &activation)
 {
+#pragma HLS pipeline II=1 style=flp
   constexpr unsigned  NF = NumChannels / PE;
+  static unsigned  nf = 0;
+#pragma HLS reset variable=nf
 
-  unsigned nf = 0;
-  for (unsigned i = 0; i < reps * ImgDim * NF; i++) {
-#pragma HLS pipeline style=flp II=1
-
+  if(!in.empty()) {
     auto const  inElem = in.read();
     tensor<TO, PE>  y;
     for (unsigned pe = 0; pe < PE; pe++) {
@@ -291,14 +288,13 @@ void Thresholding_Batch(hls::stream<tensor<TI, PE>> &in,
       y[pe] = activation.activate(nf, pe, inElem[pe]);
     }
     out.write(y);
-    if (++nf == NF)  nf = 0;
+    if(++nf == NF)  nf = 0;
   }
 }
 
 /*!
- * \brief Thresholding function for multiple images, with streaming thresholds
+ * \brief Thresholding function with streaming thresholds (function-pipelined)
  *
- * \tparam ImgDim         Total spatial size of input feature map
  * \tparam NumChannels    Number of channels in input feature map
  * \tparam PE             Number of output rows computed in parallel
  * \tparam ActVal         Initial value of activation at start of thresholding procedure
@@ -310,24 +306,20 @@ void Thresholding_Batch(hls::stream<tensor<TI, PE>> &in,
  * \param in              Input stream
  * \param out             Output stream
  * \param weight          Threshold stream
- * \param reps            Number of time the function has to be repeatedly executed
  */
 template <
-    unsigned ImgDim, unsigned NumChannels, unsigned PE,
+    unsigned NumChannels, unsigned PE,
     int ActVal=0, typename TT, unsigned int NumSteps,
     typename TI, typename TO>
 void Thresholding_Stream_Batch(hls::stream<tensor<TI, PE>> &in,
                         hls::stream<tensor<TO, PE>> &out,
-                        hls::stream<tensor<TT, PE, NumSteps>> &weight,
-                        int const reps)
+                        hls::stream<tensor<TT, PE, NumSteps>> &weight)
 {
-  unsigned const NF = NumChannels / PE;
+#pragma HLS pipeline II=1 style=flp
 
-  ThresholdsActivation<1, PE, NumSteps, TT, TO, ActVal, comp::less_equal<TT, TT>> internal_thr;
+  if(!in.empty() && !weight.empty()) {
+    ThresholdsActivation<1, PE, NumSteps, TT, TO, ActVal, comp::less_equal<TT, TT>> internal_thr;
 #pragma HLS ARRAY_PARTITION variable=internal_thr.m_thresholds complete dim=0
-
-  for (unsigned i = 0; i < reps * ImgDim * NF; i++) {
-#pragma HLS pipeline style=flp II=1
 
     auto const  thr = weight.read();
     auto const  inElem = in.read();

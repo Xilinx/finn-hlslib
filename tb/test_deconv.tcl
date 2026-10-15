@@ -29,13 +29,13 @@
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 #############################################################################
-# @brief	Running the testbench for MaxNorm layer.
+# @brief	Running the testbench for Deconv layer.
 # @author	Thomas B. Preusser <thomas.preusser@amd.com>
 #############################################################################
-open_project hls-syn-max_norm
-add_files max_norm_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb"
-add_files -tb max_norm_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb"
-set_top max_norm_top
+open_project hls-syn-deconv
+add_files deconv_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb"
+add_files -tb deconv_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb"
+set_top deconv_top
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}
 create_clock -period 5 -name default

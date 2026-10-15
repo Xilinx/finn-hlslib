@@ -235,7 +235,6 @@ public:
  * @param fct  Pooling functor (Max, Avg, Sum, ...)
  */
 template<
-	size_t  ISIZE, // Number of input strobes
 	size_t  K,     // Kernel size: Number of inputs reduced to one output
 	typename TI,   // [inferred] Input data type
 	typename TO,   // [inferred] Output data type
@@ -246,21 +245,80 @@ void Pool_batch(
 	hls::stream<TO> &dst,
 	F &&fct
 ) {
-	static_assert(ISIZE%K == 0, "Kernel size must divide input size.");
-
-	typename std::remove_reference_t<F>::accu_t  accu;
-#pragma HLS ARRAY_PARTITION variable=accu complete dim=0
-	ModCounter<K>  cnt;
-	bool  first = true;
-
-	for(size_t  i = 0; i < ISIZE; i++) {
 #pragma HLS pipeline II=1 style=flp
+	static typename std::remove_reference_t<F>::accu_t  accu;
+#pragma HLS ARRAY_PARTITION variable=accu complete dim=0
+	static ModCounter<K>  cnt;
+	static bool  first = true;
+#pragma HLS reset variable=cnt
+#pragma HLS reset variable=first
+
+	if(!src.empty()) {
 		if(first)  accu = fct.init();
 		fct.pool(accu, src.read());
 		first = cnt.tick();
 		if(first)  dst.write(fct.activate(accu));
 	}
+}
 
+
+
+//===========================================================================
+// Legacy AccPool_Batch
+
+/**
+ * \brief   Accumulate-pool (function-pipelined) — global accumulation across
+ *          ImgDim×ImgDim spatial positions, emitting one result per channel fold.
+ *
+ * \tparam ImgDim       Width and Height of the Input Feature Map (assumed square)
+ * \tparam NumChannels  Number of Input Feature Maps
+ * \tparam ActType      DataType of the input activation
+ * \tparam PECount      PE parallelism
+ * \tparam AccType      Datatype of the accumulation (e.g. output)
+ *
+ * \param in            Input stream
+ * \param out           Output stream
+ */
+template<
+    unsigned int ImgDim,
+	unsigned int NumChannels,
+	typename ActType,
+	unsigned int PECount,
+	typename AccType>
+void AccPool_Batch(
+	hls::stream<tensor<ActType, PECount>> &in,
+	hls::stream<tensor<AccType, PECount>> &out
+) {
+#pragma HLS pipeline II=1 style=flp
+	constexpr unsigned  FOLDS = NumChannels / PECount;
+	constexpr unsigned  PIXELS = ImgDim * ImgDim;
+	static tensor<AccType, PECount>  accumulators[FOLDS];
+	static unsigned  fold = 0;
+	static unsigned  pixel = 0;
+#pragma HLS reset variable=fold
+#pragma HLS reset variable=pixel
+#pragma HLS reset variable=accumulators off
+#pragma HLS bind_storage variable=accumulators type=RAM_2P impl=LUTRAM
+
+	if(!in.empty()) {
+		auto const  x = in.read();
+		bool const  first_pixel = (pixel == 0);
+
+		tensor<AccType, PECount>  acc;
+		for(unsigned  pe = 0; pe < PECount; pe++) {
+#pragma HLS UNROLL
+			acc[pe] = AccType(x[pe]) + (first_pixel ? AccType(0) : AccType(accumulators[fold][pe]));
+		}
+		accumulators[fold] = acc;
+
+		bool const  last_pixel = (pixel == PIXELS - 1);
+		if(last_pixel)  out.write(acc);
+
+		if(++fold == FOLDS) {
+			fold = 0;
+			if(++pixel == PIXELS)  pixel = 0;
+		}
+	}
 }
 
 #endif

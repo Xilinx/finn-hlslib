@@ -34,6 +34,7 @@
 #include "ap_int.h"
 
 #include "activations.hpp"
+#include "tensor.hpp"
 
 
 #define PE 4
@@ -81,5 +82,7 @@ struct per_channel_neg
 };
 
 
-void Testbench_channelwise_op(hls::stream<ap_uint<IFM_Channels*INPUT_BITS>> &in,
-                    hls::stream<ap_uint<OFM_Channels*OUTPUT_BITS>> &out, unsigned int numReps);
+void Testbench_channelwise_op(
+	hls::stream<tensor<ap_uint<INPUT_BITS>, PE>> &in,
+	hls::stream<tensor<MULT_OUT_TYPE, PE>>       &out
+);

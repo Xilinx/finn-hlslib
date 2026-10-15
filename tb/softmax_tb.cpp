@@ -1,63 +1,77 @@
-/******************************************************************************
- *  Copyright (c) 2023, Xilinx, Inc.
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *
- *  1.  Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
- *
- *  2.  Redistributions in binary form must reproduce the above copyright
- *      notice, this list of conditions and the following disclaimer in the
- *      documentation and/or other materials provided with the distribution.
- *
- *  3.  Neither the name of the copyright holder nor the names of its
- *      contributors may be used to endorse or promote products derived from
- *      this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- *  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- *  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- *  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- *  OR BUSINESS INTERRUPTION). HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *******************************************************************************
- * @brief	Testbench for SoftMax layer.
- * @author	Thomas B. Preusser <thomas.preusser@amd.com>
- *******************************************************************************/
+#include <iostream>
+#include <cmath>
+#include <hls_stream.h>
+#define AP_INT_MAX_W 8191
+#include "ap_int.h"
+
 #include "softmax_top.hpp"
 
-#include <iostream>
-#include <iomanip>
-#include <random>
+#define MAX_IMAGES 2
 
 int main() {
-	hls::stream<TI>     src("src");
-	hls::stream<TI>     bypass("bypass");
-	hls::stream<float>  dst("dst");
+	// Test vectors: N_CLASSES=8 values
+	int  inputs[MAX_IMAGES][N_CLASSES] = {
+		{  10,  20,  30,  40,  50,  60,  70,  80 },
+		{ -50, -20,   0,  10,  30,  60,  80, 100 },
+	};
 
-	{
-		std::default_random_engine  rnd;
-		std::uniform_int_distribution<>  dist(0, (1<<TI::width)-1);
-		for(unsigned  i = 0; i < FM_SIZE; i++) {
-			TI const  x = dist(rnd);
-			src   .write(x);
-			bypass.write(x);
+	hls::stream<sm_in_t>   input_stream("input_stream");
+	hls::stream<sm_out_t>  output_stream("output_stream");
+
+	constexpr unsigned  FOLDS = N_CLASSES / SIMD_SM;
+
+	// Feed input
+	for(unsigned  n = 0; n < MAX_IMAGES; n++) {
+		for(unsigned  f = 0; f < FOLDS; f++) {
+			ap_uint<SIMD_SM * 8>  word = 0;
+			for(unsigned  s = 0; s < SIMD_SM; s++) {
+				word((s+1)*8-1, s*8) = ap_uint<8>(ap_int<8>(inputs[n][f*SIMD_SM + s]));
+			}
+			input_stream.write(sm_in_t(word));
 		}
 	}
 
-	softmax_top(src, dst);
-	for(unsigned  i = 0; i < FM_SIZE; i++) {
-		TI    const  x = bypass.read();
-		float const  y = dst.read();
-		std::cout << std::setw(3) << x << " -> " << y << std::endl;
-	}
-	std::cout << "--------------\n" << std::endl;
+	// Call the 3-stage pipeline — need enough iterations
+	// Each image processes FOLDS words through 3 stages; give generous headroom
+	constexpr unsigned  ITERS = MAX_IMAGES * FOLDS * 20;
+	for(unsigned  i = 0; i < ITERS; i++)  Testbench_softmax(input_stream, output_stream);
 
+	// Verify
+	int  err_cnt = 0;
+	for(unsigned  n = 0; n < MAX_IMAGES; n++) {
+		// Compute reference softmax
+		float  ref[N_CLASSES];
+		float  max_val = -1e30f;
+		for(unsigned  i = 0; i < N_CLASSES; i++)
+			if(inputs[n][i] > max_val)  max_val = inputs[n][i];
+		float  sum = 0;
+		for(unsigned  i = 0; i < N_CLASSES; i++) {
+			ref[i] = std::exp(float(inputs[n][i]) - max_val);
+			sum += ref[i];
+		}
+		for(unsigned  i = 0; i < N_CLASSES; i++)
+			ref[i] /= sum;
+
+		// Read and compare
+		for(unsigned  f = 0; f < FOLDS; f++) {
+			sm_out_t  outElem = output_stream.read();
+			for(unsigned  s = 0; s < SIMD_SM; s++) {
+				unsigned  idx = f * SIMD_SM + s;
+				float  produced = outElem[s];
+				float  expected = ref[idx];
+				float  diff = std::fabs(produced - expected);
+				if(diff > 1e-3f) {
+					std::cout << "ERROR: Image " << n << " class " << idx
+						<< " expected " << expected << " got " << produced
+						<< " diff " << diff << std::endl;
+					err_cnt++;
+				}
+			}
+		}
+		if(err_cnt == 0)
+			std::cout << "Image #" << n << " passed." << std::endl;
+	}
+
+	if(err_cnt == 0)  std::cout << "Test passed." << std::endl;
+	return  err_cnt ? 1 : 0;
 }

@@ -31,7 +31,7 @@
  ******************************************************************************/
 #include <hls_stream.h>
 #include "ap_int.h"
-#include "streamtools.hpp"
+#include "deconv.hpp"
 #include "data/config_fmpp.h"
 
 using  vec_t = tensor<ap_uint<INPUT_WIDTH>, SIMD1>;
@@ -40,7 +40,7 @@ void test_fm_pixel_padding(
 	hls::stream<vec_t> &src,
 	hls::stream<vec_t> &dst
 ) {
-#pragma HLS DATAFLOW
+#pragma HLS interface ap_ctrl_none port=return
 	FMPadding_Pixel_Nonsquare<
 		OUTPUT_DIM_X,
 		OUTPUT_DIM_Y,

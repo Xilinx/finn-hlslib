@@ -31,7 +31,7 @@
 #include <ap_int.h>
 #include <hls_stream.h>
 
-#include "deconv.hpp"
+#include "deconv_top.hpp"
 #include "data/config_deconv2d.h"
 #include "data/memdata_deconv2d.h"
 

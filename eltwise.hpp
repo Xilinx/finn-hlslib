@@ -47,9 +47,7 @@
 /**
  * \brief StreamingEltwise function
  *
- * \tparam Channels   Number of channels for eltwise operation
  * \tparam PE         Number of channels computed in parallel
- * \tparam N          Total number of elements to process
  * \tparam TE0        Element type of input 0
  * \tparam TE1        Element type of input 1
  * \tparam TEO        Element type of output
@@ -61,7 +59,7 @@
  * \param f           Function to apply elementwise
  */
 template<
-	unsigned Channels, unsigned PE, unsigned N,
+	unsigned PE,
 	typename TE0, typename TE1, typename TEO,
 	typename Fxn
 >
@@ -71,9 +69,8 @@ void StreamingEltwise(
 	hls::stream<tensor<TEO, PE>> &out,
 	Fxn &&f
 ) {
-	constexpr unsigned  TOTAL_FOLD = (Channels / PE) * N;
-	for(unsigned  i = 0; i < TOTAL_FOLD; i++) {
-#pragma HLS pipeline style=flp II=1
+#pragma HLS pipeline II=1 style=flp
+	if(!in0.empty() && !in1.empty()) {
 		auto const  a = in0.read();
 		auto const  b = in1.read();
 		tensor<TEO, PE>  y;

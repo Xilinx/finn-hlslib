@@ -1,6 +1,6 @@
 #include "ap_int.h"
 #include <hls_stream.h>
-#include "streamtools.hpp"
+#include "dma.hpp"
 
 void qdma_conv_top(hls::stream<qdma_axis<128,0,0,0>> & in, hls::stream<qdma_axis<128,0,0,0>> & out){
 #pragma HLS INTERFACE axis port=in

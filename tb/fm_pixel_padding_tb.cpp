@@ -80,8 +80,10 @@ int main() {
 	}
 	std::cout << "Finished writing to input stream" << std::endl;
 
-	// Run top-level function
-	test_fm_pixel_padding(input_stream, output_stream);
+	// Run top-level function (function-pipelined: call in a loop)
+	constexpr unsigned  TOTAL_OUT = OUTPUT_DIM_X * OUTPUT_DIM_Y * CHANNELS;
+	for(unsigned  i = 0; i < 2*TOTAL_OUT; i++)
+		test_fm_pixel_padding(input_stream, output_stream);
 	std::cout << "Finished writing to output stream" << std::endl;
 
 	// Verify correctness
