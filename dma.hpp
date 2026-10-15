@@ -37,255 +37,110 @@
  *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
  *           Christoph Doehring <cdoehrin@xilinx.com>
  *
- *  \file dma.h
+ *  \file dma.hpp
  *
- *  Library of templated HLS functions for BNN deployment. 
- *  This file lists a set of functions to access memory mapped values into 
- *  streams. 
+ *  Library of templated HLS functions for DMA access.
+ *  This file lists a set of functions to access memory mapped values into
+ *  streams.
  *
  *****************************************************************************/
 #ifndef DMA_HPP
 #define DMA_HPP
 
-
-#include <ap_int.h>
 #include <hls_stream.h>
 #include "ap_axi_sdata.h"
+#include "utils.hpp"
 
-/*!
- * \brief DMA block accessing AXI4 memory and output HLS streams
- *
- * 
- * \tparam DataWidth Width, in number of bits, of the AXI4 memory pointer and the output HLS stream
- * \tparam numBytes Number of bytes to be read from the memory
- *
- * \param in Input memory pointer
- * \param out Output HLS stream
- */
-template<unsigned int DataWidth, unsigned int numBytes>
-void Mem2Stream(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth>> & out);
 
-/*!
- * \brief DMA block accessing AXI4 memory and output HLS streams multiple times
- * 
- * It basically calls Mem2Stream function multiple times, possibly with bigger sizes so to increase
- * the burst size
- * 
- * \tparam DataWidth Width, in number of bits, of the AXI4 memory pointer and the output HLS stream
- * \tparam numBytes Number of bytes to be read from the memory
- *
- * \param in Input memory pointer
- * \param out Output HLS stream
- * \param numReps Number of times the Stream2Mem function has to be called
- */
-template<unsigned int DataWidth, unsigned int numBytes>
-void Mem2Stream_Batch(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth>> & out, const unsigned int numReps);
-
-/*!
- * \brief DMA block writing HLS streams content in AXI4 pointed memory
- *
- * 
- * \tparam DataWidth Width, in number of bits, of the AXI4 memory pointer and the output HLS stream
- * \tparam numBytes Number of bytes to be read from the memory
- *
- * \param in Input HLS stream
- * \param out Output memory pointer
- */
-template<unsigned int DataWidth, unsigned int numBytes>
-void Stream2Mem(hls::stream<ap_uint<DataWidth>> & in, ap_uint<DataWidth> * out);
-
-/*!
- * \brief DMA block that accesses the external memory and outputs HLS streams multiple times
- *
- * It basically calls Mem2Stream function multiple times, possibly with bigger sizes so to increase
- * the burst size
- *
- * \tparam DataWidth Width, in number of bits, of the AXI4 memory pointer and the output HLS stream
- * \tparam numBytes Number of bytes to be read from the memory
- *
- * \param in Input pointer to external memory
- * \param out Output the generated HLS sream
- * \param numReps Number of times the Mem2Stream function has to be called
- */
-template<unsigned int DataWidth, unsigned int numBytes>
-void Mem2Stream_Batch_external_wmem(ap_uint<DataWidth> * in,
-        hls::stream<ap_uint<DataWidth>> & out, const unsigned int numReps) {
-    unsigned int rep = 0;
-    while (rep != numReps) {
-        Mem2Stream<DataWidth, numBytes>(&in[0], out);
-        rep += 1;
-    }
-}
-
-/*!
- * \brief DMA block writing HLS streams content in AXI4 pointed memory multiple times
- * 
- * It basically calls Stream2Mem function multiple times, possibly with bigger sizes so to increase
- * the burst size
- * 
- * \tparam DataWidth Width, in number of bits, of the AXI4 memory pointer and the output HLS stream
- * \tparam numBytes Number of bytes to be read from the memory
- *
- * \param in Input HLS stream
- * \param out Output memory pointer
- * \param numReps Number of times the Stream2Mem function has to be called
- */
-template<unsigned int DataWidth, unsigned int numBytes>
-void Stream2Mem_Batch(hls::stream<ap_uint<DataWidth>> & in, ap_uint<DataWidth> * out, const unsigned int numReps);
-
-template<unsigned int DataWidth, unsigned int numBytes>
-void Mem2Stream(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth>> & out) {
-  static_assert(DataWidth % 8 == 0, "");
-  const unsigned int numWords = numBytes / (DataWidth / 8);
+template<typename T, unsigned numBytes>
+void Mem2Stream(T *in, hls::stream<T> &out) {
+  constexpr unsigned  numWords = numBytes / (width_v<T> / 8);
+  static_assert(width_v<T> % 8 == 0, "");
   static_assert(numWords != 0, "");
-  for (unsigned int i = 0; i < numWords; i++) {
+  for (unsigned i = 0; i < numWords; i++) {
 #pragma HLS pipeline style=flp II=1
-    ap_uint<DataWidth> e = in[i];
-    out.write(e);
+    out.write(in[i]);
   }
 }
 
-
-template<unsigned int DataWidth, unsigned int numBytes>
-void Stream2Mem(hls::stream<ap_uint<DataWidth>> & in, ap_uint<DataWidth> * out) {
-  static_assert(DataWidth % 8 == 0, "");
-  const unsigned int numWords = numBytes / (DataWidth / 8);
+template<typename T, unsigned numBytes>
+void Stream2Mem(hls::stream<T> &in, T *out) {
+  constexpr unsigned  numWords = numBytes / (width_v<T> / 8);
+  static_assert(width_v<T> % 8 == 0, "");
   static_assert(numWords != 0, "");
-  for (unsigned int i = 0; i < numWords; i++) {
+  for (unsigned i = 0; i < numWords; i++) {
 #pragma HLS pipeline style=flp II=1
-    ap_uint<DataWidth> e = in.read();
-	out[i] = e;
+    out[i] = in.read();
   }
 }
 
-template<unsigned int DataWidth, unsigned int numBytes>
-void Mem2Stream_Batch(ap_uint<DataWidth> * in, hls::stream<ap_uint<DataWidth>> & out, const unsigned int numReps) {
-  const unsigned int indsPerRep = numBytes / (DataWidth / 8);
-  unsigned int rep = 0;
+template<typename T, unsigned numBytes>
+void Mem2Stream_Batch(T *in, hls::stream<T> &out, unsigned const numReps) {
+  constexpr unsigned  indsPerRep = numBytes / (width_v<T> / 8);
+  unsigned rep = 0;
   // make sure Mem2Stream does not get inlined here
   // we lose burst inference otherwise
   while (rep != numReps) {
-    unsigned int repsLeft = numReps - rep;
+    unsigned  repsLeft = numReps - rep;
     if ((repsLeft & 0xF) == 0) {
-      // repsLeft divisable by 16, read 16 images
-      Mem2Stream<DataWidth, numBytes * 16>(&in[rep * indsPerRep], out);
+      Mem2Stream<T, numBytes * 16>(&in[rep * indsPerRep], out);
       rep += 16;
     } else {
-      // fallback, read single image
-      Mem2Stream<DataWidth, numBytes>(&in[rep * indsPerRep], out);
+      Mem2Stream<T, numBytes>(&in[rep * indsPerRep], out);
       rep += 1;
     }
   }
 }
 
-
-template<unsigned int DataWidth, unsigned int numBytes>
-void Stream2Mem_Batch(hls::stream<ap_uint<DataWidth>> & in, ap_uint<DataWidth> * out, const unsigned int numReps) {
-  const unsigned int indsPerRep = numBytes / (DataWidth / 8);
-  unsigned int rep = 0;
+template<typename T, unsigned numBytes>
+void Stream2Mem_Batch(hls::stream<T> &in, T *out, unsigned const numReps) {
+  constexpr unsigned  indsPerRep = numBytes / (width_v<T> / 8);
+  unsigned rep = 0;
   // make sure Stream2Mem does not get inlined here
   // we lose burst inference otherwise
   while (rep != numReps) {
-    unsigned int repsLeft = numReps - rep;
+    unsigned  repsLeft = numReps - rep;
     if ((repsLeft & 0xF) == 0) {
-      // repsLeft divisable by 16, write 16 images
-      Stream2Mem<DataWidth, numBytes * 16>(in, &out[rep * indsPerRep]);
+      Stream2Mem<T, numBytes * 16>(in, &out[rep * indsPerRep]);
       rep += 16;
     } else {
-      // fallback, write single image
-      Stream2Mem<DataWidth, numBytes>(in, &out[rep * indsPerRep]);
+      Stream2Mem<T, numBytes>(in, &out[rep * indsPerRep]);
       rep += 1;
     }
   }
 }
 
-/*!
- * \brief Streaming block that fetches parameters from internal memory and presents them to the MVAU
- * 
- * \tparam TILES          Total folding factor of the neural network mapped on the fabric (Neuron Fold * Synapse Fold)
- * \tparam SIMD           Number of input columns computed in parallel
- * \tparam PE             Number of output rows computed in parallel
- * \tparam WP             Precision of the weights in the network
- * \tparam TW             DataType of the weights matrix - safely deducible from the paramaters
- * 
- * \param W_in            Pointer to the weight memory
- * \param paramStreamOut  Parameter stream that contains SIMD * PE * WP long words to digest by the MVAU
- * \param numReps         Number of time the function has to be repeatedly executed (e.g. number of images)
- */
-template<
-  unsigned int TILES,
-  unsigned int SIMD,
-  unsigned int PE,
-  unsigned int WP,
-  typename TW
->
-void GenParamStream(TW const &W_in, hls::stream<ap_uint<SIMD * PE * WP>> &paramStreamOut, int const numReps) {
-  for (unsigned rep = 0; rep < numReps; rep++) {
-    for (unsigned tile = 0; tile < TILES; tile++) {
+template<typename T, unsigned numBytes>
+void Mem2Stream_Batch_external_wmem(T *in, hls::stream<T> &out, unsigned const numReps) {
+  unsigned rep = 0;
+  while (rep != numReps) {
+    Mem2Stream<T, numBytes>(&in[0], out);
+    rep += 1;
+  }
+}
+
+template<typename T, unsigned NumTotal>
+void Qdma2Stream_Batch(hls::stream<qdma_axis<width_v<T>,0,0,0>> &in, hls::stream<T> &out, unsigned const numReps) {
+  for (unsigned image = 0; image < numReps; image++) {
+    for (unsigned word = 0; word < NumTotal; word++) {
 #pragma HLS pipeline style=flp II=1
-
-      ap_uint<SIMD * PE * WP> strMem;
-      for (unsigned pe = 0; pe < PE; pe++) {
-        // Concatenate the weights within the tile into a large SIMD * PE * WP wide word
-        // Using Little Endian PE order
-        strMem((SIMD * WP)*(pe+1)-1,(SIMD * WP)*pe) = W_in.m_weights[pe][tile]; 
-      }
-
-      paramStreamOut.write(strMem);
+      out.write(in.read().get_data());
     }
   }
 }
 
-
-/**
- * \brief   QDMA stream to normal stream conversion - Reads in a QDMA stream and strips metadata (TLAST, TKEEP)
- *
- * Used as an adapter when connecting blocks through top-level Vitis streams (kernel to kernel or host to plaform streaming)
- *
- * \tparam     DataWidth    Width, in number of bits, of the data on streams
- * \tparam     NumTotal     Total number of words in the input stream
- *
- * \param      in           Input stream
- * \param      out          Output stream
- * \param      numReps      Number of frames / images
- *
- */
-template<unsigned int DataWidth, unsigned int NumTotal>
-void Qdma2Stream_Batch(hls::stream<qdma_axis<DataWidth,0,0,0>> & in, hls::stream<ap_uint<DataWidth>> & out, const unsigned int numReps){
-	//TODO: static_assert to ensure DataWidth is power of 2 between 8 and 512
-	for (unsigned int image = 0; image < numReps; image++) {
-		for (unsigned int word = 0; word < NumTotal; word++) {
+template<typename T, unsigned NumTotal>
+void Stream2Qdma_Batch(hls::stream<T> &in, hls::stream<qdma_axis<width_v<T>,0,0,0>> &out, unsigned const numReps) {
+  for (unsigned image = 0; image < numReps; image++) {
+    for (unsigned word = 0; word < NumTotal; word++) {
 #pragma HLS pipeline style=flp II=1
-			out.write(in.read().get_data());
-		}
-	}
-}
-
-/**
- * \brief   Normal stream to QDMA stream conversion - Reads in a stream and outputs a QDMA stream including metadata (TLAST, TKEEP)
- *
- * Used as an adapter when connecting blocks through top-level Vitis streams (kernel to kernel or host to plaform streaming)
- *
- * \tparam     DataWidth    Width, in number of bits, of the data on streams
- * \tparam     NumTotal     Total number of words in the input stream
- *
- * \param      in           Input stream
- * \param      out          Output stream
- * \param      numReps      Number of frames / images
- *
- */
-template<unsigned int DataWidth, unsigned int NumTotal>
-void Stream2Qdma_Batch(hls::stream<ap_uint<DataWidth>> & in, hls::stream<qdma_axis<DataWidth,0,0,0>> & out, const unsigned int numReps){
-	for (unsigned int image = 0; image < numReps; image++) {
-		for (unsigned int word = 0; word < NumTotal; word++) {
-#pragma HLS pipeline style=flp II=1
-			qdma_axis<DataWidth,0,0,0> temp;
-			temp.set_data(in.read());
-			temp.set_keep(-1);
-			temp.set_last(word == NumTotal-1);
-			out.write(temp);
-		}
-	}
+      qdma_axis<width_v<T>,0,0,0>  temp;
+      temp.set_data(in.read());
+      temp.set_keep(-1);
+      temp.set_last(word == NumTotal-1);
+      out.write(temp);
+    }
+  }
 }
 
 #endif

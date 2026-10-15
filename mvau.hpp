@@ -62,10 +62,9 @@ template<
 	unsigned  SIMD,      // input parallelism
 	unsigned  PE,        // output parallelism
 	unsigned  MMV = 1,   // output pixels in parallel
-	typename  TW,        // weight element type
 	typename  TI,        // input activation element type
 	typename  TO,        // output element type
-	typename  TW_arr,    // weight array type: operator[](tile)[pe][i] -> TW
+	typename  TW_arr,    // weight array type: operator[](tile)[pe][i] -> weight
 	typename  TA,        // activation class
 	typename  TR = ap_resource_dflt  // compute resource
 >
