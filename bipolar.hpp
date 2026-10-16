@@ -60,9 +60,12 @@ class Bipolar {
 
 public:
 	Bipolar() : v(0) {}
-	Bipolar(float f) : v(f != 0? 1 : 0) {}
+	Bipolar(float f) : v(f > 0? 1 : 0) {}
 	Bipolar(ap_uint<1> b) : v(b) {}
-	Bipolar(int i) : v(i >= 0? 1 : 0) {}
+	Bipolar(int i) : v(i > 0? 1 : 0) {}
+
+	// Raw bit access for tensor<> packing
+	operator ap_uint<1>() const { return  v; }
 
 	// XNOR multiply: returns 1 when bits match, 0 otherwise
 	friend unsigned operator*(Bipolar const &a, Bipolar const &b) {

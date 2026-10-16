@@ -48,6 +48,7 @@
 #include <initializer_list>
 #include <utility>
 #include "utils.hpp"
+#include "bipolar.hpp"
 
 
 //===========================================================================
@@ -62,6 +63,12 @@ ap_uint<width_v<T>> to_bitimage(T const &val) {
 #pragma HLS inline
 	static_assert(std::is_integral<T>::value, "Non-integral types require bit image specialization.");
 	return  val;
+}
+
+inline
+ap_uint<1> to_bitimage(Bipolar const &val) {
+#pragma HLS inline
+	return  ap_uint<1>(val);
 }
 
 template<int  W>
@@ -192,6 +199,13 @@ struct BitImage<double> {
 #pragma HLS inline
 		union { uint64_t  i; double  f; } const  conv = { .i = uint64_t(bits) };
 		return  conv.f;
+	}
+};
+template<>
+struct BitImage<Bipolar> {
+	static Bipolar from(ap_uint<1> const &bits) {
+#pragma HLS inline
+		return  Bipolar(bits);
 	}
 };
 

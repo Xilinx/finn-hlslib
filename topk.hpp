@@ -61,7 +61,7 @@ template<
 	typename Out_T>
 void LabelSelect_Batch(
 	hls::stream<tensor<In_T, PECount>> &in,
-	hls::stream<Out_T> &out
+	hls::stream<tensor<Out_T, 1>> &out
 ) {
 #pragma HLS pipeline II=1 style=frp
 	static_assert(clog2(NumClasses) <= Out_T::width - Out_T::sign_flag, "");
@@ -140,7 +140,7 @@ void LabelSelect_Batch(
 	}
 	else {
 		// Emit top labels in decreasing order (largest first)
-		out.write(toplabels[NumTop - 1 - emit_cnt]);
+		out.write(tensor<Out_T, 1>{toplabels[NumTop - 1 - emit_cnt]});
 		if(++emit_cnt == NumTop) {
 			emit_cnt = 0;
 			state = STATE_CAPTURE;
