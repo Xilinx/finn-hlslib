@@ -1,6 +1,5 @@
-#!/bin/sh
 ##############################################################################
- #  Copyright (c) 2021, Xilinx, Inc.
+ #  Copyright (c) 2019, Xilinx, Inc.
  #  All rights reserved.
  #
  #  Redistribution and use in source and binary forms, with or without
@@ -29,16 +28,24 @@
  #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  #
- ##############################################################################
-
-virtualenv venv
-source venv/bin/activate
-pip3 install -r requirements.txt
-cd tb/data
-python3 gen_weigths.py
-python3 gen_weigths_dws.py
-python3 gen_weigths_nonsquare.py
-python3 gen_weigths_nonsquare_dws.py
-python3 gen_params_stmr.py no_inj
-python3 gen_params_stmr.py inj
-
+###############################################################################
+###############################################################################
+ #
+ #  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ #
+ # \file dwc.tcl
+ #
+ # Tcl script for HLS csim, synthesis and cosim of the datawidth converter block
+ #
+###############################################################################
+open_project hls-syn-dwc
+add_files dwc_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+add_files -tb dwc_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+set_top Testbench_dwc
+open_solution sol1
+set_part {xczu3eg-sbva484-1-i}
+create_clock -period 5 -name default
+csim_design
+csynth_design
+cosim_design
+exit

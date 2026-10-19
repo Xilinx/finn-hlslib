@@ -32,20 +32,22 @@
 ###############################################################################
  #
  #  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ #           Tobias Alonso <tobiasa@xilinx.com>
  #
- # \file test_dwc.tcl
+ # \file label_select.tcl
  #
- # Tcl script for HLS csim, synthesis and cosim of the datawidth converter block
+ # Tcl script for HLS csim, synthesis and cosim of LabelSelect_Batch (topk) layer
  #
 ###############################################################################
-open_project hls-syn-dwc
-add_files dwc_top.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
-add_files -tb dwc_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
-set_top Testbench_dwc
+
+open_project hls-syn-label_select
+add_files label_select_top.cpp -cflags "-fdiagnostics-color -std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+add_files -tb label_select_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+set_top Testbench_label_select
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}
 create_clock -period 5 -name default
-csim_design
+csim_design 
 csynth_design
 cosim_design
 exit

@@ -40,9 +40,7 @@
  *
  *******************************************************************************/
 
-#include <hls_stream.h>
-
-#include "data/concat_config.h"
+#include "concat_top.hpp"
 #include "concat.hpp"
 
 

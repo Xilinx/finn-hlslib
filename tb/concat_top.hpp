@@ -1,4 +1,9 @@
+#ifndef CONCAT_TOP_HPP
+#define CONCAT_TOP_HPP
+
+#include <hls_stream.h>
 #include <ap_int.h>
+
 #include "tensor.hpp"
 
 constexpr unsigned NUM_INPUTS = 4;
@@ -21,3 +26,13 @@ using IN_TYPE1 = tensor<EL_TYPE1, SIMD>;
 using IN_TYPE2 = tensor<EL_TYPE2, SIMD>;
 using IN_TYPE3 = tensor<EL_TYPE3, SIMD>;
 using OUT_TYPE = tensor<EL_TYPE_OUT, SIMD>;
+
+void Testbench_concat(
+	hls::stream<IN_TYPE0> &in0_V,
+	hls::stream<IN_TYPE1> &in1_V,
+	hls::stream<IN_TYPE2> &in2_V,
+	hls::stream<IN_TYPE3> &in3_V,
+	hls::stream<OUT_TYPE> &out_V
+);
+
+#endif

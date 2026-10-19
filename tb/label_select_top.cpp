@@ -1,4 +1,4 @@
-#include "label_select_top.h"
+#include "label_select_top.hpp"
 
 void Testbench_label_select(
 	hls::stream<ls_in_t> &in,

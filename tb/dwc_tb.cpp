@@ -1,11 +1,8 @@
-#include <iostream>
-#include <hls_stream.h>
+#include "dwc_top.hpp"
+
 #define AP_INT_MAX_W 8191
-#include "ap_int.h"
 
-#include "data/dwc_config.h"
-
-void Testbench_dwc(hls::stream<ap_uint<INPUT_WIDTH>> &in, hls::stream<ap_uint<OUT_WIDTH>> &out);
+#include <iostream>
 
 int main() {
 	hls::stream<ap_uint<INPUT_WIDTH>>  input_stream("input_stream");

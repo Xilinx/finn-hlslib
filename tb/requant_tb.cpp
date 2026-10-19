@@ -1,13 +1,8 @@
-#include <hls_stream.h>
-#include <ap_int.h>
+#include "requant_top.hpp"
 
 #include <iostream>
 #include <cmath>
 #include <algorithm>
-
-#include "data/requant_config.h"
-
-void Testbench_requant(hls::stream<tensor<TI, PE>> &in, hls::stream<tensor<TO, PE>> &out);
 
 // Reference parameters (must match requant_top.cpp)
 static float const ref_scales[PE][NF] = {

@@ -1,17 +1,6 @@
-#include <hls_stream.h>
-#include <ap_int.h>
+#include "eltwise_top.hpp"
 
 #include <iostream>
-
-#include "data/eltwise_config.h"
-#include "tensor.hpp"
-
-
-using in0_t = tensor<ap_int<INPUT_1_WIDTH>, NUM_CHANNELS>;
-using in1_t = tensor<ap_int<INPUT_2_WIDTH>, NUM_CHANNELS>;
-using out_t = tensor<ap_int<OUTPUT_WIDTH>,  NUM_CHANNELS>;
-
-void Testbench_Eltwise(hls::stream<in0_t> &in0, hls::stream<in1_t> &in1, hls::stream<out_t> &out);
 
 int main() {
 	constexpr unsigned  N = NUM_REPEAT * NUM_WORDS;
