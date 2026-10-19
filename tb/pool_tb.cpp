@@ -30,60 +30,78 @@
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************
- * @author	Giulio Gambardella <giuliog@xilinx.com>
- * @author	Tobias Alonso <tobiasa@xilinx.com>
  * @author	Thomas B. Preußer <thomas.preusser@amd.com>
  *****************************************************************************/
 
 #include "pool_top.hpp"
 #include <iostream>
+#include <limits>
 
 
-static std::ostream& operator<<(std::ostream &o, pix_t const &pix) {
+static std::ostream& operator<<(std::ostream &o, vec_t const &v) {
 	o << '{';
-	for(auto const &ele : pix)  o << ele << ',';
+	for(unsigned  i = 0; i < PE; i++)  o << v[i] << ',';
 	return  o << '}';
 }
 
 int main() {
-	constexpr unsigned  HO = 1+(H-K)/S;
-	constexpr unsigned  WO = 1+(W-K)/S;
 
-	// Input and Reference Output
-	hls::stream<pix_t>  src;
-	hls::stream<pix_t>  ref; {
-		pix_t  ifm[H][W]; // materialized image for reference computation
+	// Materialize input image
+	val_t  ifm[H][W][C];
+	{
+		val_t  v = 0;
+		for(unsigned  h = 0; h < H; h++)
+			for(unsigned  w = 0; w < W; w++)
+				for(unsigned  c = 0; c < C; c++)
+					ifm[h][w][c] = v++;
+	}
 
-		{ // Input Feed
-			val_t  v = 0;
-			for(size_t  h = 0; h < H; h++) {
-				for(size_t  w = 0; w < W; w++) {
-					pix_t  pix;
-					for(size_t  c = 0; c < C; c++)  pix[c] = v++;
-					src.write(pix);
-					ifm[h][w] = pix;
-				}
-			}
-		}
-
-		// Reference Computation
-		for(size_t  ho = 0; ho < HO; ho++) {
-			for(size_t  wo = 0; wo < WO; wo++) {
-				pix_t  pix = pix_t(std::numeric_limits<val_t>::min());
-				for(size_t  kh = 0; kh < K; kh++) {
-					for(size_t  kw = 0; kw < K; kw++) {
-						pix_t const  x = ifm[ho*S + kh][wo*S + kw];
-						for(size_t  c = 0; c < C; c++)  pix[c] = std::max(pix[c], x[c]);
+	// Generate pre-windowed, pre-folded input for MaxPool<vec_t, K*K, CF>
+	// Stream order: for each output pixel (ho, wo):
+	//   for each kernel position (kh*K + kw) in 0..K*K-1:
+	//     for each channel fold cf in 0..CF-1:
+	//       one vec_t with PE channels
+	hls::stream<vec_t>  src;
+	for(unsigned  ho = 0; ho < HO; ho++) {
+		for(unsigned  wo = 0; wo < WO; wo++) {
+			for(unsigned  kh = 0; kh < K; kh++) {
+				for(unsigned  kw = 0; kw < K; kw++) {
+					for(unsigned  cf = 0; cf < CF; cf++) {
+						vec_t  v;
+						for(unsigned  pe = 0; pe < PE; pe++) {
+							v[pe] = ifm[ho*S + kh][wo*S + kw][cf*PE + pe];
+						}
+						src.write(v);
 					}
 				}
-				ref.write(pix);
 			}
 		}
 	}
 
-	// DUT
-	hls::stream<pix_t>  dst;
-	pool_top(src, dst);
+	// Reference: element-wise max pool per channel fold
+	hls::stream<vec_t>  ref;
+	for(unsigned  ho = 0; ho < HO; ho++) {
+		for(unsigned  wo = 0; wo < WO; wo++) {
+			for(unsigned  cf = 0; cf < CF; cf++) {
+				vec_t  mx;
+				for(unsigned  pe = 0; pe < PE; pe++)
+					mx[pe] = std::numeric_limits<val_t>::min();
+				for(unsigned  kh = 0; kh < K; kh++) {
+					for(unsigned  kw = 0; kw < K; kw++) {
+						for(unsigned  pe = 0; pe < PE; pe++) {
+							val_t const  x = ifm[ho*S + kh][wo*S + kw][cf*PE + pe];
+							mx[pe] = std::max(val_t(mx[pe]), x);
+						}
+					}
+				}
+				ref.write(mx);
+			}
+		}
+	}
+
+	// DUT — call function-pipelined kernel repeatedly
+	hls::stream<vec_t>  dst;
+	for(unsigned  i = 0; i < HO*WO*K*K*CF + HO*WO*CF; i++)  pool_top(src, dst);
 
 	// Output Validation
 	unsigned  errors = 0;
@@ -91,10 +109,8 @@ int main() {
 		bool const  ref_empty = ref.empty();
 		bool const  dst_empty = dst.empty();
 		if(!ref_empty && !dst_empty) {
-			// Compare and continue
 			auto const  exp = ref.read();
 			auto const  act = dst.read();
-
 			if(act != exp) {
 				std::cerr
 					<< "Output mismatch:\n\t"
@@ -104,8 +120,6 @@ int main() {
 			}
 			continue;
 		}
-
-		// At least one stream is empty -> terminate
 		if(!ref_empty) {
 			std::cerr << "Missing output." << std::endl;
 			errors++;

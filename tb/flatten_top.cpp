@@ -6,12 +6,11 @@
  ****************************************************************************/
 #include <ap_fixed.h>
 #include <ap_float.h>
-#include "flatten.hpp"
+#include "tensor.hpp"
 
-// Minimal synthesizable wrapper exercising flatten/unflatten
+// Minimal synthesizable wrapper exercising tensor construction/conversion
 void flatten_top(ap_uint<32> const &in, ap_uint<32> &out) {
 #pragma HLS inline off
-	float  buf[1];
-	unflatten(buf, in);
-	out = flatten(buf);
+	tensor<float, 1>  t(in);
+	out = ap_uint<32>(t);
 }

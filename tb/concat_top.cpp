@@ -32,7 +32,7 @@
 
 /*******************************************************************************
  *
- *  Authors: Michal Danilowicz <danilowi@agh.edu.pl>     
+ *  Authors: Michal Danilowicz <danilowi@agh.edu.pl>
  *
  *  \file concat_top.cpp
  *
@@ -41,7 +41,6 @@
  *******************************************************************************/
 
 #include <hls_stream.h>
-#include <hls_vector.h>
 
 #include "data/concat_config.h"
 #include "concat.hpp"

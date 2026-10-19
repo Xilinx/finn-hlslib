@@ -1,5 +1,4 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
  *  Copyright (C) Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
@@ -29,130 +28,37 @@
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- *****************************************************************************/
-
-/*****************************************************************************
- *
- *  Authors: Giulio Gambardella <giuliog@xilinx.com>
- *           Thomas B. Preusser <thomas.preusser@utexas.edu>
- *             Marie-Curie Fellow, Xilinx Ireland, Grant Agreement No. 751339
- *           Christoph Doehring <cdoehrin@xilinx.com>
- *
- *  \file mac.hpp
- *
- *  Library of templated HLS functions for BNN deployment.
- *  This file lists a set of convenience funtions used to implement
- *  multipliers with selectable implementation resource
- *
- *  This project has received funding from the European Union's Framework
- *  Programme for Research and Innovation Horizon 2020 (2014-2020) under
- *  the Marie Skłodowska-Curie Grant Agreement No. 751339.
- *
- *****************************************************************************/
-
-/*****************************************************************************
- * MAC operation template:
- *
- *   mac<N, T, TC, TD>(T a, TC c[N], TD d[N])
- *      = a + SUM_{i=0}^{N-1} c(i)*d(i)
- *
- * All template arguments but N can typically be inferred.
- *
- *   mac<ap_uint<14>>(0, c, d)
- *****************************************************************************/
+ *******************************************************************************
+ * @brief	Resource-aware multiply-accumulate helpers.
+ * @author	Thomas B. Preusser <thomas.preusser@amd.com>
+ *******************************************************************************/
 
 #ifndef MAC_HPP
 #define MAC_HPP
 
 #include "utils.hpp"
 
-
-/**
- * \brief      Multipliy operation between 2 operands, HLS choose the best resource
- *
- * \tparam     TC    First operand datatype (weights)
- * \tparam     TD    Second operand datatype (input)
- *
- * \param      c     First operand (array of weights)
- * \param      d     Second operand (array of input activation)
- * \param      r     Resource type for the hardware implementation of the MAC block
- *
- * \return     Result of the multiply operation
- */
-template<typename TC, typename TD>
-auto mul(TC const &c, TD const &d, ap_resource_dflt const&) -> decltype(c*d) {
+// Default — no pragma, let Vitis HLS decide
+template<typename TAcc, typename TW, typename TI>
+void mac(TAcc &acc, TW w, TI a, ap_resource_dflt const&) {
 #pragma HLS inline
-  auto  r = c*d;
-  return  r;
+	acc += w * a;
 }
 
-/**
- * \brief      Multiply operation between 2 operands, implemented in LUT
- */
-template<typename TC, typename TD>
-auto mul(TC const &c, TD const &d, ap_resource_lut const&) -> decltype(c*d) {
+// LUT (fabric) implementation
+template<typename TAcc, typename TW, typename TI>
+void mac(TAcc &acc, TW w, TI a, ap_resource_lut const&) {
 #pragma HLS inline
-  decltype(c*d) const  res = c*d;
-#pragma HLS BIND_OP variable=res op=mul impl=fabric
-  return  res;
+#pragma HLS BIND_OP variable=acc op=mul impl=fabric
+	acc += w * a;
 }
 
-/**
- * \brief      Multipliy operation between 2 operands, implemented in a DSP48
- */
-template<typename TC, typename TD>
-auto mul(TC const &c, TD const &d, ap_resource_dsp const&) -> decltype(c*d) {
+// DSP implementation
+template<typename TAcc, typename TW, typename TI>
+void mac(TAcc &acc, TW w, TI a, ap_resource_dsp const&) {
 #pragma HLS inline
-  decltype(c*d) const  res = c*d;
-#pragma HLS BIND_OP variable=res op=mul impl=dsp
-  return  res;
-}
-
-/**
- * \brief      MAC with selectable implementation resource, used by Matrix_Vector_Activate_Batch
- *
- * \tparam     N     Number of MAC to be performed (equals to SIMD in mvau)
- * \tparam     T     Accumulator datatype
- * \tparam     TC    First operand datatype (weights)
- * \tparam     TD    Second operand datatype (input)
- * \tparam     R     Datatype for the resource used for FPGA implementation of the MAC
- *
- * \param      a     Initialization value of the accumulation
- * \param      c     First operand (array of weights)
- * \param      d     Second operand (array of input activation)
- * \param      r     Resource type for the hardware implementation of the MAC block
- * \param      mmv   MMV value to address accumulator and activation
- *
- * \return     Result of the MAC operation
- */
-template<unsigned N, typename T, typename TC, typename TD, typename R>
-T mac(T const &a, TC const &c, TD const &d, R const &r, unsigned mmv) {
-#pragma HLS inline
-  T  res = a;
-  for(unsigned  i = 0; i < N; i++) {
-#pragma HLS unroll
-    res += mul(c[i], d(i,mmv), r);
-  }
-  return  res;
-}
-
-/**
- * \brief      MAC with selectable implementation resource (no mmv variant)
- */
-template<unsigned N, typename T, typename TC, typename TD, typename R>
-T mac(T const &a, TC const &c, TD const &d, R const &r) {
-#pragma HLS inline
-  T  res = a;
-  for(unsigned  i = 0; i < N; i++) {
-#pragma HLS unroll
-    res += mul(c[i], d[i], r);
-  }
-  return  res;
-}
-template<unsigned N, typename T, typename TC, typename TD>
-inline T mac(T const &a, TC const &c, TD const &d) {
-#pragma HLS inline
-  return  mac<N>(a, c, d, ap_resource_dflt());
+#pragma HLS BIND_OP variable=acc op=mul impl=dsp
+	acc += w * a;
 }
 
 #endif

@@ -4,7 +4,7 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * @author	Thomas B. Preußer <thomas.preusser@amd.com>
+ * @author	Thomas B. Preusser <thomas.preusser@amd.com>
  ****************************************************************************/
 #include "vvau_top.hpp"
 #include "vvau.hpp"
@@ -24,7 +24,7 @@ void vvau_top(
 #pragma HLS interface ap_ctrl_none port=return
 #pragma HLS dataflow disable_start_propagation
 
-	Vector_Vector_Activate_Stream_Batch<CHANNELS, KERNEL2, SIMD, PE, 1, Slice<TI>, Slice<TO>, Identity, TW>(
+	Vector_Vector_Activate_Stream_Batch<CHANNELS, KERNEL2, SIMD, PE, MMV, TW, TI, TO>(
 		in, out, weights, PassThroughActivation<TO>(), ap_resource_dflt()
 	);
 }

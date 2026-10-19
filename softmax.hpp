@@ -60,7 +60,7 @@
 #ifndef SOFTMAX_HPP
 #define SOFTMAX_HPP
 
-#include "utils.hpp"
+#include "tensor.hpp"
 #include <ap_fixed.h>
 #include <hls_math.h>
 
@@ -79,8 +79,8 @@ class SoftMax {
 	public:
 		// Public API for executing the softmax dataflow pipeline
 		void execute(
-			hls::stream<hls::vector<TI, SIMD>> &src,
-			hls::stream<hls::vector<TO, SIMD>> &dst
+			hls::stream<tensor<TI, SIMD>> &src,
+			hls::stream<tensor<TO, SIMD>> &dst
 		) {
 #pragma HLS dataflow disable_start_propagation
 #pragma HLS stream variable=max2exp_dat depth=N/SIMD
@@ -126,10 +126,10 @@ class SoftMax {
 
 		//-----------------------------------------------------------------------
 		// Internal streams used to construct the pipeline
-		hls::stream<hls::vector<TI, SIMD>>     max2exp_dat;
-		hls::stream<TI>                        max2exp_max;
-		hls::stream<hls::vector<exp_t, SIMD>>  exp2div_dat;
-		hls::stream<sum_t>                     exp2div_sum;
+		hls::stream<tensor<TI, SIMD>>     max2exp_dat;
+		hls::stream<TI>                   max2exp_max;
+		hls::stream<tensor<exp_t, SIMD>>  exp2div_dat;
+		hls::stream<sum_t>                exp2div_sum;
 
 
 		//-----------------------------------------------------------------------
@@ -138,7 +138,7 @@ class SoftMax {
 		TI                  max_val = std::numeric_limits<TI>::lowest();
 
 		void max_extract(
-			hls::stream<hls::vector<TI, SIMD>> &src
+			hls::stream<tensor<TI, SIMD>> &src
 		) {
 #pragma HLS pipeline II=1 style=flp
 #pragma HLS reset variable=max_cnt
@@ -146,7 +146,7 @@ class SoftMax {
 
 			if(!src.empty()) {
 				auto const  x = src.read();
-				max_val = std::max(max_val, tree_reduce(x, [](TI const &a, TI const &b) { return std::max(a,b); }));
+				max_val = std::max(max_val, x.reduce([](TI const &a, TI const &b) { return std::max(a,b); }));
 				max2exp_dat.write(x);
 				if(max_cnt.tick()) {
 					max2exp_max.write(max_val);
@@ -186,7 +186,7 @@ class SoftMax {
 
 			if(exp_valid && !max2exp_dat.empty()) {
 				auto const  x = max2exp_dat.read();
-				hls::vector<exp_t, SIMD>  y;
+				tensor<exp_t, SIMD>  y;
 
 				for(size_t  i = 0; i < SIMD; i++) {
 #pragma HLS unroll
@@ -195,7 +195,7 @@ class SoftMax {
 					float const  yy = exp_has_infty? (check_infinity(xx)? 1.0f : 0.0f) : hls::exp(float(TO(xx) - exp_max_value));
 					y[i] = exp_t(yy);
 				}
-				exp_total += tree_reduce<SIMD, exp_t, red_t>(y, [](red_t a, red_t b) { return  a+b; });
+				exp_total += y.template reduce<red_t>([](red_t a, red_t b) { return  a+b; });
 				exp2div_dat.write(y);
 
 				if(exp_cnt.tick()) {
@@ -215,7 +215,7 @@ class SoftMax {
 		float                div_val;
 
 		void div_stage(
-			hls::stream<hls::vector<TO, SIMD>> &dst
+			hls::stream<tensor<TO, SIMD>> &dst
 		) {
 #pragma HLS pipeline II=1 style=flp
 #pragma	HLS reset variable=div_valid
@@ -229,7 +229,7 @@ class SoftMax {
 
 			if(div_valid && !exp2div_dat.empty()) {
 				auto const  x = exp2div_dat.read();
-				hls::vector<TO, SIMD>  y;
+				tensor<TO, SIMD>  y;
 
 				for(unsigned  i = 0; i < SIMD; i++) {
 #pragma	HLS unroll

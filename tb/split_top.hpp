@@ -33,9 +33,9 @@
  *******************************************************************************/
 
 #include <ap_int.h>
-#include <hls_vector.h>
 #include <hls_stream.h>
 
+#include "tensor.hpp"
 
 constexpr unsigned  REPS = 73;
 constexpr unsigned  SIMD = 3;
@@ -48,7 +48,7 @@ constexpr unsigned  FOLDS_PER_OUTPUT[NUM_OUTPUTS] = {
 	NUM_FOLDS0, NUM_FOLDS1, NUM_FOLDS2
 };
 
-using  T = hls::vector<ap_uint<5>, SIMD>;
+using  T = tensor<ap_uint<5>, SIMD>;
 
 void split_top(
 	hls::stream<T>  &src,

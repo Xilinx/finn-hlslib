@@ -12,8 +12,8 @@
 
 
 void layernorm_top(
-	hls::stream<hls::vector<TI, SIMD>> &src,
-	hls::stream<hls::vector<TO, SIMD>> &dst
+	hls::stream<tensor<TI, SIMD>> &src,
+	hls::stream<tensor<TO, SIMD>> &dst
 ) {
 #pragma HLS interface AXIS port=src
 #pragma HLS interface AXIS port=dst

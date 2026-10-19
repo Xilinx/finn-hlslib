@@ -34,8 +34,8 @@
 
 constexpr unsigned  SIMD1 = 1;
 constexpr unsigned  INPUT_WIDTH = 8;
-constexpr unsigned  INPUT_DIM_X = 30;
-constexpr unsigned  INPUT_DIM_Y = 40;
+constexpr unsigned  INPUT_DIM_X = 6;
+constexpr unsigned  INPUT_DIM_Y = 5;
 constexpr unsigned  CHANNELS = 3;
 constexpr unsigned  XSTRIDE = 5;
 constexpr unsigned  YSTRIDE = 3;

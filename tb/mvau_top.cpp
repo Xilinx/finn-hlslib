@@ -4,7 +4,7 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * @author	Thomas B. Preußer <thomas.preusser@amd.com>
+ * @author	Thomas B. Preusser <thomas.preusser@amd.com>
  ****************************************************************************/
 #include "mvau_top.hpp"
 #include "mvau.hpp"
@@ -24,7 +24,7 @@ void mvau_top(
 #pragma HLS interface ap_ctrl_none port=return
 #pragma HLS dataflow disable_start_propagation
 
-	Matrix_Vector_Activate_Stream_Batch<MW, MH, SIMD, PE, Slice<TI>, Slice<TO>, Identity, TW>(
+	Matrix_Vector_Activate_Stream_Batch<MW, MH, SIMD, PE, MMV, TW, TI, TO>(
 		in, out, weights, PassThroughActivation<TO>(), ap_resource_dflt()
 	);
 }

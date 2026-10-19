@@ -11,9 +11,9 @@
 #define LAYERNORM_TOP_HPP
 
 #include <hls_stream.h>
-#include <hls_vector.h>
 #include <ap_int.h>
 
+#include "tensor.hpp"
 
 constexpr unsigned  N    = 384;
 constexpr unsigned  SIMD =   4;
@@ -21,8 +21,8 @@ using  TI = ap_int<5>;
 using  TO = float;
 
 void layernorm_top(
-	hls::stream<hls::vector<TI, SIMD>> &src,
-	hls::stream<hls::vector<TO, SIMD>> &dst
+	hls::stream<tensor<TI, SIMD>> &src,
+	hls::stream<tensor<TO, SIMD>> &dst
 );
 
 #endif

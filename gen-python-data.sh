@@ -39,7 +39,6 @@ python3 gen_weigths.py
 python3 gen_weigths_dws.py
 python3 gen_weigths_nonsquare.py
 python3 gen_weigths_nonsquare_dws.py
-python3 gen_params_stmr.py tmrcheck
 python3 gen_params_stmr.py no_inj
 python3 gen_params_stmr.py inj
 

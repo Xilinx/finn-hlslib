@@ -102,9 +102,9 @@ channel_mask = tobin.format(channel_mask)
 # Check if user gave argument
 if((len(sys.argv) == 1) or (len(sys.argv) > 2)):
     
-    print("Error: Please, provide a valid, single argument, it should be either 'inj', 'no_inj' or 'tmrcheck'.")
-    exit(1) 
-   
+    print("Error: Please, provide a valid, single argument, it should be either 'inj' or 'no_inj'.")
+    exit(1)
+
 # User wants to inject errors
 elif(str(sys.argv[1]) == 'inj'):
     memdataname = "memdata_inj.h"
@@ -123,23 +123,17 @@ elif(str(sys.argv[1]) == 'inj'):
             w_t_values[which_triplication][random.randint(0, tile-1)] = random.randint(0, 1<<width-1)               
     # Put weights back to the previous position 
     w_t_values = np.concatenate(np.array_split(w_t_values, ofm_ch_red/pe), axis=1)      
-    skip = 0
-    
-# User doesn't want to inject errors    
-elif(str(sys.argv[1]) == 'no_inj'):     
+
+# User doesn't want to inject errors
+elif(str(sys.argv[1]) == 'no_inj'):
     memdataname = "memdata_noinj.h"
     configname = "config_noinj.h"
     injecting = 'false'
-    print("Error injection has been skipped.")    
-    skip = 0
+    print("Error injection has been skipped.")
     
-elif(str(sys.argv[1]) == 'tmrcheck'):     
-    memdataname = "memdata_tmrc.h"
-    configname = "config_tmrc.h"
-    skip = 1
-else:   
-    print("Error: Please, provide a valid argument, it should be either 'inj', 'no_inj' or 'tmrcheck'.")
-    exit(1) 
+else:
+    print("Error: Please, provide a valid argument, it should be either 'inj' or 'no_inj'.")
+    exit(1)
    
 # Write config.h output file
 outFileConfig = open(configname , "wt")
@@ -159,8 +153,7 @@ outFileConfig.write("#define ACTIVATION_PRECISION %d \n" % activation_precision)
 outFileConfig.write("#define REDF %d \n" % redf)
 outFileConfig.write("#define NUM_RED %d \n" % num_red)
 outFileConfig.write("#define MAX_CH_WIDTH %d // 2^6 = 64 channel indexes \n" % max_ch_width)
-if skip == 0:
-    outFileConfig.write("#define INJ %s // Have errors been injected? \n" % injecting)
+outFileConfig.write("#define INJ %s // Have errors been injected? \n" % injecting)
 outFileConfig.close()
 
 # Write memdata.h output file
@@ -169,23 +162,22 @@ outFileWeights.write("#ifndef PARAMS_HPP\n")
 outFileWeights.write("#define PARAMS_HPP\n")
 outFileWeights.write("namespace PARAM{ \n")
 
-if skip == 0:
-    if (w_precision == 1):
-        outFileWeights.write("static BinaryWeights<%d,%d,%d> weights= {\n{\n" %(simd,pe,tile * int(ofm_ch_red/pe)))
-    else:
-        outFileWeights.write("static FixedPointWeights<%d,ap_int<%d>,%d,%d> weights= {\n{\n" %(simd,w_precision,pe,tile_tri))           
-                
-    for p in range(pe):
-        outFileWeights.write("{ \n")
-        for t in range(tile * int(ofm_ch_red/pe)):
-            outFileWeights.write("%s" % hex(int(w_t_values[p][t])))
-            if t!=tile * int(ofm_ch_red/pe)-1:
-                outFileWeights.write(",\n")
-        outFileWeights.write("} \n")
-        if p!=pe-1:
-            outFileWeights.write(",")
-    outFileWeights.write("}\n};\n\n")
-    
+if (w_precision == 1):
+    outFileWeights.write("static BinaryWeights<%d,%d,%d> weights= {\n{\n" %(simd,pe,tile * int(ofm_ch_red/pe)))
+else:
+    outFileWeights.write("static FixedPointWeights<%d,ap_int<%d>,%d,%d> weights= {\n{\n" %(simd,w_precision,pe,tile_tri))
+
+for p in range(pe):
+    outFileWeights.write("{ \n")
+    for t in range(tile * int(ofm_ch_red/pe)):
+        outFileWeights.write("%s" % hex(int(w_t_values[p][t])))
+        if t!=tile * int(ofm_ch_red/pe)-1:
+            outFileWeights.write(",\n")
+    outFileWeights.write("} \n")
+    if p!=pe-1:
+        outFileWeights.write(",")
+outFileWeights.write("}\n};\n\n")
+
 outFileWeights.write("static const ap_uint<%d> channel_mask = 0b%s;\n\n" %(ofm_ch_red, channel_mask))
 outFileWeights.write("static ap_uint<%d> red_ch_index[%d] = {" %(max_ch_width, num_red))
 

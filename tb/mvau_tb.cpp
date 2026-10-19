@@ -4,7 +4,7 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * @author	Thomas B. Preußer <thomas.preusser@amd.com>
+ * @author	Thomas B. Preusser <thomas.preusser@amd.com>
  ****************************************************************************/
 #include "mvau_top.hpp"
 
@@ -19,7 +19,7 @@ int main() {
 	hls::stream<out_t>  dst("dst");
 	hls::stream<wgt_t>  wgt("wgt");
 
-	// Weight matrix W[MH][MW] — small enough to enumerate
+	// Weight matrix W[MH][MW] -- small enough to enumerate
 	// W[oh][iw] = (oh * MW + iw) % 7 - 3  (range: -3..3, fits in 4-bit signed)
 	int  W[MH][MW];
 	for(unsigned oh = 0; oh < MH; oh++)
@@ -42,16 +42,14 @@ int main() {
 
 	// Feed weight stream: for each input vector, provide NF*SF weight tiles
 	// Tile order: nf=0..NF-1, sf=0..SF-1
-	// Each tile packs PE groups of SIMD weights:
-	//   bits[(pe+1)*SIMD*TW::width-1 : pe*SIMD*TW::width] = W[nf*PE+pe][sf*SIMD+0..SIMD-1]
+	// Each tile: tensor<TW, PE, SIMD> — tile[pe][s] = W[nf*PE+pe][sf*SIMD+s]
 	for(unsigned v = 0; v < NUM_VECTORS; v++) {
 		for(unsigned nf = 0; nf < NF; nf++) {
 			for(unsigned sf = 0; sf < SF; sf++) {
-				wgt_t  tile = 0;
+				wgt_t  tile;
 				for(unsigned pe = 0; pe < PE; pe++) {
 					for(unsigned s = 0; s < SIMD; s++) {
-						unsigned  bit_lo = pe * SIMD * TW::width + s * TW::width;
-						tile(bit_lo + TW::width - 1, bit_lo) = TW(W[nf * PE + pe][sf * SIMD + s]);
+						tile[pe][s] = TW(W[nf * PE + pe][sf * SIMD + s]);
 					}
 				}
 				wgt.write(tile);
@@ -59,20 +57,19 @@ int main() {
 		}
 	}
 
-	// Feed activation stream: SF beats per vector (only nf==0 reads from stream)
-	// Each beat packs SIMD activations: bits[(s+1)*TI::width-1 : s*TI::width] = act[v][sf*SIMD+s]
+	// Feed activation stream: SF beats per vector
+	// Each beat: tensor<TI, MMV, SIMD> — a[0][s] = act[v][sf*SIMD+s]
 	for(unsigned v = 0; v < NUM_VECTORS; v++) {
 		for(unsigned sf = 0; sf < SF; sf++) {
-			act_t  a = 0;
+			act_t  a;
 			for(unsigned s = 0; s < SIMD; s++) {
-				unsigned  bit_lo = s * TI::width;
-				a(bit_lo + TI::width - 1, bit_lo) = TI(act[v][sf * SIMD + s]);
+				a[0][s] = TI(act[v][sf * SIMD + s]);
 			}
 			src.write(a);
 		}
 	}
 
-	// Run DUT — call repeatedly
+	// Run DUT -- call repeatedly (function-pipelined, ap_ctrl_none)
 	unsigned  outputs_received = 0;
 	unsigned  expected_outputs = NUM_VECTORS * NF;  // NF output beats per vector
 	unsigned  timeout = 0;
@@ -94,9 +91,9 @@ int main() {
 		unsigned  nf  = outputs_received % NF;
 
 		for(unsigned pe = 0; pe < PE; pe++) {
-			unsigned  bit_lo = pe * TO::width;
 			int  expected = ref[vec][nf * PE + pe];
-			int  actual   = int(TO(y(bit_lo + TO::width - 1, bit_lo)));
+			TO   elem     = y[0][pe];
+			int  actual   = elem;
 			if(expected != actual) {
 				std::cerr << "ERROR: vec=" << vec << " oh=" << (nf*PE+pe)
 				          << " expected=" << expected << " actual=" << actual << std::endl;

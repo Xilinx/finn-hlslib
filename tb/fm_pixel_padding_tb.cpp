@@ -32,16 +32,18 @@
 #include <ap_int.h>
 #include <hls_stream.h>
 
-#include "bnn-library.h"
 #include "data/config_fmpp.h"
+#include "tensor.hpp"
 
 #include <iostream>
 #include <random>
 
 
+using  vec_t = tensor<ap_uint<INPUT_WIDTH>, SIMD1>;
+
 void test_fm_pixel_padding(
-	hls::stream<ap_uint<SIMD1*INPUT_WIDTH>> &src,
-	hls::stream<ap_uint<SIMD1*INPUT_WIDTH>> &dst
+	hls::stream<vec_t> &src,
+	hls::stream<vec_t> &dst
 );
 
 
@@ -49,8 +51,8 @@ int main() {
 	std::cout << "Starting testbench for fm_pixel_padding" << std::endl;
 
 	using T = ap_uint<SIMD1*INPUT_WIDTH>;
-	hls::stream<T> input_stream("input_stream");
-	hls::stream<T> output_stream("output_stream");
+	hls::stream<vec_t> input_stream("input_stream");
+	hls::stream<vec_t> output_stream("output_stream");
 	T  expected[OUTPUT_DIM_Y][OUTPUT_DIM_X][CHANNELS];
 
 	{ // Feed random input sequence
@@ -64,7 +66,7 @@ int main() {
 					T  val = 0;
 					if(((y % YSTRIDE) == 0) && ((x % XSTRIDE) == 0)) {
 						val = dist(rd);
-						input_stream.write(val);
+						input_stream.write(vec_t(val));
 						input_counter++;
 					}
 					expected[y][x][c] = val;
@@ -78,8 +80,10 @@ int main() {
 	}
 	std::cout << "Finished writing to input stream" << std::endl;
 
-	// Run top-level function
-	test_fm_pixel_padding(input_stream, output_stream);
+	// Run top-level function (function-pipelined: call in a loop)
+	constexpr unsigned  TOTAL_OUT = OUTPUT_DIM_X * OUTPUT_DIM_Y * CHANNELS;
+	for(unsigned  i = 0; i < 2*TOTAL_OUT; i++)
+		test_fm_pixel_padding(input_stream, output_stream);
 	std::cout << "Finished writing to output stream" << std::endl;
 
 	// Verify correctness

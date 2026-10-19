@@ -10,21 +10,21 @@
 #ifndef LAYERNORM_HPP
 #define LAYERNORM_HPP
 
-#include "utils.hpp"
+#include "tensor.hpp"
 #include <hls_math.h>
 
 
 template<
-	size_t    N,     // size of feature vector
+	unsigned  N,     // size of feature vector
 	typename  TI,    // [inferred] feature data type
 	typename  TS,    // [inferred] sum data type
-	size_t    SIMD,  // [inferred] feature parallelism
+	unsigned  SIMD,  // [inferred] feature parallelism
 	typename  F_PRE  // [inferred] functor for feature refinement prior to accumulation: (TI) -> TS
 >
 static void sum_statistics(
-	hls::stream<hls::vector<TI, SIMD>> &src,
-	hls::stream<hls::vector<TI, SIMD>> &dst,
-	hls::stream<TS>                    &sum,
+	hls::stream<tensor<TI, SIMD>> &src,
+	hls::stream<tensor<TI, SIMD>> &dst,
+	hls::stream<TS>               &sum,
 	F_PRE && fpre
 ){
 #pragma HLS function_instantiate variable=fpre
@@ -38,8 +38,8 @@ static void sum_statistics(
 #pragma HLS reset variable=accu
 
 	if(!src.empty()){
-		hls::vector<TI, SIMD> const  x = src.read();
-		hls::vector<TS, SIMD>  t;
+		tensor<TI, SIMD> const  x = src.read();
+		tensor<TS, SIMD>  t;
 
 		// Bypass
 		dst.write(x);
@@ -49,7 +49,7 @@ static void sum_statistics(
 #pragma HLS unroll
 			t[i] = fpre(x[i]);
 		}
-		accu += tree_reduce(t, [](TS const &a, TS const &b) -> TS { return  a+b; });
+		accu += t.reduce([](TS const &a, TS const &b) -> TS { return  a+b; });
 		if(count.tick()) {
 			sum.write(accu);
 			accu = TS(0);
@@ -59,17 +59,17 @@ static void sum_statistics(
 } // sum_statistics()
 
 template<
-	size_t    N,     // size of feature vector
+	unsigned  N,     // size of feature vector
 	typename  TI,    // [inferred] input feature data type
 	typename  TN,    // [inferred] norm data type
 	typename  TO,    // [inferred] normalized output feature data type
-	size_t    SIMD,  // [inferred] feature parallelism
+	unsigned  SIMD,  // [inferred] feature parallelism
 	typename  F_NORM // [inferred] functor for feature normalization: (TI, TN) -> TO
 >
 static void normalize(
-	hls::stream<hls::vector<TI, SIMD>> &src,
-	hls::stream<TN>                    &norm,
-	hls::stream<hls::vector<TO, SIMD>> &dst,
+	hls::stream<tensor<TI, SIMD>> &src,
+	hls::stream<TN>               &norm,
+	hls::stream<tensor<TO, SIMD>> &dst,
 	F_NORM &&fnorm
 ) {
 #pragma HLS function_instantiate variable=fnorm
@@ -86,8 +86,8 @@ static void normalize(
 
 	if(!valid)  valid = norm.read_nb(nrm);
 	if(valid && !src.empty()){
-		hls::vector<TI, SIMD> const  x = src.read();
-		hls::vector<TO, SIMD>  y;
+		tensor<TI, SIMD> const  x = src.read();
+		tensor<TO, SIMD>  y;
 		for(unsigned i=0; i<SIMD; i++) {
 #pragma HLS UNROLL
 			y[i] = fnorm(x[i], nrm);
@@ -100,14 +100,14 @@ static void normalize(
 
 
 template<
-	size_t    N,
+	unsigned  N,
 	typename  TI,
 	typename  TO,
-	size_t    SIMD
+	unsigned  SIMD
 >
 void layernorm(
-	hls::stream<hls::vector<TI, SIMD>> &src,
-	hls::stream<hls::vector<TO, SIMD>> &dst,
+	hls::stream<tensor<TI, SIMD>> &src,
+	hls::stream<tensor<TO, SIMD>> &dst,
 	TO const eps = 1e-5f
 ){
 #pragma HLS function_instantiate variable=eps
@@ -151,11 +151,11 @@ void layernorm(
 
 	//-----------------------------------------------------------------------
 	// First Diamond for Means Normalization
-	static hls::stream<hls::vector<TI, SIMD>>  bypass0;
+	static hls::stream<tensor<TI, SIMD>>  bypass0;
 #pragma HLS stream variable=bypass0 depth=BYPASS_DEPTH_0
 	static hls::stream<TS>  sum0;
 #pragma HLS stream variable=sum0 depth=2
-	static hls::stream<hls::vector<TN, SIMD>> norm0;
+	static hls::stream<tensor<TN, SIMD>> norm0;
 #pragma HLS stream variable=norm0 depth=2
 
 	sum_statistics<N>(
@@ -169,7 +169,7 @@ void layernorm(
 
 	//-----------------------------------------------------------------------
 	// Second Diamond for Variance Normalization
-	static hls::stream<hls::vector<TN, SIMD>>  bypass1;
+	static hls::stream<tensor<TN, SIMD>>  bypass1;
 #pragma HLS stream variable=bypass1 depth=BYPASS_DEPTH_1
 	static hls::stream<TQS>  sum1;
 #pragma HLS stream variable=sum1 depth=2

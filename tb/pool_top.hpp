@@ -35,9 +35,9 @@
 #define POOL_TOP_HPP
 
 #include <hls_stream.h>
-#include <hls_vector.h>
 #include <ap_int.h>
 
+#include "tensor.hpp"
 
 constexpr unsigned  H = 13; // Input height
 constexpr unsigned  W = 13; // Input width (must currently equal H for input generator)
@@ -52,12 +52,16 @@ static_assert((W-K)%S == 0, "Input width requires padding.");
 static_assert(C%PE == 0, "PE must divide channel count.");
 
 using  val_t = ap_uint<8>;
-using  pix_t = hls::vector<val_t, C>;
-using  vec_t = hls::vector<val_t, PE>;
+using  pix_t = tensor<val_t, C>;
+using  vec_t = tensor<val_t, PE>;
+
+constexpr unsigned  HO = 1 + (H-K)/S;
+constexpr unsigned  WO = 1 + (W-K)/S;
+constexpr unsigned  CF = C/PE;
 
 void pool_top(
-	hls::stream<pix_t> &src,
-	hls::stream<pix_t> &dst
+	hls::stream<vec_t> &src,
+	hls::stream<vec_t> &dst
 );
 
 #endif

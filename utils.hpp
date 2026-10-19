@@ -53,7 +53,6 @@
 #include <cstddef>
 
 #include <ap_int.h>
-#include <hls_vector.h>
 #include <hls_stream.h>
 #include <utils/hls_version.h>
 #if XILINX_HLS_VERSION_RELEASE >= 20242
@@ -103,9 +102,9 @@ class ap_resource_uram {};
  *
  */
 template < unsigned int BitWidth >
-void logStringStream(const char *layer_name, hls::stream<ap_uint<BitWidth> > &log){
+void logStringStream(const char *layer_name, hls::stream<ap_uint<BitWidth>> &log){
     std::ofstream ofs(layer_name);
-    hls::stream<ap_uint<BitWidth> > tmp_stream;
+    hls::stream<ap_uint<BitWidth>> tmp_stream;
 	
   while(!log.empty()){
     ap_uint<BitWidth> tmp = (ap_uint<BitWidth>) log.read();
@@ -134,6 +133,23 @@ struct is_ap_float<ap_float<W,I>> : std::true_type {};
 template<typename T>
 struct is_floating_point_or_ap_float
     : std::integral_constant<bool, std::is_floating_point<T>::value || is_ap_float<T>::value> {};
+
+// Determine bit width of types
+//  Primary template dispatches via SFINAE: prefers T::width if available,
+//  else falls back to 8*sizeof(T).  Specialize width_trait<T> directly
+//  for types that need a custom width (e.g. Bipolar).
+template<typename  T, typename = void>
+struct width_trait : std::integral_constant<size_t, 8*sizeof(T)> {};
+
+template<typename  T>
+struct width_trait<T, typename std::enable_if<(T::width, true)>::type>
+	: std::integral_constant<size_t, T::width> {};
+
+template<typename  T> constexpr size_t  width_v = width_trait<T>::value;
+
+// Bipolar forward declaration — width is 1 bit
+class Bipolar;
+template<> struct width_trait<Bipolar> : std::integral_constant<size_t, 1> {};
 
 //- Custom std::numeric_limits<ap_(u)int<W>> for releases prior to 2025.2.
 #if XILINX_HLS_VERSION_RELEASE < 20252
@@ -230,44 +246,11 @@ public:
 	template<typename T> ap_zint& operator-=(T&&) { return *this; }
 };
 
-//- hls::vector<> Enablement ------------------------------------------------
-template<typename  T, size_t  N>
-inline std::ostream& operator<<(std::ostream &o, hls::vector<T, N> const &v) {
-	char  delim = '{';
-	for(auto const &x : v) {
-		o << delim << x;
-		delim = ':';
-	}
-	return (o << '}');
-}
-
 //- Streaming Copy ----------------------------------------------------------
 template<typename T>
 void move(hls::stream<T> &src, hls::stream<T> &dst) {
 #pragma HLS pipeline II=1 style=flp
 	if(!src.empty())  dst.write(src.read());
-}
-
-//- Tree Reduce -------------------------------------------------------------
-template<
-	size_t    N,
-	typename  TA,
-	typename  TR = TA,	// must be assignable from TA
-	typename  F			// (TR, TR) -> TR
->
-TR tree_reduce(hls::vector<TA, N> const &v, F &&f = F()) {
-#pragma HLS inline
-	TR  tree[2*N-1];
-#pragma HLS array_partition complete dim=1 variable=tree
-	for(unsigned  i = N; i-- > 0;) {
-#pragma HLS unroll
-		tree[N-1 + i] = v[i];
-	}
-	for(unsigned  i = N-1; i-- > 0;) {
-#pragma HLS unroll
-		tree[i] = f(tree[2*i+1], tree[2*i+2]);
-	}
-	return  tree[0];
 }
 
 //- Modulus Counter ---------------------------------------------------------
