@@ -67,6 +67,11 @@ public:
 	// Raw bit access for tensor<> packing
 	operator ap_uint<1>() const { return  v; }
 
+	// WARNING: Returns the raw bit value {0.0f, 1.0f}, NOT the numeric
+	// Bipolar value {-1.0f, +1.0f}. This is intentional for compatibility
+	// with tensorstream2npy where the downstream Python applies 2*x-1.
+	explicit operator float() const { return  v? 1.0f : 0.0f; }
+
 	// XNOR multiply: returns 1 when bits match, 0 otherwise
 	friend unsigned operator*(Bipolar const &a, Bipolar const &b) {
 		return  a.v == b.v;
