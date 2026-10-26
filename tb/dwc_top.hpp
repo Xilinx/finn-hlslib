@@ -2,16 +2,16 @@
 #define DWC_TOP_HPP
 
 #include <hls_stream.h>
-#include <ap_int.h>
+#include "tensor.hpp"
 
-constexpr unsigned INPUT_WIDTH = 8;
-constexpr unsigned OUT_WIDTH   = 4;
-constexpr unsigned NumInWords  = 4;
-constexpr unsigned NUM_REPEAT  = 1;
+using T = ap_uint<4>;
+constexpr unsigned NI = 2;
+constexpr unsigned NO = 1;
+constexpr unsigned NumInWords = 4;
 
 void Testbench_dwc(
-	hls::stream<ap_uint<INPUT_WIDTH>> &in,
-	hls::stream<ap_uint<OUT_WIDTH>>   &out
+	hls::stream<tensor<T, NI>> &in,
+	hls::stream<tensor<T, NO>> &out
 );
 
 #endif

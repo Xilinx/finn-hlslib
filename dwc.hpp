@@ -1,5 +1,5 @@
 /******************************************************************************
- *  Copyright (c) 2019, Xilinx, Inc.
+ *  Copyright (c) 2024, Advanced Micro Devices, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -32,64 +32,58 @@
 #ifndef DWC_HPP
 #define DWC_HPP
 
-#include <ap_int.h>
-#include <hls_stream.h>
+#include "tensor_view.hpp"
 
 /**
- * \brief   Stream Data Width Converter (function-pipelined)
+ * @brief	Stream Data Width Converter
  *
- * Used to upscale or downscale a stream, without any loss of data in the procedure.
- * For downscaling (InWidth > OutWidth), InWidth has to be a multiple of OutWidth.
- * For upscaling (InWidth < OutWidth), OutWidth has to be a multiple of InWidth.
+ * Converts between tensor streams of different element counts but the same
+ * element type. One dimension must divide the other.
  *
- * \tparam     InWidth      Width, in number of bits, of the input stream
- * \tparam     OutWidth     Width, in number of bits, of the output stream
- *
- * \param      in           Input stream
- * \param      out          Output stream
+ * @tparam	 T   Element type (e.g. ap_int<4>)
+ * @tparam	 NI  Number of elements per input word
+ * @tparam	 NO  Number of elements per output word
  */
-template<unsigned int InWidth, unsigned int OutWidth>
-void StreamingDataWidthConverter(hls::stream<ap_uint<InWidth>> &in,
-		hls::stream<ap_uint<OutWidth>> &out) {
-  static_assert((InWidth % OutWidth == 0) || (OutWidth % InWidth == 0), "");
-
+template<typename T, unsigned NI, unsigned NO>
+void StreamingDWC(
+	hls::stream<tensor<T, NI>> &in,
+	hls::stream<tensor<T, NO>> &out
+) {
 #pragma HLS pipeline II=1 style=flp
+	static_assert((NI % NO == 0) || (NO % NI == 0), "One dimension must divide the other.");
 
-  if constexpr(InWidth > OutWidth) {
-    // Emit multiple output words per input word read
-    constexpr unsigned  outPerIn = InWidth / OutWidth;
-    static ap_uint<InWidth>  ei = 0;
-    static unsigned  o = 0;
+	if constexpr(NI > NO) {
+		static tensor<T, NI/NO, NO>  ei;
+		static unsigned  o = 0;
+#pragma HLS reset variable=ei off
 #pragma HLS reset variable=o
 
-    if(o == 0) {
-      if(in.empty())  return;
-      ei = in.read();
-    }
-    out.write(ei(OutWidth - 1, 0));
-    ei >>= OutWidth;
-    if(++o == outPerIn)  o = 0;
+		if(o == 0) {
+			if(in.empty())  return;
+			ei = in.read().template reshape<T, NI/NO, NO>();
+		}
+		out.write(ei.slice(0));
+		ei.slice(NI/NO-2, 0) = ei.slice(NI/NO-1, 1);
+		if(o++ == NI/NO-1)  o = 0;
 
-  } else if constexpr(InWidth == OutWidth) {
-    // Straight-through copy
-    if(!in.empty())  out.write(in.read());
+	} else if constexpr(NI == NO) {
+		if(!in.empty())  out.write(in.read());
 
-  } else {
-    // Read multiple input words per output word emitted
-    constexpr unsigned  inPerOut = OutWidth / InWidth;
-    static ap_uint<OutWidth>  eo = 0;
-    static unsigned  i = 0;
+	} else {
+		static tensor<T, NO/NI, NI>  eo;
+		static unsigned  i = 0;
+#pragma HLS reset variable=eo off
 #pragma HLS reset variable=i
 
-    if(!in.empty()) {
-      eo >>= InWidth;
-      eo(OutWidth - 1, OutWidth - InWidth) = in.read();
-      if(++i == inPerOut) {
-        i = 0;
-        out.write(eo);
-      }
-    }
-  }
+		if(!in.empty()) {
+			eo.slice(NO/NI-2, 0) = eo.slice(NO/NI-1, 1);
+			eo.slice(NO/NI-1) = in.read();
+			if(i++ == NO/NI-1) {
+				i = 0;
+				out.write(eo.template reshape<T, NO>());
+			}
+		}
+	}
 }
 
 #endif

@@ -1,7 +1,7 @@
 #include "dwc_top.hpp"
 #include "dwc.hpp"
 
-void Testbench_dwc(hls::stream<ap_uint<INPUT_WIDTH>> &in, hls::stream<ap_uint<OUT_WIDTH>> &out) {
+void Testbench_dwc(hls::stream<tensor<T, NI>> &in, hls::stream<tensor<T, NO>> &out) {
 #pragma HLS interface ap_ctrl_none port=return
-	StreamingDataWidthConverter<INPUT_WIDTH, OUT_WIDTH>(in, out);
+	StreamingDWC<T, NI, NO>(in, out);
 }

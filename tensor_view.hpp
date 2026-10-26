@@ -219,6 +219,29 @@ public:
 		return  (*this)[i];
 	}
 
+	//-- Range slice: select leading indices [LO, HI] -----------------------
+	template<unsigned HI, unsigned LO>
+	tensor_view<T, HOST_W, HI-LO+1, REST...> slice() {
+#pragma HLS inline
+		static_assert(LO <= HI && HI < DIM0, "slice: invalid range");
+		return  tensor_view<T, HOST_W, HI-LO+1, REST...>(m_data, m_off + LO * INNER_W);
+	}
+
+	template<unsigned HI, unsigned LO>
+	tensor<T, HI-LO+1, REST...> slice() const {
+#pragma HLS inline
+		static_assert(LO <= HI && HI < DIM0, "slice: invalid range");
+		constexpr unsigned  SLICE_W = (HI-LO+1) * INNER_W;
+		unsigned const  off = m_off + LO * INNER_W;
+		return  tensor<T, HI-LO+1, REST...>(ap_uint<SLICE_W>(m_data(off + SLICE_W - 1, off)));
+	}
+
+	//-- Runtime range slice: write-through proxy over [lo, hi] -------------
+	tensor_range_ref<INNER_W, HOST_W> slice(unsigned hi, unsigned lo) {
+#pragma HLS inline
+		return  tensor_range_ref<INNER_W, HOST_W>(m_data, m_off + lo * INNER_W, hi - lo + 1);
+	}
+
 	//-- Const iteration: yields inner_t by value ----------------------------
 	class const_iterator {
 		ap_uint<HOST_W> const  &m_data;
@@ -313,6 +336,27 @@ auto tensor<T, DIM0, REST...>::slice(unsigned i) const
 {
 #pragma HLS inline
 	return  (*this)[i];
+}
+
+template<typename T, unsigned DIM0, unsigned ...REST>
+template<unsigned HI, unsigned LO>
+auto tensor<T, DIM0, REST...>::slice()
+	-> tensor_view<T, width, HI-LO+1, REST...>
+{
+#pragma HLS inline
+	static_assert(LO <= HI && HI < DIM0, "slice: invalid range");
+	return  tensor_view<T, width, HI-LO+1, REST...>(m_data, LO * INNER_W);
+}
+
+template<typename T, unsigned DIM0, unsigned ...REST>
+template<unsigned HI, unsigned LO>
+auto tensor<T, DIM0, REST...>::slice() const
+	-> tensor<T, HI-LO+1, REST...>
+{
+#pragma HLS inline
+	static_assert(LO <= HI && HI < DIM0, "slice: invalid range");
+	constexpr unsigned  SLICE_W = (HI-LO+1) * INNER_W;
+	return  tensor<T, HI-LO+1, REST...>(ap_uint<SLICE_W>(m_data(LO*INNER_W + SLICE_W - 1, LO*INNER_W)));
 }
 
 

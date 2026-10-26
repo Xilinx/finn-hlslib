@@ -250,12 +250,35 @@ public:
 		m_host(m_off + W - 1, m_off) = to_bitimage(val);
 		return  *this;
 	}
+	tensor_ref& operator=(tensor_ref const &src) {
+#pragma HLS inline
+		return  operator=(T(src));
+	}
 
 	// Chained indexing for tensor inner types (SFINAE: only when T has ref_at_static)
 	template<typename U = T>
 	auto operator[](unsigned i) -> decltype(U::template ref_at_static<HOST_W>(std::declval<ap_uint<HOST_W>&>(), 0u, 0u)) {
 #pragma HLS inline
 		return  T::template ref_at_static<HOST_W>(m_host, m_off, i);
+	}
+};
+
+//-- Write-through range proxy -----------------------------------------------
+//  References a contiguous run of INNER_W-wide elements within an ap_uint.
+//  Runtime bounds, analogous to ap_range_ref.
+template<unsigned INNER_W, unsigned HOST_W>
+class tensor_range_ref {
+	ap_uint<HOST_W>  &m_host;
+	unsigned const    m_off;
+	unsigned const    m_len;
+public:
+	tensor_range_ref(ap_uint<HOST_W> &host, unsigned off, unsigned len)
+		: m_host(host), m_off(off), m_len(len) {}
+	tensor_range_ref& operator=(tensor_range_ref const &src) {
+#pragma HLS inline
+		unsigned const  w = m_len * INNER_W;
+		m_host(m_off + w - 1, m_off) = ap_uint<HOST_W>(src.m_host(src.m_off + w - 1, src.m_off));
+		return  *this;
 	}
 };
 
@@ -305,6 +328,12 @@ public:
 	};
 	iterator begin() { return  { data(), 0 }; }
 	iterator end()   { return  { data(), Count }; }
+
+	//-- Runtime range slice: write-through proxy over [lo, hi] ---------------
+	tensor_range_ref<InnerW, width> slice(unsigned hi, unsigned lo) {
+#pragma HLS inline
+		return  tensor_range_ref<InnerW, width>(data(), lo * InnerW, hi - lo + 1);
+	}
 
 	//-- Reshape: reinterpret bits under new shape (defined in tensor_view.hpp)
 	template<typename T_new, unsigned ...NEW_DIMS>
@@ -425,6 +454,13 @@ public:
 	tensor_view<T, width, REST...> slice(unsigned i);
 	inner_t slice(unsigned i) const;
 
+	// Range slice: select leading indices [LO, HI] (defined in tensor_view.hpp)
+	template<unsigned HI, unsigned LO>
+	tensor_view<T, width, HI-LO+1, REST...> slice();
+
+	template<unsigned HI, unsigned LO>
+	tensor<T, HI-LO+1, REST...> slice() const;
+
 	// Transpose: permuted view (defined in tensor_view.hpp)
 	template<unsigned ...PERM>
 	tensor_transpose<T, width, perm<PERM...>, DIM0, REST...> transpose();
@@ -433,7 +469,8 @@ public:
 	operator tensor_view<T, width, DIM0, REST...>();
 	operator tensor_view<T, width, DIM0, REST...>() const;
 
-	// Pull in base-class begin/end (hidden by operator[] overloads)
+	// Pull in base-class members hidden by derived overloads
+	using tensor_common<tensor, inner_t, DIM0>::slice;
 	using tensor_common<tensor, inner_t, DIM0>::begin;
 	using tensor_common<tensor, inner_t, DIM0>::end;
 };

@@ -1,59 +1,51 @@
 #include "dwc_top.hpp"
 
-#define AP_INT_MAX_W 8191
-
 #include <iostream>
 
 int main() {
-	hls::stream<ap_uint<INPUT_WIDTH>>  input_stream("input_stream");
-	hls::stream<ap_uint<OUT_WIDTH>>    output_stream("output_stream");
+	hls::stream<tensor<T, NI>>  input_stream("input_stream");
+	hls::stream<tensor<T, NO>>  output_stream("output_stream");
 
-	constexpr unsigned  NUM_OUT = NumInWords * INPUT_WIDTH / OUT_WIDTH;
-	ap_uint<OUT_WIDTH>  expected[NUM_OUT];
+	constexpr unsigned  NUM_OUT = NumInWords * NI / NO;
+	tensor<T, NO>  expected[NUM_OUT];
 
 	// Generate input and expected output
 	unsigned  count_out = 0;
-	unsigned  count_in = 0;
+	unsigned  count_elem = 0;
+	tensor<T, NO>  accum;
 	for(unsigned  i = 0; i < NumInWords; i++) {
-		ap_uint<INPUT_WIDTH>  value = (ap_uint<INPUT_WIDTH>)i;
+		tensor<T, NI>  value;
+		for(unsigned  e = 0; e < NI; e++)  value[e] = T(i * NI + e);
 		input_stream.write(value);
 
-		if constexpr(INPUT_WIDTH < OUT_WIDTH) {
-			ap_uint<OUT_WIDTH>  val_out = expected[count_out];
-			val_out >>= INPUT_WIDTH;
-			val_out(OUT_WIDTH-1, OUT_WIDTH-INPUT_WIDTH) = value;
-			expected[count_out] = val_out;
-			if(++count_in == OUT_WIDTH/INPUT_WIDTH) {
-				count_out++;
-				count_in = 0;
+		if constexpr(NI >= NO) {
+			// Narrowing or equal: each input yields NI/NO outputs
+			for(unsigned  k = 0; k < NI/NO; k++) {
+				tensor<T, NO>  chunk;
+				for(unsigned  e = 0; e < NO; e++)  chunk[e] = value[k * NO + e];
+				expected[count_out++] = chunk;
 			}
 		}
-		else if constexpr(INPUT_WIDTH == OUT_WIDTH) {
-			expected[i] = value;
-		}
 		else {
-			ap_uint<INPUT_WIDTH>  v = value;
-			for(unsigned  w = 0; w < INPUT_WIDTH/OUT_WIDTH; w++) {
-				expected[count_out++] = v(OUT_WIDTH-1, 0);
-				v >>= OUT_WIDTH;
+			// Widening: accumulate NO/NI inputs into one output
+			for(unsigned  e = 0; e < NI; e++)  accum[count_elem++] = value[e];
+			if(count_elem == NO) {
+				expected[count_out++] = accum;
+				count_elem = 0;
 			}
 		}
 	}
 
-	// Call function-pipelined kernel
-	// For downscaling: NumInWords input reads + NumInWords*(InWidth/OutWidth-1) output-only iterations
-	// For upscaling: NumInWords input reads (some produce output)
-	// Overestimate with 2*max(in, out) calls
+	// Call function-pipelined kernel enough times to drain all outputs
 	constexpr unsigned  ITERS = 2 * (NumInWords > NUM_OUT ? NumInWords : NUM_OUT);
 	for(unsigned  i = 0; i < ITERS; i++)  Testbench_dwc(input_stream, output_stream);
 
 	// Verify
 	for(unsigned  i = 0; i < NUM_OUT; i++) {
-		ap_uint<OUT_WIDTH>  value = output_stream.read();
+		tensor<T, NO>  value = output_stream.read();
 		if(value != expected[i]) {
-			std::cout << "ERROR counter " << i << std::hex
-				<< " expected " << expected[i] << " value " << value
-				<< std::dec << std::endl;
+			std::cout << "ERROR at output " << i
+				<< " expected " << expected[i] << " got " << value << std::endl;
 			return  1;
 		}
 	}
