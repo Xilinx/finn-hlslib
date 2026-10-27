@@ -28,21 +28,11 @@
  *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
-#include <ap_int.h>
-#include <hls_stream.h>
-
 #include "deconv_top.hpp"
-#include "data/config_deconv2d.h"
-#include "data/memdata_deconv2d.h"
+#include "memdata_deconv2d.h"
 
 #include <iostream>
 #include <random>
-
-
-void test_deconv2d(
-	hls::stream<ap_uint<IFMCh1*IPrecision> > & src,
-	hls::stream<ap_uint<OFMCh1*OPrecision> > & dst
-);
 
 int main() {
 	std::cout << "Starting testbench for deconvolution" << std::endl;

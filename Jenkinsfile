@@ -33,7 +33,6 @@
 node('finn-build || built-in') {
     def app
     stage('Clone repository') {
-        /* Let's make sure we have the repository cloned to our workspace */
         checkout scm
     }
     withEnv([
@@ -43,115 +42,35 @@ node('finn-build || built-in') {
         "HLS_ENV_SRC=/proj/xbuilds/2022.1_released/installs/lin64/Vitis/2022.1/settings64.sh",
         "HOME=${env.WORKSPACE}"
     ]){
+        def run = { tcl -> sh("source ${env.HLS_ENV_SRC}; cd tb; vitis-run --tcl ${tcl}") }
         parallel firstBranch: {
-            stage('SWG') {
-                echo "HLS_ENV_SRC: ${env.HLS_ENV_SRC}"
-                echo "FINN_HLS_ROOT: ${env.FINN_HLS_ROOT}"
-                echo "LC_ALL: ${env.LC_ALL}"
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg.tcl")
-            }
-            stage('SWG Kernelstride') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_kernelstride.tcl")
-            }
-            stage('SWG Kernelstride MMV') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_kernelstride_mmv.tcl")
-            }
-            stage('SWG 1D') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_1D.tcl")
-            }
-            stage('SWG 1D DWS') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_swg_1D_dws.tcl")
-            }
+            stage('MVAU')               { run 'mvau.tcl' }
+            stage('VVAU')               { run 'vvau.tcl' }
         }, secondBranch: {
-            stage('POOL') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_pool.tcl")
-            }
-            stage('POOL 1D') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_pool_1d.tcl")
-            }
-            stage('POOL Kernelstride') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_kernel_stride_pool.tcl")
-            }
+            stage('POOL')               { run 'pool.tcl' }
+            stage('MAXPOOL')            { run 'maxpool.tcl' }
         }, thirdBranch: {
-            stage('DWC') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dwc.tcl")
-            }
+            stage('DWC')                { run 'dwc.tcl' }
+            stage('CONCAT')             { run 'concat.tcl' }
+            stage('SPLIT')              { run 'split.tcl' }
+            stage('DUP')                { run 'dup.tcl' }
         }, fourthBranch: {
-            stage('ADD') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_add.tcl")
-            }
-            stage('ELTWISE') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_eltwise.tcl")
-            }
-            stage('MAX_NORM') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_max_norm.tcl")
-            }
-            stage('SOFTMAX') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_softmax.tcl")
-            }
+            stage('ELTWISE')            { run 'eltwise.tcl' }
+            stage('CHANNELWISE OP')     { run 'channelwise_op.tcl' }
+            stage('SOFTMAX')            { run 'softmax.tcl' }
+            stage('LAYERNORM')          { run 'layernorm.tcl' }
         }, fifthBranch: {
-            stage('DUP_STREAM') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dup_stream.tcl")
-            }
+            stage('BIPOLAR')            { run 'bipolar.tcl' }
+            stage('REQUANT')            { run 'requant.tcl' }
+            stage('LABEL SELECT')       { run 'label_select.tcl' }
         }, sixthBranch: {
-            stage('CONV3') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv3.tcl")
-            }
-            stage('CONV3_STREAM') {   
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv_stream.tcl")
-            }
-            stage('CONVMMV') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_convmmv.tcl")
-            }
-            stage('DWSCONV') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv_dws.tcl")
-            }
-            stage('NON_SQUARE_CONV') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv_nonsquare.tcl")
-            }
-            stage('NON_SQUARE_DWS_CONV') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv_nonsquare_dws.tcl")
-            }
-            stage('CONV3 INJ STMR') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv3_inj_stmr.tcl")
-            }
-            stage('CONV3 NOINJ STMR') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_conv3_noinj_stmr.tcl")
-            }
+            stage('FM PIXEL PADDING')   { run 'fm_pixel_padding.tcl' }
+            stage('DECONV')             { run 'deconv.tcl' }
+            stage('DECONV 2D')          { run 'deconv2d.tcl' }
+            stage('FLATTEN')            { run 'flatten.tcl' }
         }, seventhBranch: {
-            stage('DWCNM') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_dwcnm.tcl")
-            }
-        }, eighthBranch: {
-            stage('QDMA') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_qdma_stream.tcl")
-            }
-        }, ninthBranch: {
-            stage('LabelSelect Batch') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_label_select.tcl")
-            }
-        }, tenthBranch: {
-            stage('UPSAMPLE') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample.tcl")
-            }
-            stage('UPSAMPLE_1D') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_upsample_1d.tcl")
-            }
-        }, eleventhBranch: {
-            stage('CHANNELWISE OP') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_channelwise_op.tcl")
-            }
-        }, twelfthBranch: {
-            stage('TMR CHECK') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_tmrc_stmr.tcl")
-            }
-        }, thirteenthBranch: {
-            stage('FM_PIX_PAD') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_fm_pixel_padding.tcl")
-            }
-            stage('DECONV_2D') {
-                sh("source ${env.HLS_ENV_SRC}; cd tb; vitis_hls -f test_deconv2d.tcl")
-            }
+            stage('CHECKSUM')           { run 'checksum.tcl' }
+            stage('QDMA')               { run 'qdma_stream.tcl' }
         }
     }
 }

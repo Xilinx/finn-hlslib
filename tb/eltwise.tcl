@@ -31,7 +31,7 @@
 ###############################################################################
 ###############################################################################
  # #
- # \file test_eltwise.tcl
+ # \file eltwise.tcl
  #
  # Tcl script for HLS csim, synthesis and cosim of the eltwise layer
  #

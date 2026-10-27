@@ -1,6 +1,5 @@
-#!/bin/sh
 ##############################################################################
- #  Copyright (c) 2021, Xilinx, Inc.
+ #  Copyright (c) 2019, Xilinx, Inc.
  #  All rights reserved.
  #
  #  Redistribution and use in source and binary forms, with or without
@@ -29,16 +28,26 @@
  #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  #
- ##############################################################################
+###############################################################################
+###############################################################################
+ #
+ #  Authors: Giulio Gambardella <giuliog@xilinx.com>
+ #           Tobias Alonso <tobiasa@xilinx.com>
+ #
+ # \file label_select.tcl
+ #
+ # Tcl script for HLS csim, synthesis and cosim of LabelSelect_Batch (topk) layer
+ #
+###############################################################################
 
-virtualenv venv
-source venv/bin/activate
-pip3 install -r requirements.txt
-cd tb/data
-python3 gen_weigths.py
-python3 gen_weigths_dws.py
-python3 gen_weigths_nonsquare.py
-python3 gen_weigths_nonsquare_dws.py
-python3 gen_params_stmr.py no_inj
-python3 gen_params_stmr.py inj
-
+open_project hls-syn-label_select
+add_files label_select_top.cpp -cflags "-fdiagnostics-color -std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+add_files -tb label_select_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
+set_top Testbench_label_select
+open_solution sol1
+set_part {xczu3eg-sbva484-1-i}
+create_clock -period 5 -name default
+csim_design 
+csynth_design
+cosim_design
+exit

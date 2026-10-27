@@ -34,7 +34,7 @@
  #  Authors: Giulio Gambardella <giuliog@xilinx.com>
  #           Tobias Alonso <tobiasa@xilinx.com>
  #
- # \file test_channelwise_op.tcl
+ # \file channelwise_op.tcl
  #
  # Tcl script for HLS csim, synthesis and cosim of the ChannelWiseOperation activation test
  #
