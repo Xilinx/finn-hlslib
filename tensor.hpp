@@ -372,6 +372,8 @@ class tensor<T, N> : public tensor_common<tensor<T, N>, T, N> {
 public:
 	static constexpr unsigned  width = N * W;
 
+	using  inner_t = T;
+
 	tensor() = default;
 	explicit tensor(ap_uint<width> const &raw) : m_data(raw) {}
 	tensor(std::initializer_list<T> elems) : m_data(0) {
@@ -380,6 +382,17 @@ public:
 			m_data((i+1)*W - 1, i*W) = to_bitimage(*it);
 		}
 	}
+
+	// Converting constructor: element-wise type conversion from tensor<U, N>
+	template<typename U, typename = std::enable_if_t<!std::is_same_v<U, T>>>
+	tensor(tensor<U, N> const &src) : m_data(0) {
+#pragma HLS inline
+		for(unsigned i = 0; i < N; i++) {
+#pragma HLS unroll
+			operator[](i) = T(src[i]);
+		}
+	}
+
 	operator ap_uint<width>() const { return  m_data; }
 
 	T operator[](unsigned i) const {
