@@ -376,6 +376,16 @@ public:
 
 	tensor() = default;
 	explicit tensor(ap_uint<width> const &raw) : m_data(raw) {}
+
+	// Broadcasting constructor: fill all N elements with the same value
+	explicit tensor(T const &val) : m_data(0) {
+#pragma HLS inline
+		for(unsigned i = 0; i < N; i++) {
+#pragma HLS unroll
+			m_data((i+1)*W - 1, i*W) = to_bitimage(val);
+		}
+	}
+
 	tensor(std::initializer_list<T> elems) : m_data(0) {
 		auto  it = elems.begin();
 		for(unsigned i = 0; i < N && it != elems.end(); i++, ++it) {
