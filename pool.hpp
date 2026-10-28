@@ -116,13 +116,13 @@ struct QuantAvgOp : SumOp {
 
 
 //===========================================================================
-// Stateful pool functor: accumulator as instance state
+// Pool functor: accumulator as instance state
 
 /*!
  * \brief  Pool functor lifting an element-level Op to scalar types.
  *
- * Owns its accumulator and first-element flag. Pool_batch drives this
- * via pool() and result(), holding a single static instance.
+ * Pure accumulator — no control state.  The caller (pool(), pool_global())
+ * owns the first flag and passes it to operator().
  *
  * \tparam Op   Element-level operation (MaxOp, SumOp, AvgOp<N>, QuantAvgOp<SHIFT>)
  * \tparam TO   Output type
@@ -130,19 +130,16 @@ struct QuantAvgOp : SumOp {
  */
 template<typename Op, typename TO, typename TA = TO>
 class PoolFunction {
-	TA    accu;
-	bool  first = true;
+	TA  accu;
 
 public:
 	using  output_t = TO;
 
 	template<typename TI>
-	void operator()(TI const &x, bool last) {
+	void operator()(bool first, TI const &x) {
 #pragma HLS inline
 #pragma HLS reset variable=accu off
-#pragma HLS reset variable=first
 		accu = Op::template pool<TA>(first? Op::template init<TA>() : TA(accu), TA(x));
-		first = last;
 	}
 	TO operator*() const {
 #pragma HLS inline
@@ -156,22 +153,18 @@ public:
 template<typename Op, typename EO, typename EA, unsigned PE>
 class PoolFunction<Op, tensor<EO, PE>, tensor<EA, PE>> {
 	tensor<EA, PE>  accu;
-	bool            first = true;
 
 public:
 	using  output_t = tensor<EO, PE>;
 
 	template<typename TI>
-	void operator()(TI const &x, bool last) {
+	void operator()(bool first, TI const &x) {
 #pragma HLS inline
-#pragma HLS array_partition variable=accu complete dim=0
 #pragma HLS reset variable=accu off
-#pragma HLS reset variable=first
 		for(unsigned i = 0; i < PE; i++) {
 #pragma HLS unroll
 			accu[i] = Op::template pool<EA>(first? Op::template init<EA>() : EA(accu[i]), EA(x[i]));
 		}
-		first = last;
 	}
 	output_t operator*() const {
 #pragma HLS inline
@@ -188,11 +181,11 @@ public:
 //===========================================================================
 // Concrete pool functors
 
-template<typename TO, typename TA = TO>
-using MaxPool = PoolFunction<MaxOp, TO, TA>;
+template<typename T>
+using MaxPool = PoolFunction<MaxOp, T, T>;
 
-template<typename TO, typename TA = TO>
-using SumPool = PoolFunction<SumOp, TO, TA>;
+template<typename T>
+using SumPool = PoolFunction<SumOp, T, T>;
 
 template<typename TO, typename TA, size_t N>
 using AvgPool = PoolFunction<AvgOp<N>, TO, TA>;
@@ -206,8 +199,7 @@ using QuantAvgPool = PoolFunction<QuantAvgOp<SHIFT>, TO, TA>;
 
 /**
  * Generic pooling: reduce-until-last using flit_t markers from input_gen.
- * The stateful functor F owns the accumulator. Pool_batch is a pure
- * scheduling wrapper with no state of its own.
+ * Owns a single functor instance and the first flag.
  *
  * @tparam F   Pool functor type (MaxPool<TO>, QuantAvgPool<TO,TA,SHIFT>, ...)
  * @param  src Input stream of flit_t<TI> (data + last marker)
@@ -222,71 +214,67 @@ void pool(
 	hls::stream<typename F::output_t>  &dst
 ) {
 #pragma HLS pipeline II=1 style=flp
-	static F  pool;
+	static F     pool;
+	static bool  first = true;
+#pragma HLS reset variable=first
 
 	if(!src.empty()) {
 		auto const  x = src.read();
-		pool(x.data, x.last);
+		pool(first, x.data);
 		if(x.last)  dst.write(*pool);
+		first = x.last;
 	}
 }
 
 
 
 //===========================================================================
-// Legacy AccPool_Batch
+// Global pooling: array of accumulators, round-robin over channel folds
 
 /**
- * \brief   Accumulate-pool (function-pipelined) — global accumulation across
- *          ImgDim×ImgDim spatial positions, emitting one result per channel fold.
+ * Global pooling: reduce PIXELS spatial positions per channel fold, emitting
+ * one activated result per fold after the final pixel.  Customizable through
+ * the same PoolFunction aliases (SumPool, MaxPool, QuantAvgPool, ...).
  *
- * \tparam ImgDim       Width and Height of the Input Feature Map (assumed square)
- * \tparam NumChannels  Number of Input Feature Maps
- * \tparam ActType      DataType of the input activation
- * \tparam PECount      PE parallelism
- * \tparam AccType      Datatype of the accumulation (e.g. output)
+ * Architectural difference to pool<F>(): maintains an array of CF functor
+ * instances in LUTRAM, stepped through round-robin.  A ModCounter<PIXELS>
+ * fires after all spatial positions have been absorbed, implying output
+ * and the assertion of first — just as in pool().
  *
- * \param in            Input stream
- * \param out           Output stream
+ * @tparam F       Pool functor type (SumPool<TO,TA>, MaxPool<TO>, ...)
+ * @tparam CF      Channel folds = NumChannels / PE
+ * @tparam PIXELS  Spatial positions to reduce (H * W)
+ * @param  src     Input stream (plain tensor, no flit_t)
+ * @param  dst     Output stream
  */
 template<
-    unsigned int ImgDim,
-	unsigned int NumChannels,
-	typename ActType,
-	unsigned int PECount,
-	typename AccType>
-void AccPool_Batch(
-	hls::stream<tensor<ActType, PECount>> &in,
-	hls::stream<tensor<AccType, PECount>> &out
+	typename F,
+	unsigned CF,
+	unsigned PIXELS,
+	typename TI    // [inferred] Input stream element type
+>
+void pool_global(
+	hls::stream<TI>                    &src,
+	hls::stream<typename F::output_t>  &dst
 ) {
 #pragma HLS pipeline II=1 style=flp
-	constexpr unsigned  FOLDS = NumChannels / PECount;
-	constexpr unsigned  PIXELS = ImgDim * ImgDim;
-	static tensor<AccType, PECount>  accumulators[FOLDS];
-	static unsigned  fold = 0;
-	static unsigned  pixel = 0;
+	static F                   accumulators[CF];
+	static unsigned            fold = 0;
+	static bool                first = true;
+	static ModCounter<PIXELS>  px;
 #pragma HLS reset variable=fold
-#pragma HLS reset variable=pixel
-#pragma HLS reset variable=accumulators off
-#pragma HLS bind_storage variable=accumulators type=RAM_2P impl=LUTRAM
+#pragma HLS reset variable=first
+#pragma HLS reset variable=px
 
-	if(!in.empty()) {
-		auto const  x = in.read();
-		bool const  first_pixel = (pixel == 0);
+	if(!src.empty()) {
+		auto const  x = src.read();
 
-		tensor<AccType, PECount>  acc;
-		for(unsigned  pe = 0; pe < PECount; pe++) {
-#pragma HLS UNROLL
-			acc[pe] = AccType(x[pe]) + (first_pixel ? AccType(0) : AccType(accumulators[fold][pe]));
-		}
-		accumulators[fold] = acc;
+		accumulators[fold](first, x);
+		if(px.last())  dst.write(*accumulators[fold]);
 
-		bool const  last_pixel = (pixel == PIXELS - 1);
-		if(last_pixel)  out.write(acc);
-
-		if(++fold == FOLDS) {
+		if(fold++ == CF-1) {
 			fold = 0;
-			if(++pixel == PIXELS)  pixel = 0;
+			first = px.tick();
 		}
 	}
 }

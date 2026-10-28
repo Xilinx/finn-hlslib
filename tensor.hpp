@@ -378,6 +378,8 @@ public:
 	explicit tensor(ap_uint<width> const &raw) : m_data(raw) {}
 
 	// Broadcasting constructor: fill all N elements with the same value
+	// Disabled for N=1 where it clashes with (and is redundant to) the raw ctor
+	template<unsigned M = N, typename = std::enable_if_t<(M > 1)>>
 	explicit tensor(T const &val) : m_data(0) {
 #pragma HLS inline
 		for(unsigned i = 0; i < N; i++) {
