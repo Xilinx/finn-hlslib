@@ -114,7 +114,7 @@ void Vector_Vector_Activate_Batch(
 	if(!in.empty()) {
 		auto  inElem = in.read();
 		// Transpose: SIMD-major wire format [simd][pe] → PE-major access [pe][simd]
-		auto const  act = inElem.transpose<1, 0>();
+		auto const  act = inElem.template transpose<1, 0>();
 
 		// Initialize accumulators
 		if(sf == 0) {
@@ -202,7 +202,7 @@ void Vector_Vector_Activate_Stream_Batch(
 	// Compute phase — non-blocking: need both input and weights
 	if(!in.empty() && !weights.empty()) {
 		auto  inElem = in.read();
-		auto const  act = inElem.transpose<1, 0>();
+		auto const  act = inElem.template transpose<1, 0>();
 		auto const  ww = weights.read();
 
 		// Initialize accumulators
