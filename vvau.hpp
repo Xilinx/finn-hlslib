@@ -131,7 +131,7 @@ void Vector_Vector_Activate_Batch(
 			auto const  w = weights[tile][pe];
 			for(unsigned  i = 0; i < SIMD; i++) {
 #pragma HLS unroll
-				mac(accu[pe], w[i], act[pe][i], res);
+				mac(accu[pe], w[i], TI(act[pe][i]), res);
 			}
 		}
 
@@ -219,7 +219,7 @@ void Vector_Vector_Activate_Stream_Batch(
 			auto const  w = ww[pe];
 			for(unsigned  i = 0; i < SIMD; i++) {
 #pragma HLS unroll
-				mac(accu[pe], w[i], act[pe][i], res);
+				mac(accu[pe], w[i], TI(act[pe][i]), res);
 			}
 		}
 

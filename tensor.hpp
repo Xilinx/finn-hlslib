@@ -384,7 +384,7 @@ public:
 	}
 
 	// Converting constructor: element-wise type conversion from tensor<U, N>
-	template<typename U, typename = std::enable_if_t<!std::is_same_v<U, T>>>
+	template<typename U, typename = std::enable_if_t<!std::is_same<U, T>::value>>
 	tensor(tensor<U, N> const &src) : m_data(0) {
 #pragma HLS inline
 		for(unsigned i = 0; i < N; i++) {
