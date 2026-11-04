@@ -44,6 +44,7 @@
 #define TENSOR_HPP
 
 #include <ap_int.h>
+#include <iterator>
 #include <ostream>
 #include <initializer_list>
 #include <utility>
@@ -261,7 +262,38 @@ public:
 #pragma HLS inline
 		return  T::template ref_at_static<HOST_W>(m_host, m_off, i);
 	}
+
+	//-- Forwarding arithmetic operators (SFINAE on T support) ---------------
+	template<typename U = T, typename = decltype(++std::declval<U&>())>
+	tensor_ref& operator++() { T t = *this; *this = ++t; return  *this; }
+
+	template<typename U = T, typename = decltype(std::declval<U&>()++)>
+	T operator++(int) { T t = *this; *this = t + 1; return  t; }
+
+	template<typename U = T, typename = decltype(--std::declval<U&>())>
+	tensor_ref& operator--() { T t = *this; *this = --t; return  *this; }
+
+	template<typename U = T, typename = decltype(std::declval<U&>()--)>
+	T operator--(int) { T t = *this; *this = t - 1; return  t; }
+
+	template<typename V> auto operator+=(V const &v) -> tensor_ref& { T t = *this; t += v; *this = t; return  *this; }
+	template<typename V> auto operator-=(V const &v) -> tensor_ref& { T t = *this; t -= v; *this = t; return  *this; }
+	template<typename V> auto operator*=(V const &v) -> tensor_ref& { T t = *this; t *= v; *this = t; return  *this; }
+	template<typename V> auto operator/=(V const &v) -> tensor_ref& { T t = *this; t /= v; *this = t; return  *this; }
+	template<typename V> auto operator%=(V const &v) -> tensor_ref& { T t = *this; t %= v; *this = t; return  *this; }
+	template<typename V> auto operator&=(V const &v) -> tensor_ref& { T t = *this; t &= v; *this = t; return  *this; }
+	template<typename V> auto operator|=(V const &v) -> tensor_ref& { T t = *this; t |= v; *this = t; return  *this; }
+	template<typename V> auto operator^=(V const &v) -> tensor_ref& { T t = *this; t ^= v; *this = t; return  *this; }
+	template<typename V> auto operator<<=(V const &v) -> tensor_ref& { T t = *this; t <<= v; *this = t; return  *this; }
+	template<typename V> auto operator>>=(V const &v) -> tensor_ref& { T t = *this; t >>= v; *this = t; return  *this; }
 };
+
+template<typename T, unsigned W, unsigned HOST_W>
+void swap(tensor_ref<T, W, HOST_W> a, tensor_ref<T, W, HOST_W> b) {
+	T  tmp = a;
+	a = T(b);
+	b = tmp;
+}
 
 //-- Write-through range proxy -----------------------------------------------
 //  References a contiguous run of INNER_W-wide elements within an ap_uint.
@@ -305,26 +337,78 @@ public:
 
 	//-- Const iteration: yields InnerT by value -----------------------------
 	class const_iterator {
-		ap_uint<width> const  &m_data;
+		ap_uint<width> const  *m_data;
 		unsigned               m_idx;
 	public:
-		const_iterator(ap_uint<width> const &data, unsigned idx) : m_data(data), m_idx(idx) {}
-		InnerT operator*() const { return  BitImage<InnerT>::from(ap_uint<InnerW>(m_data((m_idx+1)*InnerW - 1, m_idx*InnerW))); }
-		const_iterator& operator++() { ++m_idx; return  *this; }
+		using difference_type   = int;
+		using value_type        = InnerT;
+		using pointer           = void;
+		using reference         = InnerT;
+		using iterator_category = std::random_access_iterator_tag;
+
+		const_iterator(ap_uint<width> const &data, unsigned idx) : m_data(&data), m_idx(idx) {}
+
+		InnerT operator*()  const { return  BitImage<InnerT>::from(ap_uint<InnerW>((*m_data)((m_idx+1)*InnerW - 1, m_idx*InnerW))); }
+		InnerT operator[](int n) const { return  BitImage<InnerT>::from(ap_uint<InnerW>((*m_data)((m_idx+n+1)*InnerW - 1, (m_idx+n)*InnerW))); }
+
+		const_iterator& operator++()    { ++m_idx; return  *this; }
+		const_iterator  operator++(int) { auto t = *this; ++m_idx; return  t; }
+		const_iterator& operator--()    { --m_idx; return  *this; }
+		const_iterator  operator--(int) { auto t = *this; --m_idx; return  t; }
+
+		const_iterator& operator+=(int n) { m_idx += n; return  *this; }
+		const_iterator& operator-=(int n) { m_idx -= n; return  *this; }
+		const_iterator  operator+(int n) const { return  { *m_data, m_idx + n }; }
+		const_iterator  operator-(int n) const { return  { *m_data, m_idx - n }; }
+		int             operator-(const_iterator const &o) const { return  m_idx - o.m_idx; }
+
+		friend const_iterator operator+(int n, const_iterator const &it) { return  it + n; }
+
+		bool operator==(const_iterator const &o) const { return  m_idx == o.m_idx; }
 		bool operator!=(const_iterator const &o) const { return  m_idx != o.m_idx; }
+		bool operator< (const_iterator const &o) const { return  m_idx <  o.m_idx; }
+		bool operator<=(const_iterator const &o) const { return  m_idx <= o.m_idx; }
+		bool operator> (const_iterator const &o) const { return  m_idx >  o.m_idx; }
+		bool operator>=(const_iterator const &o) const { return  m_idx >= o.m_idx; }
 	};
 	const_iterator begin() const { return  { data(), 0 }; }
 	const_iterator end()   const { return  { data(), Count }; }
 
 	//-- Mutable iteration: yields tensor_ref write-through proxies ----------
 	class iterator {
-		ap_uint<width>  &m_data;
+		ap_uint<width>  *m_data;
 		unsigned         m_idx;
 	public:
-		iterator(ap_uint<width> &data, unsigned idx) : m_data(data), m_idx(idx) {}
-		tensor_ref<InnerT, InnerW, width> operator*() { return  { m_data, m_idx * InnerW }; }
-		iterator& operator++() { ++m_idx; return  *this; }
+		using difference_type   = int;
+		using value_type        = InnerT;
+		using pointer           = void;
+		using reference         = tensor_ref<InnerT, InnerW, width>;
+		using iterator_category = std::random_access_iterator_tag;
+
+		iterator(ap_uint<width> &data, unsigned idx) : m_data(&data), m_idx(idx) {}
+
+		reference operator*()      { return  { *m_data, m_idx * InnerW }; }
+		reference operator[](int n) { return  { *m_data, (m_idx + n) * InnerW }; }
+
+		iterator& operator++()    { ++m_idx; return  *this; }
+		iterator  operator++(int) { auto t = *this; ++m_idx; return  t; }
+		iterator& operator--()    { --m_idx; return  *this; }
+		iterator  operator--(int) { auto t = *this; --m_idx; return  t; }
+
+		iterator& operator+=(int n) { m_idx += n; return  *this; }
+		iterator& operator-=(int n) { m_idx -= n; return  *this; }
+		iterator  operator+(int n) const { return  { *m_data, m_idx + n }; }
+		iterator  operator-(int n) const { return  { *m_data, m_idx - n }; }
+		int       operator-(iterator const &o) const { return  m_idx - o.m_idx; }
+
+		friend iterator operator+(int n, iterator const &it) { return  it + n; }
+
+		bool operator==(iterator const &o) const { return  m_idx == o.m_idx; }
 		bool operator!=(iterator const &o) const { return  m_idx != o.m_idx; }
+		bool operator< (iterator const &o) const { return  m_idx <  o.m_idx; }
+		bool operator<=(iterator const &o) const { return  m_idx <= o.m_idx; }
+		bool operator> (iterator const &o) const { return  m_idx >  o.m_idx; }
+		bool operator>=(iterator const &o) const { return  m_idx >= o.m_idx; }
 	};
 	iterator begin() { return  { data(), 0 }; }
 	iterator end()   { return  { data(), Count }; }
@@ -333,6 +417,14 @@ public:
 	tensor_range_ref<InnerW, width> slice(unsigned hi, unsigned lo) {
 #pragma HLS inline
 		return  tensor_range_ref<InnerW, width>(data(), lo * InnerW, hi - lo + 1);
+	}
+
+	//-- Const range slice: extract M elements starting at lo by value ------
+	template<unsigned M>
+	tensor<InnerT, M> slice(unsigned lo) const {
+#pragma HLS inline
+		constexpr unsigned  W = M * InnerW;
+		return  tensor<InnerT, M>(ap_uint<W>(data()(lo*InnerW + W - 1, lo*InnerW)));
 	}
 
 	//-- Reshape: reinterpret bits under new shape (defined in tensor_view.hpp)

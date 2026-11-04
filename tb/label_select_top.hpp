@@ -6,28 +6,19 @@
 #include "tensor.hpp"
 #include "topk.hpp"
 
-#define SIGNED_INPUT 1
-#define NumClasses 10
-#define OUT_WIDTH 4
-#define NumTop 3
+constexpr unsigned  N  = 10;
+constexpr unsigned  K  = 3;
+constexpr unsigned  PE = 5;
 
-#define FM_Channels1 NumClasses
-#define PE1 5
-#define INPUT_PRECISION 16
+using TI = ap_int<16>;
+using TO = ap_uint<4>;
 
-#if SIGNED_INPUT
-    #define In_T ap_int<INPUT_PRECISION>
-#else
-    #define In_T ap_uint<INPUT_PRECISION>
-#endif
-
-#define Out_T ap_uint<OUT_WIDTH>
-
-using ls_in_t = tensor<In_T, PE1>;
+using src_t = tensor<TI, PE>;
+using dst_t = tensor<TO,  1>;
 
 void Testbench_label_select(
-	hls::stream<ls_in_t> &in,
-	hls::stream<Out_T>   &out
+	hls::stream<src_t> &src,
+	hls::stream<dst_t> &dst
 );
 
 #endif

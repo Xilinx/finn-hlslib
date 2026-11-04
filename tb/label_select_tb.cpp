@@ -1,52 +1,68 @@
 #include <iostream>
+#include <numeric>
+#include <algorithm>
 #include <hls_stream.h>
-#define AP_INT_MAX_W 8191
-#include "ap_int.h"
+#include <ap_int.h>
 
 #include "label_select_top.hpp"
 
-#define MAX_IMAGES 2
+
+constexpr unsigned  BATCH = 2;
 
 int main() {
-	int  sig_in_vec[10] = {-12043, 30370, -23559, -30747, -11173, 30686, 19723,
-		-8171, -16169, 809};
-	int  sig_in_golden[10] = {5, 1, 6, 9, 7, 4, 0, 8, 2, 3};
+	tensor<TI, N> const  idat = tensor<TI, N>{
+		-12043, 30370, -23559, -30747, -11173,
+		 30686, 19723,  -8171, -16169,    809
+	};
+	// Reference: indices sorted by descending input value
+	tensor<TO, N>  oref;
+	std::iota(oref.begin(), oref.end(), TO(0));
+	std::sort(oref.begin(), oref.end(), [&idat](TO a, TO b) { return  idat[a] > idat[b]; });
 
-	hls::stream<ls_in_t>  input_st("input_st");
-	hls::stream<Out_T>    output_st("output_st");
+	hls::stream<src_t>  src("src");
+	hls::stream<dst_t>  dst("dst");
 
-	// Pack scalar inputs into PE1-wide tensors
-	constexpr unsigned  FOLDS = FM_Channels1 / PE1;
-	for(int  batch = 0; batch < MAX_IMAGES; batch++) {
-		for(unsigned  f = 0; f < FOLDS; f++) {
-			ap_uint<PE1 * INPUT_PRECISION>  word = 0;
-			for(unsigned  pe = 0; pe < PE1; pe++) {
-				unsigned  idx = f * PE1 + pe;
-				word((pe+1)*INPUT_PRECISION-1, pe*INPUT_PRECISION) = ap_uint<INPUT_PRECISION>(In_T(sig_in_vec[idx]));
-			}
-			input_st.write(ls_in_t(word));
+	// Slice input tensor into PE-wide words
+	for(unsigned  batch = 0; batch < BATCH; batch++) {
+		for(unsigned  f = 0; f < N; f += PE) {
+			src.write(idat.slice<PE>(f));
 		}
 	}
 
-	// Call function-pipelined kernel (two-phase: FOLDS capture + NumTop emit per image)
-	constexpr unsigned  ITERS_PER_IMAGE = FOLDS + NumTop;
-	for(unsigned  i = 0; i < 2 * MAX_IMAGES * ITERS_PER_IMAGE; i++)
-		Testbench_label_select(input_st, output_st);
+	// Run DUT and verify inline
+	constexpr unsigned  EXPECTED_OUTPUTS = BATCH * K;
+	unsigned  outputs_received = 0;
+	unsigned  timeout = 0;
+	unsigned  err_cnt = 0;
+	while(timeout < 200) {
+		Testbench_label_select(src, dst);
 
-	// Verify
-	int  err_cnt = 0;
-	for(int  batch = 0; batch < MAX_IMAGES; batch++) {
-		for(int  i = 0; i < NumTop; i++) {
-			Out_T  outElem = output_st.read();
-			int  expected = sig_in_golden[i];
-			if(outElem != expected) {
-				std::cout << "ERROR: batch " << batch << " top " << i+1
-					<< " expected " << expected << " got " << outElem << std::endl;
-				err_cnt++;
-			}
+		if(dst.empty()) {
+			timeout++;
+			continue;
 		}
+
+		timeout = 0;
+		TO const  actual = dst.read()[0];
+		TO const  expected = oref[outputs_received % K];
+		if(actual != expected) {
+			std::cout << "ERROR: batch " << outputs_received / K << " top " << outputs_received % K + 1
+				<< " expected " << expected << " got " << actual << std::endl;
+			err_cnt++;
+		}
+
+		outputs_received++;
+		if(outputs_received == EXPECTED_OUTPUTS)  break;
 	}
 
-	if(err_cnt == 0)  std::cout << "Test passed." << std::endl;
-	return  err_cnt ? 1 : 0;
+	std::cout
+		<< "Received " << outputs_received << " of " << EXPECTED_OUTPUTS << " outputs, "
+		<< err_cnt << " errors."
+		<< std::endl;
+
+	if(outputs_received != EXPECTED_OUTPUTS) {
+		std::cerr << "ERROR: Timed out waiting for outputs." << std::endl;
+		return  1;
+	}
+	return  err_cnt? 1 : 0;
 }
