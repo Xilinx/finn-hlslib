@@ -1,5 +1,5 @@
+#include "requant_top.hpp"
 #include "requant.hpp"
-#include "data/requant_config.h"
 
 // Test parameters: simple scale + bias per channel
 // Channels are indexed as [pe][nf] with PE=2, NF=4

@@ -3,7 +3,7 @@
 #define AP_INT_MAX_W 8191
 #include "ap_int.h"
 
-#include "channelwise_op_top.h"
+#include "channelwise_op_top.hpp"
 
 #define MAX_IMAGES 2
 

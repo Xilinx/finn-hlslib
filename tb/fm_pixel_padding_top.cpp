@@ -29,12 +29,8 @@
  *  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ******************************************************************************/
-#include <hls_stream.h>
-#include "ap_int.h"
+#include "fm_pixel_padding_top.hpp"
 #include "deconv.hpp"
-#include "data/config_fmpp.h"
-
-using  vec_t = tensor<ap_uint<INPUT_WIDTH>, SIMD1>;
 
 void test_fm_pixel_padding(
 	hls::stream<vec_t> &src,

@@ -33,7 +33,7 @@
  #
  #  Authors: Lucian Petrica <lucianp@xilinx.com>
  #
- # \file test_qdma_stream.tcl
+ # \file qdma_stream.tcl
  #
  # Tcl script for HLS csim, synthesis and cosim of the qdma stream layer
  #

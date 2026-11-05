@@ -1,4 +1,4 @@
-#include "channelwise_op_top.h"
+#include "channelwise_op_top.hpp"
 
 void Testbench_channelwise_op(
 	hls::stream<tensor<ap_uint<INPUT_BITS>, PE>> &in,
