@@ -73,8 +73,8 @@ void LabelSelect_Batch(
 	static ap_uint<1>  state = STATE_CAPTURE;
 #pragma HLS reset variable=state
 
-	static ap_uint<clog2(N)>  idx = 0;
-	static ModCounter<K>      emit_cnt;
+	static ap_uzint<clog2(N)>  idx = 0;
+	static ModCounter<K>  emit_cnt;
 #pragma HLS reset variable=idx
 #pragma HLS reset variable=emit_cnt
 
