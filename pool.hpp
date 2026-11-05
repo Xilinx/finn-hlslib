@@ -265,6 +265,10 @@ void pool_global(
 #pragma HLS reset variable=fold
 #pragma HLS reset variable=first
 #pragma HLS reset variable=px
+	// The same accumulator is only revisited after CF calls. Without this
+	// hint, HLS assumes a distance of 1 and falls back to II=2 once the
+	// array is not partitioned into registers (observed for CF >= 5).
+#pragma HLS dependence variable=accumulators type=inter direction=RAW distance=CF true
 
 	if(!src.empty()) {
 		auto const  x = src.read();
