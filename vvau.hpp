@@ -49,17 +49,22 @@
 #include "activations.hpp"
 #include "mac.hpp"
 #include "tensor.hpp"
+#include "tensor_view.hpp"
 
 
 //---------------------------------------------------------------------------
 // VVU with embedded (internal) weights
+//
+//  Input stream carries tensor<TI, SIMD, PE> matching the SWG wire format
+//  (SIMD-major, channels interleaved).  The function uses transpose<1,0>()
+//  to access elements in PE-major order — pure wiring, no data movement.
 //
 template<
 	unsigned  Channels,  // total output channels
 	unsigned  Kernel_2,  // kernel elements (k_h * k_w)
 	unsigned  SIMD,      // input parallelism (kernel elements per cycle)
 	unsigned  PE,        // output parallelism (channels per cycle)
-	unsigned  MMV = 1,   // output pixels in parallel
+	unsigned  MMV = 1,   // output pixels in parallel (reserved, must be 1)
 	typename  TW,        // weight element type
 	typename  TI,        // input activation element type
 	typename  TO,        // output element type
@@ -68,20 +73,21 @@ template<
 	typename  TR = ap_resource_dflt  // compute resource
 >
 void Vector_Vector_Activate_Batch(
-	hls::stream<tensor<TI, PE, MMV, SIMD>> &in,
-	hls::stream<tensor<TO, MMV, PE>>       &out,
-	TW_arr const                           &weights,
-	TA const                               &activation,
-	TR const                               &res = {}
+	hls::stream<tensor<TI, SIMD, PE>> &in,
+	hls::stream<tensor<TO, PE>>       &out,
+	TW_arr const                      &weights,
+	TA const                          &activation,
+	TR const                          &res = {}
 ) {
 #pragma HLS pipeline II=1 style=flp
+	static_assert(MMV == 1, "MMV != 1 not yet supported");
 
 	constexpr unsigned  NF = Channels / PE;
 	constexpr unsigned  SF = Kernel_2 / SIMD;
 
 	using TAcc = decltype(activation.init(0, 0));
 
-	static TAcc  accu[MMV][PE];
+	static TAcc  accu[PE];
 	static unsigned  sf = 0;
 	static unsigned  nf = 0;
 	static unsigned  nf_out = 0;
@@ -95,13 +101,10 @@ void Vector_Vector_Activate_Batch(
 
 	// Output phase
 	if(push) {
-		tensor<TO, MMV, PE>  y;
+		tensor<TO, PE>  y;
 		for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS unroll
-			for(unsigned  mmv = 0; mmv < MMV; mmv++) {
-#pragma HLS unroll
-				y[mmv][pe] = activation.activate(nf_out, pe, accu[mmv][pe]);
-			}
+			y[pe] = activation.activate(nf_out, pe, accu[pe]);
 		}
 		out.write(y);
 		push = false;
@@ -109,16 +112,15 @@ void Vector_Vector_Activate_Batch(
 
 	// Compute phase — non-blocking: only proceed when input is available
 	if(!in.empty()) {
-		auto const  inElem = in.read();
+		auto  inElem = in.read();
+		// Transpose: SIMD-major wire format [simd][pe] → PE-major access [pe][simd]
+		auto const  act = inElem.template transpose<1, 0>();
 
 		// Initialize accumulators
 		if(sf == 0) {
 			for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS unroll
-				for(unsigned  mmv = 0; mmv < MMV; mmv++) {
-#pragma HLS unroll
-					accu[mmv][pe] = activation.init(nf, pe);
-				}
+				accu[pe] = activation.init(nf, pe);
 			}
 		}
 
@@ -127,13 +129,9 @@ void Vector_Vector_Activate_Batch(
 		for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS unroll
 			auto const  w = weights[tile][pe];
-			auto const  a = inElem[pe];
-			for(unsigned  mmv = 0; mmv < MMV; mmv++) {
+			for(unsigned  i = 0; i < SIMD; i++) {
 #pragma HLS unroll
-				for(unsigned  i = 0; i < SIMD; i++) {
-#pragma HLS unroll
-					mac(accu[mmv][pe], w[i], a[mmv][i], res);
-				}
+				mac(accu[pe], w[i], TI(act[pe][i]), res);
 			}
 		}
 
@@ -164,20 +162,21 @@ template<
 	typename  TR = ap_resource_dflt
 >
 void Vector_Vector_Activate_Stream_Batch(
-	hls::stream<tensor<TI, PE, MMV, SIMD>> &in,
-	hls::stream<tensor<TO, MMV, PE>>       &out,
-	hls::stream<tensor<TW, PE, SIMD>>      &weights,
-	TA const                               &activation,
-	TR const                               &res = {}
+	hls::stream<tensor<TI, SIMD, PE>> &in,
+	hls::stream<tensor<TO, PE>>       &out,
+	hls::stream<tensor<TW, PE, SIMD>> &weights,
+	TA const                          &activation,
+	TR const                          &res = {}
 ) {
 #pragma HLS pipeline II=1 style=flp
+	static_assert(MMV == 1, "MMV != 1 not yet supported");
 
 	constexpr unsigned  NF = Channels / PE;
 	constexpr unsigned  SF = Kernel_2 / SIMD;
 
 	using TAcc = decltype(activation.init(0, 0));
 
-	static TAcc  accu[MMV][PE];
+	static TAcc  accu[PE];
 	static unsigned  sf = 0;
 	static unsigned  nf = 0;
 	static unsigned  nf_out = 0;
@@ -191,13 +190,10 @@ void Vector_Vector_Activate_Stream_Batch(
 
 	// Output phase
 	if(push) {
-		tensor<TO, MMV, PE>  y;
+		tensor<TO, PE>  y;
 		for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS unroll
-			for(unsigned  mmv = 0; mmv < MMV; mmv++) {
-#pragma HLS unroll
-				y[mmv][pe] = activation.activate(nf_out, pe, accu[mmv][pe]);
-			}
+			y[pe] = activation.activate(nf_out, pe, accu[pe]);
 		}
 		out.write(y);
 		push = false;
@@ -205,17 +201,15 @@ void Vector_Vector_Activate_Stream_Batch(
 
 	// Compute phase — non-blocking: need both input and weights
 	if(!in.empty() && !weights.empty()) {
-		auto const  inElem = in.read();
+		auto  inElem = in.read();
+		auto const  act = inElem.template transpose<1, 0>();
 		auto const  ww = weights.read();
 
 		// Initialize accumulators
 		if(sf == 0) {
 			for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS unroll
-				for(unsigned  mmv = 0; mmv < MMV; mmv++) {
-#pragma HLS unroll
-					accu[mmv][pe] = activation.init(nf, pe);
-				}
+				accu[pe] = activation.init(nf, pe);
 			}
 		}
 
@@ -223,13 +217,9 @@ void Vector_Vector_Activate_Stream_Batch(
 		for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS unroll
 			auto const  w = ww[pe];
-			auto const  a = inElem[pe];
-			for(unsigned  mmv = 0; mmv < MMV; mmv++) {
+			for(unsigned  i = 0; i < SIMD; i++) {
 #pragma HLS unroll
-				for(unsigned  i = 0; i < SIMD; i++) {
-#pragma HLS unroll
-					mac(accu[mmv][pe], w[i], a[mmv][i], res);
-				}
+				mac(accu[pe], w[i], TI(act[pe][i]), res);
 			}
 		}
 

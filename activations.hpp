@@ -212,12 +212,12 @@ public:
 public:
   TR activate(unsigned const  nf, unsigned const  pe,  TA const &accu) const {
 #pragma HLS inline
-    TR result=ActVal;
+    ap_uint<clog2(NumTH+1)> result = ActVal;
 	for(unsigned int i=0; i< NumTH; i++){
 #pragma HLS unroll
       result+=Compare()(m_thresholds[pe][nf][i], accu);
     }
-    return result;
+    return TR(result);
   }
 };
 
