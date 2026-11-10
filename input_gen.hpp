@@ -16,6 +16,9 @@
 #include <algorithm>
 #include <tuple>
 #include <type_traits>
+#ifndef __SYNTHESIS__
+#include <cassert>
+#endif
 
 /**
  * Computes the updates of the read and free pointers for a buffer read out by
@@ -58,6 +61,23 @@
  * retractions never add up. Thus, the biggest retraction can be used to
  * dimension provided buffer storage.
  */
+
+/**
+ * Max-subarray bookkeeping for the free-pointer increments between buffer
+ * "units" (see Nest<>::G_*). A block is summarized by the total, the best
+ * prefix and suffix (may be empty) and the best non-empty subarray.
+ */
+namespace input_gen_sizing {
+	constexpr long long  NEG = -(1LL << 60);
+	constexpr long long  max(long long  a, long long  b) { return  a < b? b : a; }
+	// Composition of N copies of a block separated by joiners of value J.
+	constexpr long long  tot (long long  t, long long  N, long long  J) { return  N*t + (N-1)*J; }
+	constexpr long long  edge(long long  t, long long  e, long long  N, long long  J) { return  e + max(0, (N-1)*(t+J)); }
+	constexpr long long  best(long long  t, long long  p, long long  s, long long  b, long long  N, long long  J) {
+		return  N < 2? b : max(b, s + J + p + max(0, (N-2)*(t+J)));
+	}
+}
+
 template<bool R, unsigned... V>
 class Nest {};
 
@@ -77,6 +97,14 @@ public:
 	static constexpr unsigned  fp_rewind = 0;
 
 	static constexpr int  max_rp_retract = 0;
+	static constexpr int  max_rp_advance = W;
+
+	// Buffer sizing (see input_gen()): a terminal R level makes every read a unit.
+	static constexpr long long  reads = 1;
+	static constexpr long long  delta = 0;
+	static constexpr long long  Pq = 1, Uq = 0, gapq = 0;
+	static constexpr long long  ptot = 0, ppre = 0, psuf = 0, pbest = input_gen_sizing::NEG;
+	static constexpr long long  ntot = 0, npre = 0, nsuf = 0, nbest = input_gen_sizing::NEG;
 
 public:
 	std::tuple<int, unsigned, ap_int<1>> tick() {
@@ -109,7 +137,13 @@ template<
 >
 class Nest<R, W, N, C, V...> {
 
-	static constexpr bool  R_INNER = R && (0 < C) && (C*N <= W);
+	// The inner loop may advance the free pointer in lockstep if doing so never
+	// carries it beyond this period W. Its furthest advance is (N-1)*C plus the
+	// inner loop's own (hypothetical) free-pointer rewind. N*C <= W was stricter
+	// than necessary: it failed whenever the last stride period extends past the
+	// end of W although no read does (kernel < stride, floor remainder), leaving
+	// the free pointer stuck and the buffer to overflow.
+	static constexpr bool  R_INNER = R && (0 < C) && ((N-1)*C + Nest<true, C, V...>::fp_rewind <= W);
 	using  Inner = Nest<R_INNER, C, V...>;
 
 public:
@@ -120,6 +154,40 @@ private:
 	static constexpr int  terminal_rp_inc = W - rp_rewind;
 public:
 	static constexpr int  max_rp_retract = std::max(-terminal_rp_inc, Inner::max_rp_retract);
+	static constexpr int  max_rp_advance = std::max( terminal_rp_inc, Inner::max_rp_advance);
+
+	/**
+	 * Buffer sizing quantities.
+	 *
+	 * The deepest level q still responsible for the free pointer (R && !R_INNER)
+	 * defines a "unit": one of its iterations of Pq reads, during which the
+	 * free pointer stands still while the read pointer runs ahead by up to
+	 * gapq = its rp_rewind. Between units, fp jumps by C - Inner::fp_rewind
+	 * at a carry into a level above q. A unit-to-unit step thus nets a
+	 * joiner value J = (fp jump) - Pq relative to the 1 read/cycle pace.
+	 *	- reads: reads per period of this level
+	 *	- delta: max over a unit of (rp - fp) - (reads elapsed), separable per level
+	 *	- Uq:    delta + Pq - 1 at level q
+	 *	- p.., n..: total/prefix/suffix/best-subarray of the joiners +J / -J
+	 *	         within one period of this level
+	 */
+	static constexpr long long  reads = (long long)N * Inner::reads;
+	static constexpr long long  delta = (long long)(N-1) * input_gen_sizing::max(0, (long long)C - Inner::reads) + Inner::delta;
+private:
+	static constexpr bool  IS_Q = R && !R_INNER;
+	static constexpr long long  J = (long long)C - (long long)Inner::fp_rewind - Inner::Pq;
+public:
+	static constexpr long long  Pq   = IS_Q? reads : Inner::Pq;
+	static constexpr long long  Uq   = IS_Q? delta + reads - 1 : Inner::Uq;
+	static constexpr long long  gapq = IS_Q? (long long)rp_rewind : Inner::gapq;
+	static constexpr long long  ptot  = IS_Q? 0 : input_gen_sizing::tot (Inner::ptot, N, J);
+	static constexpr long long  ppre  = IS_Q? 0 : input_gen_sizing::edge(Inner::ptot, Inner::ppre, N, J);
+	static constexpr long long  psuf  = IS_Q? 0 : input_gen_sizing::edge(Inner::ptot, Inner::psuf, N, J);
+	static constexpr long long  pbest = IS_Q? input_gen_sizing::NEG : input_gen_sizing::best(Inner::ptot, Inner::ppre, Inner::psuf, Inner::pbest, N, J);
+	static constexpr long long  ntot  = IS_Q? 0 : input_gen_sizing::tot (Inner::ntot, N, -J);
+	static constexpr long long  npre  = IS_Q? 0 : input_gen_sizing::edge(Inner::ntot, Inner::npre, N, -J);
+	static constexpr long long  nsuf  = IS_Q? 0 : input_gen_sizing::edge(Inner::ntot, Inner::nsuf, N, -J);
+	static constexpr long long  nbest = IS_Q? input_gen_sizing::NEG : input_gen_sizing::best(Inner::ntot, Inner::npre, Inner::nsuf, Inner::nbest, N, -J);
 
 private:
 	static_assert(N > 0, "Must have positive iteration count.");
@@ -164,6 +232,9 @@ public:
  * @param	V	loop nest descriptor, see above for Nest<>
  * @param	T	(inferred) pixel type
  */
+template<unsigned W0, unsigned... V>
+struct input_gen_sizing_W0 { static constexpr unsigned  value = W0; };
+
 template<int  M, unsigned... V, typename  T>
 void input_gen(
 	hls::stream<T> &src,
@@ -175,9 +246,30 @@ void input_gen(
 	constexpr unsigned  WP_DELAY = 4;
 
 	using  MyNest = Nest<true, V...>;
-	constexpr unsigned  ADDR_BITS = clog2(MyNest::max_rp_retract + WP_DELAY + 2);
+	// Throughput-preserving capacity: the largest lead of the read pointer
+	// over a free pointer position, discounted by the cycles elapsed since
+	// that position was released (frames repeat with the joiner JF):
+	//	- reads >= inputs per frame (cyc <= 0): the reader never waits in steady
+	//	  state; worst = max(gapq, Uq + best subarray of joiners +J)
+	//	- reads <  inputs per frame (cyc >  0): the writer is the bottleneck and
+	//	  must never block; worst occupancy = Uq + best subarray of -J
+	// plus WP_DELAY for the write-to-read visibility latency.
+	constexpr long long  JF  = (long long)input_gen_sizing_W0<V...>::value - (long long)MyNest::fp_rewind - MyNest::Pq;
+	constexpr long long  CYC = MyNest::ptot + JF;
+	constexpr long long  G   = CYC <= 0?
+		input_gen_sizing::max(MyNest::gapq, MyNest::Uq + input_gen_sizing::max(MyNest::pbest, MyNest::psuf + JF + MyNest::ppre)) :
+		MyNest::Uq + input_gen_sizing::max(0, input_gen_sizing::max(MyNest::nbest, MyNest::nsuf - JF + MyNest::npre));
+	constexpr unsigned  ADDR_BITS = clog2(G + WP_DELAY);
 	constexpr unsigned  BUF_SIZE  = 1 << ADDR_BITS;
-	using  ptr_t = ap_int<1 + ADDR_BITS>;
+	// Pointer differences must stay unambiguous not only across the buffer
+	// but also across forward jumps of the read and free pointers over input
+	// that no window uses (floor remainder, kernel < stride):
+	//	- rp only advances while rp < wp, so rp - wp < max_rp_advance;
+	//	- fp <= rp, so the same bound applies to fp - wp;
+	//	- wp - fp <= BUF_SIZE, and the write check must tell BUF_SIZE (full)
+	//	  apart from negative differences.
+	constexpr unsigned  SPAN = std::max(BUF_SIZE, unsigned(MyNest::max_rp_advance));
+	using  ptr_t = ap_int<2 + clog2(SPAN)>;
 
 	static MyNest  nest;
 	static T  buf[BUF_SIZE];
@@ -205,13 +297,25 @@ void input_gen(
 #pragma HLS reset variable=ovld
 #pragma HLS reset variable=obuf off
 
+#ifndef __SYNTHESIS__
+	// Unbounded shadow pointers checking the dimensioning of ptr_t in C simulation
+	static struct { long long  wp, rp, fp; } shadow = { 0, 0, 0 };
+#endif
+
 	// Update delay pipeline for wp
 	for(unsigned  i = WP_DELAY-1; i > 0; i--)  wp[i] = wp[i-1];
 
-	// Read into buffer memory if capacity is available
-	if(/* wp <= fp' */ ptr_t(wp[0]-fp) >= 0) {
+	// Read into buffer memory if capacity is available. Input behind the free
+	// pointer (wp < fp) belongs to a skipped region: it must still be consumed
+	// and may be written as no live data is buffered at that time.
+	if(/* wp < fp + BUF_SIZE */ ptr_t(wp[0]-fp) < ptr_t(BUF_SIZE)) {
 		T  x;
-		if(src.read_nb(x))  buf[ap_uint<ADDR_BITS>(wp[0]++)] = x;
+		if(src.read_nb(x)) {
+			buf[ap_uint<ADDR_BITS>(wp[0]++)] = x;
+#ifndef __SYNTHESIS__
+			shadow.wp++;
+#endif
+		}
 	}
 
 	// Try to clear output buffer
@@ -225,6 +329,16 @@ void input_gen(
 			auto const  t = nest.tick();
 			rp += std::get<0>(t);
 			fp += std::get<1>(t);
+#ifndef __SYNTHESIS__
+			shadow.rp += std::get<0>(t);
+			shadow.fp += std::get<1>(t);
+			// Validate the pointer bounds that dimension ptr_t (see SPAN).
+			assert(shadow.rp - shadow.wp <= MyNest::max_rp_advance);
+			assert(shadow.fp <= shadow.rp);
+			assert(shadow.wp - shadow.fp <= (long long)BUF_SIZE);
+			assert(ptr_t(rp-wp[0]) == shadow.rp - shadow.wp);
+			assert(ptr_t(wp[0]-fp) == shadow.wp - shadow.fp);
+#endif
 
 			if(M >= 0)  obuf.lst = std::get<2>(t)[M];
 			ovld = true;

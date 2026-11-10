@@ -56,24 +56,14 @@ int main() {
 					ifm[h][w][c] = v++;
 	}
 
-	// Generate pre-windowed, pre-folded input for MaxPool<vec_t, K*K, CF>
-	// Stream order: for each output pixel (ho, wo):
-	//   for each kernel position (kh*K + kw) in 0..K*K-1:
-	//     for each channel fold cf in 0..CF-1:
-	//       one vec_t with PE channels
+	// Stream the raw image: pixels in row-major order, channels folded into CF vectors
 	hls::stream<vec_t>  src;
-	for(unsigned  ho = 0; ho < HO; ho++) {
-		for(unsigned  wo = 0; wo < WO; wo++) {
-			for(unsigned  kh = 0; kh < K; kh++) {
-				for(unsigned  kw = 0; kw < K; kw++) {
-					for(unsigned  cf = 0; cf < CF; cf++) {
-						vec_t  v;
-						for(unsigned  pe = 0; pe < PE; pe++) {
-							v[pe] = ifm[ho*S + kh][wo*S + kw][cf*PE + pe];
-						}
-						src.write(v);
-					}
-				}
+	for(unsigned  h = 0; h < H; h++) {
+		for(unsigned  w = 0; w < W; w++) {
+			for(unsigned  cf = 0; cf < CF; cf++) {
+				vec_t  v;
+				for(unsigned  pe = 0; pe < PE; pe++)  v[pe] = ifm[h][w][cf*PE + pe];
+				src.write(v);
 			}
 		}
 	}
@@ -101,7 +91,8 @@ int main() {
 
 	// DUT — call function-pipelined kernel repeatedly
 	hls::stream<vec_t>  dst;
-	for(unsigned  i = 0; i < HO*WO*K*K*CF + HO*WO*CF; i++)  pool_top(src, dst);
+	// one call per cycle: consume the image and emit all windows with ample slack
+	for(unsigned  i = 0; i < H*W*CF + HO*WO*K*K*CF + 1000; i++)  pool_top(src, dst);
 
 	// Output Validation
 	unsigned  errors = 0;

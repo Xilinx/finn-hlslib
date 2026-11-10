@@ -33,12 +33,21 @@
  *****************************************************************************/
 
 #include "pool_top.hpp"
-#include "maxpool.hpp"
+#include "utils.hpp"
+#include "input_gen.hpp"
+#include "pool.hpp"
 
+// Sliding-window max pooling as composed by FINN's Pool_hls:
+// input_gen<> streams each window (flit_t marks its last element) into pool<F>.
 void pool_top(
 	hls::stream<vec_t> &src,
 	hls::stream<vec_t> &dst
 ) {
 #pragma HLS interface ap_ctrl_none port=return
-	MaxPool<vec_t, K*K, CF>::process(src, dst);
+#pragma HLS dataflow disable_start_propagation
+	static hls::stream<flit_t<vec_t>>  feed("feed");
+#pragma HLS stream depth=2 variable=feed
+	// loop nest: ho, wo, cf, kh, kw
+	input_gen<2, H*W*CF, HO, S*W*CF, WO, S*CF, CF, 1, K, W*CF, K, CF>(src, feed);
+	pool<MaxPool<vec_t>>(feed, dst);
 }

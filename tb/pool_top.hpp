@@ -40,7 +40,7 @@
 #include "tensor.hpp"
 
 constexpr unsigned  H = 13; // Input height
-constexpr unsigned  W = 13; // Input width (must currently equal H for input generator)
+constexpr unsigned  W = 13; // Input width
 constexpr unsigned  C = 16; // Channels
 constexpr unsigned  K = 3;  // Dimension of square kernel
 constexpr unsigned  S = 2;  // Stride

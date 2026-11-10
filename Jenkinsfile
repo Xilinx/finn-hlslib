@@ -48,7 +48,7 @@ node('finn-build || built-in') {
             stage('VVAU')               { run 'vvau.tcl' }
         }, secondBranch: {
             stage('POOL')               { run 'pool.tcl' }
-            stage('MAXPOOL')            { run 'maxpool.tcl' }
+            stage('INPUT GEN')          { run 'input_gen.tcl' }
         }, thirdBranch: {
             stage('DWC')                { run 'dwc.tcl' }
             stage('CONCAT')             { run 'concat.tcl' }
