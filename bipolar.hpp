@@ -73,19 +73,26 @@ public:
 	explicit operator float() const { return  v? 1.0f : 0.0f; }
 
 	// XNOR multiply: returns 1 when bits match, 0 otherwise
-	friend unsigned operator*(Bipolar const &a, Bipolar const &b) {
-		return  a.v == b.v;
-	}
+	friend unsigned operator*(Bipolar const &a, Bipolar const &b);
 
 	// Mixed multiply: Bipolar * T  ->  b.v? +x : -x  =  (2*b.v - 1) * x
 	template<int W, bool S>
 	friend ap_int<W+1> operator*(Bipolar const &b, ap_int_base<W, S> const &x) {
+#pragma HLS inline
 		return  b.v? ap_int<W+1>(x) : ap_int<W+1>(-x);
 	}
 	template<int W, bool S>
 	friend ap_int<W+1> operator*(ap_int_base<W, S> const &x, Bipolar const &b) {
+#pragma HLS inline
 		return  b.v? ap_int<W+1>(x) : ap_int<W+1>(-x);
 	}
 };
+
+// Defined out of class: Vitis HLS ignores an HLS INLINE pragma inside a
+// non-template friend function defined in the class body.
+inline unsigned operator*(Bipolar const &a, Bipolar const &b) {
+#pragma HLS inline
+	return  a.v == b.v;
+}
 
 #endif
