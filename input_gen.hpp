@@ -297,6 +297,35 @@ void input_gen(
 #pragma HLS reset variable=ovld
 #pragma HLS reset variable=obuf off
 
+	// Buffers beyond 262144 words become a memory cascade (URAM) whose read
+	// latency grows with depth (5 cycles at 512K, 9 at 1M words with Vitis HLS
+	// 2025.1+). Reading straight into obuf would carry that latency into the
+	// loop recurrence and lower the II accordingly. Such buffers rather issue
+	// their reads ahead into a small queue whose credits bound the reads in
+	// flight, leaving only a counter in the recurrence.
+	constexpr bool  READ_AHEAD = BUF_SIZE > 262144;
+	constexpr unsigned  RA_DEPTH = 16;
+	// Register queue slot: written as one word when the memory data arrives,
+	// so that its valid flag can never overtake the data.
+	struct RaSlot {
+		bool  vld;
+		bool  lst;
+		T     dat;
+	};
+	static RaSlot  ra[RA_DEPTH];
+	static ap_uint<clog2(RA_DEPTH)>  ra_wr = 0;
+	static ap_uint<clog2(RA_DEPTH)>  ra_rd = 0;
+	static ap_uint<clog2(RA_DEPTH+1)>  ra_credits = RA_DEPTH;
+#pragma HLS aggregate variable=ra
+#pragma HLS array_partition variable=ra complete
+#pragma HLS reset variable=ra
+#pragma HLS reset variable=ra_wr
+#pragma HLS reset variable=ra_rd
+#pragma HLS reset variable=ra_credits
+	// A slot is only rewritten after its credit came back from the pop.
+#pragma HLS dependence variable=ra inter false
+#pragma HLS dependence variable=ra intra false
+
 #ifndef __SYNTHESIS__
 	// Unbounded shadow pointers checking the dimensioning of ptr_t in C simulation
 	static struct { long long  wp, rp, fp; } shadow = { 0, 0, 0 };
@@ -318,30 +347,66 @@ void input_gen(
 		}
 	}
 
+	// Advance the read and free pointers past the buffer word just read
+	auto const  advance = [&]() -> decltype(nest.tick()) {
+		auto const  t = nest.tick();
+		rp += std::get<0>(t);
+		fp += std::get<1>(t);
+#ifndef __SYNTHESIS__
+		shadow.rp += std::get<0>(t);
+		shadow.fp += std::get<1>(t);
+		// Validate the pointer bounds that dimension ptr_t (see SPAN).
+		assert(shadow.rp - shadow.wp <= MyNest::max_rp_advance);
+		assert(shadow.fp <= shadow.rp);
+		assert(shadow.wp - shadow.fp <= (long long)BUF_SIZE);
+		assert(ptr_t(rp-wp[0]) == shadow.rp - shadow.wp);
+		assert(ptr_t(wp[0]-fp) == shadow.wp - shadow.fp);
+#endif
+		return  t;
+	};
+
 	// Try to clear output buffer
 	if(ovld)  ovld = !dst.write_nb(obuf);
 
-	// Try to refill output buffer
-	if(!ovld) {
-		obuf.dat = buf[ap_uint<ADDR_BITS>(rp)];
+	if(!READ_AHEAD) {
+		// Refill the output buffer straight from the buffer memory
+		if(!ovld) {
+			obuf.dat = buf[ap_uint<ADDR_BITS>(rp)];
 
-		if(/* rp < wp */ ptr_t(rp-wp[WP_DELAY-1]) < 0) {
-			auto const  t = nest.tick();
-			rp += std::get<0>(t);
-			fp += std::get<1>(t);
-#ifndef __SYNTHESIS__
-			shadow.rp += std::get<0>(t);
-			shadow.fp += std::get<1>(t);
-			// Validate the pointer bounds that dimension ptr_t (see SPAN).
-			assert(shadow.rp - shadow.wp <= MyNest::max_rp_advance);
-			assert(shadow.fp <= shadow.rp);
-			assert(shadow.wp - shadow.fp <= (long long)BUF_SIZE);
-			assert(ptr_t(rp-wp[0]) == shadow.rp - shadow.wp);
-			assert(ptr_t(wp[0]-fp) == shadow.wp - shadow.fp);
-#endif
+			if(/* rp < wp */ ptr_t(rp-wp[WP_DELAY-1]) < 0) {
+				auto const  t = advance();
+				if(M >= 0)  obuf.lst = std::get<2>(t)[M];
+				ovld = true;
+			}
+		}
+	}
+	else {
+		// Refill the output buffer from the read-ahead queue
+		bool  popped = false;
+		if(!ovld) {
+			RaSlot const  h = ra[ra_rd];
+			if(h.vld) {
+				obuf.dat = h.dat;
+				obuf.lst = h.lst;
+				ra[ra_rd].vld = false;
+				ra_rd++;
+				popped = ovld = true;
+			}
+		}
 
-			if(M >= 0)  obuf.lst = std::get<2>(t)[M];
-			ovld = true;
+		// Issue the next buffer read while the queue has room for its result.
+		// All loop-carried state (credits, pointers) is updated before the
+		// memory access so that its latency stays out of the recurrence.
+		bool const  issue = (ra_credits != 0) && (/* rp < wp */ ptr_t(rp-wp[WP_DELAY-1]) < 0);
+		ra_credits += ap_int<2>(popped) - ap_int<2>(issue);
+		if(issue) {
+			ap_uint<ADDR_BITS> const  addr = rp;
+			auto const  t = advance();
+			RaSlot  e;
+			e.vld = true;
+			e.lst = (M >= 0)? bool(std::get<2>(t)[M < 0? 0 : M]) : false;
+			e.dat = buf[addr];
+			ra[ra_wr++] = e;	// never overruns: guarded by the credits
 		}
 	}
 
