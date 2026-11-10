@@ -1,9 +1,9 @@
 #include "label_select_top.hpp"
 
 void Testbench_label_select(
-	hls::stream<ls_in_t> &in,
-	hls::stream<Out_T>   &out
+	hls::stream<src_t> &src,
+	hls::stream<dst_t> &dst
 ) {
 #pragma HLS interface ap_ctrl_none port=return
-	LabelSelect_Batch<NumClasses, PE1, NumTop, In_T, Out_T>(in, out);
+	LabelSelect_Batch<N, K>(src, dst);
 }
