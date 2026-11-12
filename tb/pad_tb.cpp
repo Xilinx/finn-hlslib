@@ -59,6 +59,15 @@ int main() {
 			}
 		}
 	}
+	// The kernel emits the leading padding of a potential next frame without
+	// waiting for its input, and the spare calls below give it the chance to.
+	// Expect exactly that padding: its north rows and the west border of its
+	// first image row.
+	for(unsigned  i = 0; i < (PAD_N*WO + PAD_W)*CF; i++) {
+		vec_t  v;
+		for(unsigned  pe = 0; pe < PE; pe++)  v[pe] = 0;
+		ref.write(v);
+	}
 
 	// DUT — call function-pipelined kernel repeatedly
 	// Total input elements: H*W*CF
