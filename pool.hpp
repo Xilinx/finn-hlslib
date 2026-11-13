@@ -55,7 +55,7 @@ struct MaxOp {
 	template<typename E>
 	static E init() {
 #pragma HLS inline
-		return  std::numeric_limits<E>::min();
+		return  std::numeric_limits<E>::lowest();
 	}
 	template<typename E>
 	static E pool(E a, E b) {
