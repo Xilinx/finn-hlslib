@@ -106,10 +106,10 @@ void checksum(
 #pragma HLS unroll
 		auto const   v0 = f(x, j);
 		constexpr unsigned  W = 1 + (decltype(v0)::width-1)/23;
-		ap_uint<K*23>  v = v0;
-		ap_uint<  23>  w = 0;
+		ap_uint<W*23>  v = v0;	// Expand to width as multiple of 23
+		ap_uint<  23>  w = 0;	// XOR across all 23-bit slices
 		for(unsigned  k = 0; k < W; k++) {
-			w ^= v(23*k+22, 23*k);
+			w ^= v(23*(k+1)-1, 23*k);
 		}
 		s += (coeff[j%3][1]? (w, ap_uint<1>(0)) : ap_uint<24>(0)) + (coeff[j%3][0]? w : ap_uint<23>(0));
 	}
