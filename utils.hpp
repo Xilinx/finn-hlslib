@@ -48,17 +48,33 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
-#include <ap_int.h>
-
-#include <iostream>
+#include <limits>
 #include <fstream>
 #include <cstddef>
 
-//- Static Evaluation of ceil(log2(x)) ---------------------------------------
-constexpr unsigned clog2(size_t  x) {
+#include <ap_int.h>
+#include <hls_stream.h>
+#include <utils/hls_version.h>
+#if XILINX_HLS_VERSION_RELEASE >= 20242
+#  include <ap_float.h>
+#endif
+
+//- Compile-Time Functions --------------------------------------------------
+
+// ceil(log2(x))
+template<typename T>
+constexpr unsigned clog2(T  x) {
   return  x<2? 0 : 1+clog2((x+1)/2);
 }
 
+template<typename T>
+constexpr unsigned gcd(T  a, T  b) {
+	if(b == 0)  return  a;
+	else {
+		T const  r = a%b;
+		return  (r == 0)? b : gcd(b, r);
+	}
+}
 //- Helpers to get hold of types ---------------------------------------------
 template<typename T> struct first_param {};
 template<typename R, typename A, typename... Args>
@@ -86,9 +102,9 @@ class ap_resource_uram {};
  *
  */
 template < unsigned int BitWidth >
-void logStringStream(const char *layer_name, hls::stream<ap_uint<BitWidth> > &log){
+void logStringStream(const char *layer_name, hls::stream<ap_uint<BitWidth>> &log){
     std::ofstream ofs(layer_name);
-    hls::stream<ap_uint<BitWidth> > tmp_stream;
+    hls::stream<ap_uint<BitWidth>> tmp_stream;
 	
   while(!log.empty()){
     ap_uint<BitWidth> tmp = (ap_uint<BitWidth>) log.read();
@@ -103,5 +119,174 @@ void logStringStream(const char *layer_name, hls::stream<ap_uint<BitWidth> > &lo
 
   ofs.close();
 }
+
+//- Type Traits -------------------------------------------------------------
+
+template<typename T>
+struct is_ap_float : std::false_type {};
+
+#ifdef __AP_FLOAT_H__
+template<int W, int I>
+struct is_ap_float<ap_float<W,I>> : std::true_type {};
+#endif
+
+template<typename T>
+struct is_floating_point_or_ap_float
+    : std::integral_constant<bool, std::is_floating_point<T>::value || is_ap_float<T>::value> {};
+
+// Determine bit width of types
+//  Primary template dispatches via SFINAE: prefers T::width if available,
+//  else falls back to 8*sizeof(T).  Specialize width_trait<T> directly
+//  for types that need a custom width (e.g. Bipolar).
+template<typename  T, typename = void>
+struct width_trait : std::integral_constant<size_t, 8*sizeof(T)> {};
+
+template<typename  T>
+struct width_trait<T, typename std::enable_if<(T::width, true)>::type>
+	: std::integral_constant<size_t, T::width> {};
+
+template<typename  T> constexpr size_t  width_v = width_trait<T>::value;
+
+// Bipolar forward declaration — width is 1 bit
+class Bipolar;
+template<> struct width_trait<Bipolar> : std::integral_constant<size_t, 1> {};
+
+//- Custom std::numeric_limits<ap_(u)int<W>> for releases prior to 2025.2.
+#if XILINX_HLS_VERSION_RELEASE < 20252
+template<int  W>
+class std::numeric_limits<ap_uint<W>> : public std::numeric_limits<void> {
+public:
+	static constexpr bool  is_specialized = true;
+	static constexpr bool  is_signed = false;
+	static constexpr bool  is_integer = true;
+	static constexpr bool  is_exact = true;
+	static constexpr bool  is_bounded = true;
+	static constexpr bool  is_modulo = true;
+	static constexpr unsigned  digits = W;
+	static constexpr unsigned  radix  = 2;
+
+	static ap_uint<W> min   () { return  0; }
+	static ap_uint<W> lowest() { return  0; }
+	static ap_uint<W> max   () { return  ap_uint<W>(0) - 1; }
+};
+
+template<int  W>
+class std::numeric_limits<ap_int<W>> : public std::numeric_limits<void> {
+public:
+	static constexpr bool  is_specialized = true;
+	static constexpr bool  is_signed = true;
+	static constexpr bool  is_integer = true;
+	static constexpr bool  is_exact = true;
+	static constexpr bool  is_bounded = true;
+	static constexpr bool  is_modulo = true;
+	static constexpr unsigned  digits = W-1;
+	static constexpr unsigned  radix  = 2;
+
+	static ap_int<W> min   () { ap_int<W>  res = 0; res[W - 1] = 1; return  res; }
+	static ap_int<W> lowest() { ap_int<W>  res = 0; res[W - 1] = 1; return  res; }
+	static ap_int<W> max   () { ap_int<W>  res = 0; res[W - 1] = 1; return ~res; }
+};
+#endif
+
+//- Streaming Flit with `last` Marking --------------------------------------
+template<typename T>
+struct flit_t {
+	bool  last;
+	T     data;
+
+public:
+	flit_t() {}
+	flit_t(bool  last_, T const &data_) : last(last_), data(data_) {}
+	~flit_t() {}
+};
+
+//- Zero-Width-Enabled Arbitrary-Precision Numbers ..........................
+
+// Non-zero-width instances as thinnest possible wrapper around ap_uint<N>.
+template<unsigned N> class ap_uzint : public ap_uint<N> {
+public:
+	template<typename... T> ap_uzint(T&&... val) : ap_uint<N>(std::forward<T>(val)...) {}
+};
+
+// Zero-width specialization avoiding the illegal ap_uint<0> parametrization.
+template<> class ap_uzint<0> : public std::false_type {
+	// Enable initialization and assignment from any source type with complete truncation.
+public:
+	template<typename... T> ap_uzint(T&&...) {}
+	template<typename T> ap_uzint& operator=(T&&) { return *this; }
+
+	// Allow but neutralize increment operators
+	ap_uzint& operator++()    { return *this; }
+	ap_uzint& operator++(int) { return *this; }
+	ap_uzint& operator--()    { return *this; }
+	ap_uzint& operator--(int) { return *this; }
+	template<typename T> ap_uzint& operator+=(T&&) { return *this; }
+	template<typename T> ap_uzint& operator-=(T&&) { return *this; }
+};
+
+// Non-zero-width instances as thinnest possible wrapper around ap_uint<N>.
+template<unsigned N> class ap_zint : public ap_int<N> {
+public:
+	template<typename... T> ap_zint(T&&... val) : ap_int<N>(std::forward<T>(val)...) {}
+};
+
+// Zero-width specialization avoiding the illegal ap_uint<0> parametrization.
+template<> class ap_zint<0> : public std::false_type {
+	// Enable initialization and assignment from any source type with complete truncation.
+public:
+	template<typename... T> ap_zint(T&&...) {}
+	template<typename T> ap_zint& operator=(T&&) { return *this; }
+
+	// Allow but neutralize increment operators
+	ap_zint& operator++()    { return *this; }
+	ap_zint& operator++(int) { return *this; }
+	ap_zint& operator--()    { return *this; }
+	ap_zint& operator--(int) { return *this; }
+	template<typename T> ap_zint& operator+=(T&&) { return *this; }
+	template<typename T> ap_zint& operator-=(T&&) { return *this; }
+};
+
+//- Streaming Copy ----------------------------------------------------------
+template<typename T>
+void move(hls::stream<T> &src, hls::stream<T> &dst) {
+#pragma HLS pipeline II=1 style=flp
+	if(!src.empty())  dst.write(src.read());
+}
+
+//- Modulus Counter ---------------------------------------------------------
+
+/**
+ * Modulus counter returning true upon each N-th call of tick.
+ * @description
+ *	The implementation internally counts from N-2, ..., 0, -1 wrapping back to
+ *	N-2 so that the sign bit of the counter value can directly serve as the
+ *	wrap-around indicator without requiring a multi-bit comparator.
+ */
+template<unsigned  N> class ModCounter {
+	ap_int<1+clog2(N-1)>  cnt = N-2;
+public:
+	bool last() const {
+#pragma HLS inline
+		return  cnt < 0;
+	}
+	bool tick() {
+#pragma HLS inline
+		bool const  ret = last();
+		cnt += ret? N-1 : -1;
+		return  ret;
+	}
+};
+template<> class ModCounter<1> {
+public:
+	bool last() const {
+#pragma HLS inline
+		return  true;
+	}
+	bool tick() const {
+#pragma HLS inline
+		return  true;
+	}
+};
+template<> class ModCounter<0> {};
 
 #endif
