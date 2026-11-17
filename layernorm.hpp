@@ -181,7 +181,11 @@ void layernorm(
 	);
 	[](hls::stream<TQS> &src, hls::stream<TO> &dst, TO const  eps) {
 #pragma HLS function_instantiate variable=eps
-#pragma HLS pipeline II=NN
+		// One rsqrt per vector: keep this unpipelined. II=NN lets the tool
+		// stretch the latency to ~NN cycles (Vitis HLS 2026.1: 38+NN), which
+		// overruns the bypass1 slack (STATISTICS_LATENCY_DIAMOND_1) and halves
+		// the throughput from N/SIMD = 64 upwards.
+#pragma HLS pipeline off
 		constexpr TO  INVN = TO(1) / N;
 		if(!src.empty())  dst.write(hls::rsqrt(INVN * TO(src.read()) + eps));
 	}(sum1, coeff1, eps);
