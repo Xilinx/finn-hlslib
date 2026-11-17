@@ -64,7 +64,7 @@ node('finn-build || built-in') {
             stage('REQUANT')            { run 'requant.tcl' }
             stage('LABEL SELECT')       { run 'label_select.tcl' }
         }, sixthBranch: {
-            stage('FM PIXEL PADDING')   { run 'fm_pixel_padding.tcl' }
+            stage('PAD')                { run 'pad.tcl' }
             stage('DECONV')             { run 'deconv.tcl' }
             stage('DECONV 2D')          { run 'deconv2d.tcl' }
             stage('FLATTEN')            { run 'flatten.tcl' }

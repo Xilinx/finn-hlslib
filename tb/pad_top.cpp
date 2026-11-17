@@ -13,5 +13,5 @@ void pad_top(
 ) {
 #pragma HLS interface ap_ctrl_none port=return
 #pragma HLS dataflow disable_start_propagation
-	pad<H, W, CF, PAD_N, PAD_E, PAD_S, PAD_W>(src, dst);
+	pad<H, W, CF, PAD_N, PAD_E, PAD_S, PAD_W, SY, SX, EAGER>(src, dst);
 }
