@@ -165,9 +165,18 @@ public:
 	static constexpr unsigned  digits = W;
 	static constexpr unsigned  radix  = 2;
 
-	static ap_uint<W> min   () { return  0; }
-	static ap_uint<W> lowest() { return  0; }
-	static ap_uint<W> max   () { return  ap_uint<W>(0) - 1; }
+	static ap_uint<W> min   () {
+#pragma HLS inline
+		return  0;
+	}
+	static ap_uint<W> lowest() {
+#pragma HLS inline
+		return  0;
+	}
+	static ap_uint<W> max   () {
+#pragma HLS inline
+		return  ap_uint<W>(0) - 1;
+	}
 };
 
 template<int  W>
@@ -182,9 +191,18 @@ public:
 	static constexpr unsigned  digits = W-1;
 	static constexpr unsigned  radix  = 2;
 
-	static ap_int<W> min   () { ap_int<W>  res = 0; res[W - 1] = 1; return  res; }
-	static ap_int<W> lowest() { ap_int<W>  res = 0; res[W - 1] = 1; return  res; }
-	static ap_int<W> max   () { ap_int<W>  res = 0; res[W - 1] = 1; return ~res; }
+	static ap_int<W> min   () {
+#pragma HLS inline
+		ap_int<W>  res = 0; res[W - 1] = 1; return  res;
+	}
+	static ap_int<W> lowest() {
+#pragma HLS inline
+		ap_int<W>  res = 0; res[W - 1] = 1; return  res;
+	}
+	static ap_int<W> max   () {
+#pragma HLS inline
+		ap_int<W>  res = 0; res[W - 1] = 1; return ~res;
+	}
 };
 #endif
 
