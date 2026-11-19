@@ -38,16 +38,14 @@ namespace pad_detail {
 #pragma HLS inline
 			return  pos.between(LEAD, LEAD+SPAN) && ph.last();
 		}
-		/** Is the current position the last one of the axis? */
-		bool last() const {
-#pragma HLS inline
-			return  pos.last();
-		}
-		/** Advance to the next position, wrapping around after the last. */
-		void next() {
+		/**
+		 * Advance to the next position, wrapping around after the last.
+		 * @return whether the axis wrapped around
+		 */
+		bool tick() {
 #pragma HLS inline
 			if(pos.between(LEAD, LEAD+SPAN-1))  ph.tick();
-			pos.tick();
+			return  pos.tick();
 		}
 	};
 }
@@ -93,14 +91,7 @@ void pad(
 	}
 	if(wr) {
 		dst.write(val);
-		if(cf.tick()) {
-			if(!xa.last())  xa.next();
-			else {
-				xa.next();
-				if(ya.last() && !EAGER)  lead = true;
-				ya.next();
-			}
-		}
+		if(cf.tick() && xa.tick() && ya.tick() && !EAGER)  lead = true;
 	}
 
 } // pad()
