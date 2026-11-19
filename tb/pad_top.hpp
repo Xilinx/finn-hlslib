@@ -12,14 +12,11 @@
 
 #include "tensor.hpp"
 
-// Testbench Configuration Selection
+// Testbench Configuration Selection, set by pad.tcl
 //	PAD_CFG		PAD Geometry, see below.
 //	PAD_EAGER	1: Eager, 0: Lazy
-#ifndef PAD_CFG
-#define PAD_CFG  0
-#endif
-#ifndef PAD_EAGER
-#define PAD_EAGER  1
+#if !defined(PAD_CFG) || !defined(PAD_EAGER)
+# error "PAD_CFG and PAD_EAGER must be defined, see pad.tcl."
 #endif
 
 constexpr unsigned  C  = 8;  // Channels
