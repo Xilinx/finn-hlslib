@@ -72,8 +72,6 @@ constexpr unsigned  PAD_S = 0;
 constexpr unsigned  PAD_W = 0;
 constexpr unsigned  SY = 2;
 constexpr unsigned  SX = 2;
-#else
-#error "Unknown PAD_CFG."
 #endif
 
 constexpr bool  EAGER = PAD_EAGER != 0;

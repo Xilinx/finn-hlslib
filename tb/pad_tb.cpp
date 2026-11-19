@@ -31,12 +31,6 @@ constexpr unsigned  SPARE = 16;	// calls beyond the expected output
 
 static val_t  ifm[NF][H][W][C];
 
-static vec_t zero() {
-	vec_t  v;
-	for(unsigned  pe = 0; pe < PE; pe++)  v[pe] = 0;
-	return  v;
-}
-
 static void feed(hls::stream<vec_t> &src, unsigned const  f) {
 	for(unsigned  h = 0; h < H; h++) {
 		for(unsigned  w = 0; w < W; w++) {
@@ -90,7 +84,7 @@ int main() {
 		}
 	}
 	// Leading padding of the frame following the last, emitted ahead of its input if eager
-	for(unsigned  i = 0; i < NEXT; i++)  ref.push_back(zero());
+	for(unsigned  i = 0; i < NEXT; i++)  ref.push_back(vec_t(val_t(0)));
 
 	hls::stream<vec_t>  src;
 	hls::stream<vec_t>  dst;
