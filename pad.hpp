@@ -80,17 +80,15 @@ void pad(
 #pragma HLS reset variable=lead
 
 	bool  wr = true;
-	T  val = pad_val;
 	if(!EAGER && lead) {
 		// Leading padding waits for the first input of the frame.
 		if(src.empty())  wr = false;
 		else             lead = false;
 	}
-	if(wr && ya.data() && xa.data()) {
-		wr = src.read_nb(val);
-	}
+	bool const  d = ya.data() && xa.data();
+	if(wr && d)  wr = !src.empty();
 	if(wr) {
-		dst.write(val);
+		dst.write(d? src.read() : pad_val);
 		if(cf.tick() && xa.tick() && ya.tick() && !EAGER)  lead = true;
 	}
 
