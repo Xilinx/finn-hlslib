@@ -272,6 +272,11 @@ public:
 #pragma HLS inline
 		return  cnt < 0;
 	}
+	/** Is the current phase within [lo, hi)? Intended for constant bounds. */
+	bool between(unsigned const  lo, unsigned const  hi) const {
+#pragma HLS inline
+		return  (int(N-1) - int(hi) <= cnt) && (cnt <= int(N-2) - int(lo));
+	}
 	bool tick() {
 #pragma HLS inline
 		bool const  ret = last();
@@ -284,6 +289,10 @@ public:
 	bool last() const {
 #pragma HLS inline
 		return  true;
+	}
+	bool between(unsigned const  lo, unsigned const  hi) const {
+#pragma HLS inline
+		return  (lo == 0) && (0 < hi);
 	}
 	bool tick() const {
 #pragma HLS inline

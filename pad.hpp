@@ -29,26 +29,25 @@ namespace pad_detail {
 		static constexpr unsigned  SPAN = (N-1)*S + 1;
 		static constexpr unsigned  LEN  = LEAD + SPAN + TRAIL;
 
-		ap_uint<clog2((LEN < 2)? 2u : LEN)>  pos = 0;
+		ModCounter<LEN>     pos;
 		ModCounter<S, S-1>  ph;	// on its last phase at every data position
 
 	public:
 		/** Does the current position hold data (instead of padding)? */
 		bool data() const {
 #pragma HLS inline
-			return  (LEAD <= pos) && (pos < LEAD+SPAN) && ph.last();
+			return  pos.between(LEAD, LEAD+SPAN) && ph.last();
 		}
 		/** Is the current position the last one of the axis? */
 		bool last() const {
 #pragma HLS inline
-			return  pos == LEN-1;
+			return  pos.last();
 		}
 		/** Advance to the next position, wrapping around after the last. */
 		void next() {
 #pragma HLS inline
-			if((LEAD <= pos) && (pos < LEAD+SPAN-1))  ph.tick();
-			if(last())  pos = 0;
-			else        pos++;
+			if(pos.between(LEAD, LEAD+SPAN-1))  ph.tick();
+			pos.tick();
 		}
 	};
 }
