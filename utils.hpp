@@ -279,13 +279,21 @@ void move(hls::stream<T> &src, hls::stream<T> &dst) {
  *	The implementation internally counts from N-2, ..., 0, -1 wrapping back to
  *	N-2 so that the sign bit of the counter value can directly serve as the
  *	wrap-around indicator without requiring a multi-bit comparator.
+ *	The counter starts at phase INIT (0 <= INIT < N) so that the first tick
+ *	returning true is the (N-INIT)-th.
  */
-template<unsigned  N> class ModCounter {
-	ap_int<1+clog2(N-1)>  cnt = N-2;
+template<unsigned  N, unsigned  INIT = 0> class ModCounter {
+	static_assert(INIT < N, "Initial phase must be below modulus.");
+	ap_int<1+clog2(N-1)>  cnt = int(N-2) - int(INIT);
 public:
 	bool last() const {
 #pragma HLS inline
 		return  cnt < 0;
+	}
+	/** Is the current phase within [lo, hi)? Intended for constant bounds. */
+	bool between(unsigned const  lo, unsigned const  hi) const {
+#pragma HLS inline
+		return  (int(N-1) - int(hi) <= cnt) && (cnt <= int(N-2) - int(lo));
 	}
 	bool tick() {
 #pragma HLS inline
@@ -294,17 +302,21 @@ public:
 		return  ret;
 	}
 };
-template<> class ModCounter<1> {
+template<unsigned  INIT> class ModCounter<1, INIT> {
 public:
 	bool last() const {
 #pragma HLS inline
 		return  true;
+	}
+	bool between(unsigned const  lo, unsigned const  hi) const {
+#pragma HLS inline
+		return  (lo == 0) && (0 < hi);
 	}
 	bool tick() const {
 #pragma HLS inline
 		return  true;
 	}
 };
-template<> class ModCounter<0> {};
+template<unsigned  INIT> class ModCounter<0, INIT> {};
 
 #endif

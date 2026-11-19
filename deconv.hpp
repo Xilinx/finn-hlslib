@@ -14,75 +14,12 @@
 #include <ap_int.h>
 #include <hls_stream.h>
 
+#include "pad.hpp"
 #include "tensor.hpp"
 #include "utils.hpp"
 
 //===========================================================================
 // Utility
-
-//- Feature Map Pixel Padding -----------------------------------------------
-/**
- * \brief Feature map pixel padding - Pads each pixel in the input feature
- *        map with zeros. Used as a pre-processing step for the transposed
- * 		  convolution operation. Expects data in NHWC format, where N=1.
- *
- * \tparam OutputDim_x Padded width of the output feature map
- * \tparam OutputDim_y Padded height of the output feature map
- * \tparam Stride_x    Stride for each pixel along the width dimension
- * \tparam Stride_y    Stride for each pixel along the height dimension
- * \tparam NumChannels Number of channels of the input feature map
- * \tparam SIMD		   Input parallelism
- * \tparam In_t		   Input datatype
- *
- * @param src          Input stream
- * @param dst 		   Output stream
- */
-template<
-	unsigned OutputDim_x,
-	unsigned OutputDim_y,
-	unsigned Stride_x,
-	unsigned Stride_y,
-	unsigned NumChannels,
-	unsigned SIMD,
-	typename In_t
->
-void FMPadding_Pixel_Nonsquare(
-	hls::stream<tensor<In_t, SIMD>> &src,
-	hls::stream<tensor<In_t, SIMD>> &dst
-) {
-	static_assert(NumChannels % SIMD == 0, "SIMD must divide channel count.");
-	constexpr unsigned  Folding = NumChannels/SIMD;
-
-#pragma HLS pipeline II=1 style=flp
-	static ModCounter<Folding>      sf;
-	static ModCounter<OutputDim_x>  xcnt;
-	static ModCounter<OutputDim_y>  ycnt;
-	static unsigned  xtrig = 0;
-	static unsigned  ytrig = 0;
-#pragma HLS reset variable=sf
-#pragma HLS reset variable=xcnt
-#pragma HLS reset variable=ycnt
-#pragma HLS reset variable=xtrig
-#pragma HLS reset variable=ytrig
-
-	bool const  is_data = (ytrig == 0) && (xtrig == 0);
-	if(is_data ? !src.empty() : true) {
-		tensor<In_t, SIMD>  value(0);
-		if(is_data)  value = src.read();
-		dst.write(value);
-
-		if(sf.tick()) {
-			if(xcnt.tick()) {
-				xtrig = 0;
-				if(ycnt.tick())  ytrig = 0;
-				else if(++ytrig == Stride_y)  ytrig = 0;
-			}
-			else {
-				if(++xtrig == Stride_x)  xtrig = 0;
-			}
-		}
-	}
-}
 
 //- Feature Map Cropping ----------------------------------------------------
 template<
@@ -123,60 +60,6 @@ void crop(
 	}
 
 } // crop()
-
-template<
-	unsigned  P,	// Padding to all individual edges
-	unsigned  H,	// IFM Height
-	unsigned  W,	// IFM Width
-	unsigned  C,	// IFM Channel Count
-	unsigned  SIMD,
-	typename  T,
-	typename  TV
->
-void pad(
-	hls::stream<tensor<T, SIMD>> &src,
-	hls::stream<tensor<T, SIMD>> &dst,
-	TV const  val
-) {
-#pragma HLS interface ap_ctrl_none port=return
-	static_assert(C%SIMD == 0, "SIMD parallelism must divide channel count.");
-
-#pragma HLS function_instantiate variable=val
-#pragma HLS pipeline II=1 style=flp
-
-	// Positioning within Padded Output Feature Map
-	static unsigned  h = 0;
-	static unsigned  w = 0;
-	static unsigned  d = 0;
-#pragma HLS reset variable=h
-#pragma HLS reset variable=w
-#pragma HLS reset variable=d
-
-	bool  wr = false;
-	tensor<T, SIMD>  y;
-	if((h < P) || (P+H <= h) || (w < P) || (P+W <= w)) {
-		wr = true;
-		for(unsigned  i = 0; i < SIMD; i++) {
-#pragma HLS unroll
-			y[i] = val;
-		}
-	}
-	else {
-		wr = src.read_nb(y);
-	}
-
-	if(wr) {
-		dst.write(y);
-		if(++d == C/SIMD) {
-			d = 0;
-			if(++w == P+W+P) {
-				w = 0;
-				if(++h == P+H+P)  h = 0;
-			}
-		}
-	}
-
-} // pad()
 
 //===========================================================================
 // Deconv Building Blocks
@@ -506,7 +389,7 @@ void deconv(
 #pragma HLS stream depth=2 variable=swg
 #pragma HLS stream depth=2 variable=dst_eff
 
-	pad<PADUP, H, W, CI>(src, src_eff, TI(0));
+	pad<H, W, CI/SIMD, PADUP>(src, src_eff, tensor<TI, SIMD>(TI(0)));
 
 	deconv_swg<K, S, H_EFF, W_EFF, CF, SF>(src_eff, swg);
 	deconv_mvu<K/S*K/S*SF>(wgt, swg, dst_eff);

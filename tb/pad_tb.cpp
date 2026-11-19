@@ -4,10 +4,11 @@
  *
  * @author	Thomas B. Preußer <thomas.preusser@amd.com>
  ****************************************************************************/
-#include "pad_top.hpp"
 #include <iostream>
 #include <iomanip>
+#include <vector>
 
+#include "pad_top.hpp"
 
 static std::ostream& operator<<(std::ostream &o, vec_t const &v) {
 	o << '{';
@@ -15,97 +16,80 @@ static std::ostream& operator<<(std::ostream &o, vec_t const &v) {
 	return  o << '}';
 }
 
+constexpr unsigned  NF = 2;	// frames
+constexpr unsigned  LEAD = (PAD_N*WO + PAD_W)*CF;	// leading padding words of a frame
+constexpr unsigned  NEXT = EAGER? LEAD : 0;	// emitted ahead of the input of the next frame
+
+static tensor<val_t, C>  ifm[NF][H][W];
+
 int main() {
 
-	// Materialize input image
-	val_t  ifm[H][W][C];
+	// Materialize input frames
 	{
 		val_t  v = 1;
+		for(unsigned  f = 0; f < NF; f++)
+			for(unsigned  h = 0; h < H; h++)
+				for(unsigned  w = 0; w < W; w++)
+					for(unsigned  c = 0; c < C; c++)
+						ifm[f][h][w][c] = v++;
+	}
+
+	// Reference: padded frames in raster order (channel-folded).
+	std::vector<vec_t>  ref;
+	for(unsigned  f = 0; f < NF; f++) {
+		for(signed  ho = -signed(PAD_N); ho < signed(HI + PAD_S); ho++) {
+			for(signed  wo = -signed(PAD_W); wo < signed(WI + PAD_E); wo++) {
+				bool const  img =
+					(ho >= 0) && (ho < signed(HI)) && (ho % SY == 0) &&
+					(wo >= 0) && (wo < signed(WI)) && (wo % SX == 0);
+				for(unsigned  cf = 0; cf < CF; cf++) {
+					ref.push_back(img? ifm[f][ho/SY][wo/SX].slice<PE>(cf*PE) : vec_t(val_t(0)));
+				}
+			}
+		}
+	}
+	// Leading padding of the frame following the last, emitted ahead of its input if eager
+	for(unsigned  i = 0; i < NEXT; i++)  ref.push_back(vec_t(val_t(0)));
+
+	// Feed all frames
+	hls::stream<vec_t>  src;
+	for(unsigned  f = 0; f < NF; f++)
 		for(unsigned  h = 0; h < H; h++)
 			for(unsigned  w = 0; w < W; w++)
-				for(unsigned  c = 0; c < C; c++)
-					ifm[h][w][c] = v++;
-	}
+				for(unsigned  cf = 0; cf < CF; cf++)
+					src.write(ifm[f][h][w].slice<PE>(cf*PE));
 
-	// Feed source stream: channel-folded pixels in raster order
-	hls::stream<vec_t>  src;
-	for(unsigned  h = 0; h < H; h++) {
-		for(unsigned  w = 0; w < W; w++) {
-			for(unsigned  cf = 0; cf < CF; cf++) {
-				vec_t  v;
-				for(unsigned  pe = 0; pe < PE; pe++) {
-					v[pe] = ifm[h][w][cf*PE + pe];
-				}
-				src.write(v);
-			}
-		}
-	}
-
-	// Reference: padded output in raster order (channel-folded)
-	hls::stream<vec_t>  ref;
-	for(signed  ho = -(signed)PAD_N; ho < (signed)(H + PAD_S); ho++) {
-		for(signed  wo = -(signed)PAD_W; wo < (signed)(W + PAD_E); wo++) {
-			for(unsigned  cf = 0; cf < CF; cf++) {
-				vec_t  v;
-				for(unsigned  pe = 0; pe < PE; pe++) {
-					if(ho >= 0 && ho < (signed)H && wo >= 0 && wo < (signed)W) {
-						v[pe] = ifm[ho][wo][cf*PE + pe];
-					}
-					else {
-						v[pe] = 0;  // default pad value
-					}
-				}
-				ref.write(v);
-			}
-		}
-	}
-	// The kernel emits the leading padding of a potential next frame without
-	// waiting for its input, and the spare calls below give it the chance to.
-	// Expect exactly that padding: its north rows and the west border of its
-	// first image row.
-	for(unsigned  i = 0; i < (PAD_N*WO + PAD_W)*CF; i++) {
-		vec_t  v;
-		for(unsigned  pe = 0; pe < PE; pe++)  v[pe] = 0;
-		ref.write(v);
-	}
-
-	// DUT — call function-pipelined kernel repeatedly
-	// Total input elements: H*W*CF
-	// Total output elements: HO*WO*CF
+	// Run until the output stays quiet, validating on the fly
 	hls::stream<vec_t>  dst;
-	unsigned const  calls = H*W*CF + HO*WO*CF;
-	for(unsigned  i = 0; i < calls; i++)  pad_top(src, dst);
-
-	// Output Validation
-	unsigned  errors = 0;
 	unsigned  idx = 0;
-	while(true) {
-		bool const  ref_empty = ref.empty();
-		bool const  dst_empty = dst.empty();
-		if(!ref_empty && !dst_empty) {
-			auto const  exp = ref.read();
-			auto const  act = dst.read();
-			if(act != exp) {
+	unsigned  errors = 0;
+	unsigned  timeout = 0;
+	while(timeout < 100) {
+		pad_top(src, dst);
+		if(dst.empty())  timeout++;
+		else {
+			vec_t const  y = dst.read();
+			if(idx < ref.size() && y != ref[idx]) {
 				std::cerr
 					<< "Output mismatch at " << idx << ":\n\t"
-					<< "got " << act << "\n\t"
-					<< "exp " << exp << std::endl;
+					<< "got " << y << "\n\t"
+					<< "exp " << ref[idx] << std::endl;
 				errors++;
 			}
 			idx++;
-			continue;
+			timeout = 0;
 		}
-		if(!ref_empty) {
-			std::cerr << "Missing output." << std::endl;
-			errors++;
-		}
-		else if(!dst_empty) {
-			std::cerr << "Extra output." << std::endl;
-			errors++;
-		}
-		break;
+	}
+	if(idx != ref.size()) {
+		std::cerr << (idx < ref.size()? "Missing" : "Extra") << " output: "
+			<< idx << " words instead of " << ref.size() << '.' << std::endl;
+		errors++;
 	}
 
-	if(!errors)  std::cout << "Test passed: " << idx << " outputs verified." << std::endl;
+	if(!errors) {
+		std::cout
+			<< "Test passed: " << idx << " outputs verified (cfg " << PAD_CFG
+			<< (EAGER? ", eager" : ", lazy") << ")." << std::endl;
+	}
 	return  errors;
 }
