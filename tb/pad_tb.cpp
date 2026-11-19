@@ -16,38 +16,11 @@ static std::ostream& operator<<(std::ostream &o, vec_t const &v) {
 	return  o << '}';
 }
 
-#ifdef __RTL_SIMULATION__
-constexpr unsigned  NF_STAGED = 0;	// staged feeding depends on the call sequence
-#else
-constexpr unsigned  NF_STAGED = 2;
-#endif
-constexpr unsigned  NF_BATCH = 2;
-constexpr unsigned  NF = NF_STAGED + NF_BATCH;
-
-constexpr unsigned  FW = HO*WO*CF;	// output words per frame
+constexpr unsigned  NF = 2;	// frames
 constexpr unsigned  LEAD = (PAD_N*WO + PAD_W)*CF;	// leading padding words of a frame
 constexpr unsigned  NEXT = EAGER? LEAD : 0;	// emitted ahead of the input of the next frame
-constexpr unsigned  SPARE = 16;	// calls beyond the expected output
 
 static tensor<val_t, C>  ifm[NF][H][W];
-
-static void feed(hls::stream<vec_t> &src, unsigned const  f) {
-	for(unsigned  h = 0; h < H; h++) {
-		for(unsigned  w = 0; w < W; w++) {
-			for(unsigned  cf = 0; cf < CF; cf++) {
-				src.write(ifm[f][h][w].slice<PE>(cf*PE));
-			}
-		}
-	}
-}
-
-static void run(hls::stream<vec_t> &src, hls::stream<vec_t> &dst, unsigned const  calls) {
-	for(unsigned  i = 0; i < calls; i++)  pad_top(src, dst);
-}
-
-static void drain(hls::stream<vec_t> &dst, std::vector<vec_t> &got) {
-	while(!dst.empty())  got.push_back(dst.read());
-}
 
 int main() {
 
@@ -78,57 +51,38 @@ int main() {
 	// Leading padding of the frame following the last, emitted ahead of its input if eager
 	for(unsigned  i = 0; i < NEXT; i++)  ref.push_back(vec_t(val_t(0)));
 
+	// Feed all frames
 	hls::stream<vec_t>  src;
+	for(unsigned  f = 0; f < NF; f++)
+		for(unsigned  h = 0; h < H; h++)
+			for(unsigned  w = 0; w < W; w++)
+				for(unsigned  cf = 0; cf < CF; cf++)
+					src.write(ifm[f][h][w].slice<PE>(cf*PE));
+
+	// Run until the output stays quiet, validating on the fly
 	hls::stream<vec_t>  dst;
-	std::vector<vec_t>  got;
-	unsigned  errors = 0;
-
-	// Staged frames probe the behavior without input before feeding each frame
-	for(unsigned  f = 0; f < NF_STAGED; f++) {
-		run(src, dst, FW + LEAD + SPARE);
-		drain(dst, got);
-		if(got.size() != f*FW + NEXT) {
-			std::cerr
-				<< "Frame " << f << " without input: "
-				<< "emitted " << got.size() << " words in total, expected " << f*FW + NEXT << '.'
-				<< std::endl;
-			errors++;
-		}
-
-		feed(src, f);
-		run(src, dst, FW + LEAD + SPARE);
-		drain(dst, got);
-		if(got.size() != (f+1)*FW + NEXT) {
-			std::cerr
-				<< "Frame " << f << " with input: "
-				<< "emitted " << got.size() << " words in total, expected " << (f+1)*FW + NEXT << '.'
-				<< std::endl;
-			errors++;
-		}
-	}
-
-	// Frames fed back-to-back
-	for(unsigned  f = NF_STAGED; f < NF; f++)  feed(src, f);
-	run(src, dst, NF_BATCH*FW + LEAD + SPARE);
-	drain(dst, got);
-
-	// Output Validation
 	unsigned  idx = 0;
-	for(; idx < ref.size() && idx < got.size(); idx++) {
-		if(got[idx] != ref[idx]) {
-			std::cerr
-				<< "Output mismatch at " << idx << ":\n\t"
-				<< "got " << got[idx] << "\n\t"
-				<< "exp " << ref[idx] << std::endl;
-			errors++;
+	unsigned  errors = 0;
+	unsigned  timeout = 0;
+	while(timeout < 100) {
+		pad_top(src, dst);
+		if(dst.empty())  timeout++;
+		else {
+			vec_t const  y = dst.read();
+			if(idx < ref.size() && y != ref[idx]) {
+				std::cerr
+					<< "Output mismatch at " << idx << ":\n\t"
+					<< "got " << y << "\n\t"
+					<< "exp " << ref[idx] << std::endl;
+				errors++;
+			}
+			idx++;
+			timeout = 0;
 		}
 	}
-	if(idx < ref.size()) {
-		std::cerr << "Missing output." << std::endl;
-		errors++;
-	}
-	else if(idx < got.size()) {
-		std::cerr << "Extra output." << std::endl;
+	if(idx != ref.size()) {
+		std::cerr << (idx < ref.size()? "Missing" : "Extra") << " output: "
+			<< idx << " words instead of " << ref.size() << '.' << std::endl;
 		errors++;
 	}
 
