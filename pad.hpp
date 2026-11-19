@@ -14,43 +14,14 @@
 
 namespace pad_detail {
 
-	template<unsigned  S>
-	class Phase {
-		ap_uint<clog2(S)>  p = 0;
-	public:
-		bool hit() const {
-#pragma HLS inline
-			return  p == 0;
-		}
-		void restart() {
-#pragma HLS inline
-			p = 0;
-		}
-		void step() {
-#pragma HLS inline
-			if(p == S-1)  p = 0;
-			else          p++;
-		}
-	};
-	template<>
-	class Phase<1> {
-	public:
-		bool hit() const {
-#pragma HLS inline
-			return  true;
-		}
-		void restart() const {
-#pragma HLS inline
-		}
-		void step() const {
-#pragma HLS inline
-		}
-	};
-
 	/**
 	 * One axis of the padded frame: LEAD leading positions, N data positions
 	 * spaced by S (S-1 interior padding positions between neighbours) and
 	 * TRAIL trailing positions.
+	 *
+	 * The phase counter only advances between the first and the last data
+	 * position, i.e., (N-1)*S times per pass. Being a multiple of S, it
+	 * returns to its initial last phase without ever being restarted.
 	 */
 	template<unsigned  N, unsigned  LEAD, unsigned  TRAIL, unsigned  S>
 	class Axis {
@@ -59,13 +30,13 @@ namespace pad_detail {
 		static constexpr unsigned  LEN  = LEAD + SPAN + TRAIL;
 
 		ap_uint<clog2((LEN < 2)? 2u : LEN)>  pos = 0;
-		Phase<S>  ph;
+		ModCounter<S, S-1>  ph;	// on its last phase at every data position
 
 	public:
 		/** Does the current position hold data (instead of padding)? */
 		bool data() const {
 #pragma HLS inline
-			return  (LEAD <= pos) && (pos < LEAD+SPAN) && ph.hit();
+			return  (LEAD <= pos) && (pos < LEAD+SPAN) && ph.last();
 		}
 		/** Is the current position the last one of the axis? */
 		bool last() const {
@@ -75,15 +46,9 @@ namespace pad_detail {
 		/** Advance to the next position, wrapping around after the last. */
 		void next() {
 #pragma HLS inline
-			if(last()) {
-				pos = 0;
-				ph.restart();
-			}
-			else {
-				if(pos < LEAD)  ph.restart();
-				else            ph.step();
-				pos++;
-			}
+			if((LEAD <= pos) && (pos < LEAD+SPAN-1))  ph.tick();
+			if(last())  pos = 0;
+			else        pos++;
 		}
 	};
 }
