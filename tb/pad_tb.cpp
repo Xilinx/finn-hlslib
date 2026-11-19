@@ -29,17 +29,13 @@ constexpr unsigned  LEAD = (PAD_N*WO + PAD_W)*CF;	// leading padding words of a 
 constexpr unsigned  NEXT = EAGER? LEAD : 0;	// emitted ahead of the input of the next frame
 constexpr unsigned  SPARE = 16;	// calls beyond the expected output
 
-static val_t  ifm[NF][H][W][C];
+static tensor<val_t, C>  ifm[NF][H][W];
 
 static void feed(hls::stream<vec_t> &src, unsigned const  f) {
 	for(unsigned  h = 0; h < H; h++) {
 		for(unsigned  w = 0; w < W; w++) {
 			for(unsigned  cf = 0; cf < CF; cf++) {
-				vec_t  v;
-				for(unsigned  pe = 0; pe < PE; pe++) {
-					v[pe] = ifm[f][h][w][cf*PE + pe];
-				}
-				src.write(v);
+				src.write(ifm[f][h][w].slice<PE>(cf*PE));
 			}
 		}
 	}
@@ -74,11 +70,7 @@ int main() {
 					(ho >= 0) && (ho < signed(HI)) && (ho % SY == 0) &&
 					(wo >= 0) && (wo < signed(WI)) && (wo % SX == 0);
 				for(unsigned  cf = 0; cf < CF; cf++) {
-					vec_t  v;
-					for(unsigned  pe = 0; pe < PE; pe++) {
-						v[pe] = img? ifm[f][ho/SY][wo/SX][cf*PE + pe] : val_t(0);
-					}
-					ref.push_back(v);
+					ref.push_back(img? ifm[f][ho/SY][wo/SX].slice<PE>(cf*PE) : vec_t(val_t(0)));
 				}
 			}
 		}
