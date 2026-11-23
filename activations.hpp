@@ -82,49 +82,70 @@ namespace comp{
     struct greater {
       ap_uint<1>
       operator()(const input_type_1& a, const input_type_2& b) const
-      { return a > b; }
+      {
+#pragma HLS inline
+        return a > b;
+      }
     };
 
   template<typename input_type_1, typename input_type_2>
     struct less {
       ap_uint<1>
       operator()(const input_type_1& a, const input_type_2& b) const
-      { return a < b; }
+      {
+#pragma HLS inline
+        return a < b;
+      }
     };
 
   template<typename input_type_1, typename input_type_2>
     struct greater_equal {
       ap_uint<1>
       operator()(const input_type_1& a, const input_type_2& b) const
-      { return a >= b; }
+      {
+#pragma HLS inline
+        return a >= b;
+      }
     };
 
   template<typename input_type_1, typename input_type_2>
     struct less_equal {
       ap_uint<1>
       operator()(const input_type_1& a, const input_type_2& b) const
-      { return a <= b; }
+      {
+#pragma HLS inline
+        return a <= b;
+      }
     };
 	
   template<typename input_type_1, typename input_type_2, typename result_type>
     struct add {
       result_type
       operator()(const input_type_1& a, const input_type_2& b) const
-      { return a + b; }
+      {
+#pragma HLS inline
+        return a + b;
+      }
     };
 
   template<typename input_type_1, typename input_type_2, typename result_type>
     struct mul {
       result_type
       operator()(const input_type_1& a, const input_type_2& b) const
-      { return a * b; }
+      {
+#pragma HLS inline
+        return a * b;
+      }
     };
 
   template<typename input_type_1, typename input_type_2, typename result_type>
     struct max {
       result_type
       operator()(const input_type_1& a, const input_type_2& b) const
-      { return a > b ? a : b; }
+      {
+#pragma HLS inline
+        return a > b ? a : b;
+      }
     };
 }
 
