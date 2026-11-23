@@ -40,11 +40,17 @@
  * Converts between tensor streams of different element counts but the same
  * element type. One dimension must divide the other.
  *
+ * @deprecated FINN no longer uses this converter. Its data width converters are
+ *	implemented in RTL (finn-rtllib dwc/vpc.sv), which handles arbitrary width ratios
+ *	at full rate with fewer resources. This function will be removed in a future
+ *	release.
+ *
  * @tparam	 T   Element type (e.g. ap_int<4>)
  * @tparam	 NI  Number of elements per input word
  * @tparam	 NO  Number of elements per output word
  */
 template<typename T, unsigned NI, unsigned NO>
+[[deprecated("StreamingDWC is deprecated: FINN uses the RTL data width converter (finn-rtllib dwc).")]]
 void StreamingDWC(
 	hls::stream<tensor<T, NI>> &in,
 	hls::stream<tensor<T, NO>> &out
