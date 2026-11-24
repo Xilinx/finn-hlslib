@@ -38,7 +38,7 @@
 #include "utils.hpp"
 
 /**
- * \brief   LabelSelect_Batch (function-pipelined) — returns labels of
+ * \brief   topk (function-pipelined) — returns the indices (labels) of the
  *          top-K values in stream, emitted in decreasing order.
  *
  * Two-phase operation: CAPTURE reads all N/PE input words
@@ -60,7 +60,7 @@ template<
 	unsigned  PE,
 	typename  TO
 >
-void LabelSelect_Batch(
+void topk(
 	hls::stream<tensor<TI, PE>> &src,
 	hls::stream<tensor<TO,  1>> &dst
 ) {

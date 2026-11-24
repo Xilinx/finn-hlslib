@@ -34,16 +34,16 @@
  #  Authors: Giulio Gambardella <giuliog@xilinx.com>
  #           Tobias Alonso <tobiasa@xilinx.com>
  #
- # \file label_select.tcl
+ # \file topk.tcl
  #
- # Tcl script for HLS csim, synthesis and cosim of LabelSelect_Batch (topk) layer
+ # Tcl script for HLS csim, synthesis and cosim of the topk layer
  #
 ###############################################################################
 
-open_project hls-syn-label_select
-add_files label_select_top.cpp -cflags "-fdiagnostics-color -std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
-add_files -tb label_select_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb" 
-set_top Testbench_label_select
+open_project hls-syn-topk
+add_files topk_top.cpp -cflags "-fdiagnostics-color -std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb"
+add_files -tb topk_tb.cpp -cflags "-std=c++14 -I$::env(FINN_HLS_ROOT) -I$::env(FINN_HLS_ROOT)/tb"
+set_top Testbench_topk
 open_solution sol1
 set_part {xczu3eg-sbva484-1-i}
 create_clock -period 5 -name default
