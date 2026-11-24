@@ -4,7 +4,7 @@
 #include <hls_stream.h>
 #include <ap_int.h>
 
-#include "label_select_top.hpp"
+#include "topk_top.hpp"
 
 
 constexpr unsigned  BATCH = 2;
@@ -35,7 +35,7 @@ int main() {
 	unsigned  timeout = 0;
 	unsigned  err_cnt = 0;
 	while(timeout < 200) {
-		Testbench_label_select(src, dst);
+		Testbench_topk(src, dst);
 
 		if(dst.empty()) {
 			timeout++;

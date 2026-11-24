@@ -62,7 +62,7 @@ node('finn-build || built-in') {
         }, fifthBranch: {
             stage('BIPOLAR')            { run 'bipolar.tcl' }
             stage('REQUANT')            { run 'requant.tcl' }
-            stage('LABEL SELECT')       { run 'label_select.tcl' }
+            stage('TOPK')               { run 'topk.tcl' }
         }, sixthBranch: {
             stage('PAD')                { run 'pad.tcl' }
             stage('DECONV')             { run 'deconv.tcl' }
