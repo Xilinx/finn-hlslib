@@ -57,9 +57,19 @@ template<> struct thresh_init<3> {
 	}
 };
 
+#define THRESHOLDING_CFG  0
+#if THRESHOLDING_CFG
+using cfg_t = thresholding_cfg<N, C, PE, TT>;
+constexpr unsigned  NB = 4, PB = 2, AW = thresholding_addr_bits(N, C, PE);
+#endif
+
 void thresholding_top(
 	hls::stream<tensor<TI, PE>> &src,
 	hls::stream<tensor<TO, PE>> &dst
+#if THRESHOLDING_CFG
+	, hls::stream<cfg_t> &cfg,
+	hls::stream<TT> &rsp
+#endif
 );
 
 #endif

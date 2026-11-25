@@ -2,7 +2,9 @@
 #include "thresholding_top.hpp"
 #include <cmath>
 #include <random>
-static double const  THRESHS[C][N] = {{-128,-91,-50,-32,-28,-17,-7,-7,29,41,60,79,88,105,107},
+constexpr unsigned  PHASES = 1;
+constexpr bool  HAS_INIT = true;
+static double const  THRESHS[PHASES][C][N] = {{{-128,-91,-50,-32,-28,-17,-7,-7,29,41,60,79,88,105,107},
 {-115,-63,-49,-45,-15,27,39,43,50,63,69,74,107,125,127},
 {-120,-108,-86,-71,-64,-52,28,48,71,72,76,87,95,96,100},
 {-128,-69,-63,-59,-48,-44,-28,14,19,26,56,86,97,114,124},
@@ -65,7 +67,7 @@ static double const  THRESHS[C][N] = {{-128,-91,-50,-32,-28,-17,-7,-7,29,41,60,7
 {-116,-98,-72,-61,-49,-39,-34,-28,-10,-3,24,42,78,117,121},
 {-124,-103,-75,-50,-7,7,17,33,52,57,66,68,75,104,108},
 {-111,-91,-91,-67,-41,-38,-19,-10,-4,21,30,65,68,109,110},
-{-121,-99,-96,-77,-69,-31,-1,27,33,35,51,72,74,89,97}};
+{-121,-99,-96,-77,-69,-31,-1,27,33,35,51,72,74,89,97}}};
 static double const  THRESH_SCALE = 1.0;
 inline TI from_raw(long long r) { TI  v; v.range() = ap_uint<8>(r); return  v; }
 inline double to_double(TI const &v) { return  double(ap_int<8>(v.range()).to_int64()) * 1; }
