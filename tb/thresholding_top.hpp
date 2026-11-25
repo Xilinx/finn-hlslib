@@ -10,6 +10,7 @@
 
 constexpr unsigned  N = 15, C = 64, PE = 4, CF = C/PE, M = 4;
 constexpr int       BIAS = 0;
+constexpr unsigned  SETS = 1;
 constexpr unsigned  DEPTH_TRIGGER_BRAM = 512, DEPTH_TRIGGER_URAM = 0;
 constexpr unsigned  NIN = 256;
 using TI = ap_int<8>;
@@ -57,14 +58,18 @@ template<> struct thresh_init<3> {
 	}
 };
 
+#define THRESHOLDING_SEL  0
 #define THRESHOLDING_CFG  0
 #if THRESHOLDING_CFG
-using cfg_t = thresholding_cfg<N, C, PE, TT>;
-constexpr unsigned  NB = 4, PB = 2, AW = thresholding_addr_bits(N, C, PE);
+using cfg_t = thresholding_cfg<N, C, PE, TT, SETS>;
+constexpr unsigned  NB = 4, PB = 2, FB = 4, AW = thresholding_addr_bits(N, C, PE, SETS);
 #endif
 
 void thresholding_top(
 	hls::stream<tensor<TI, PE>> &src,
+#if THRESHOLDING_SEL
+	hls::stream<thresholding_set_t<SETS>> &sel,
+#endif
 	hls::stream<tensor<TO, PE>> &dst
 #if THRESHOLDING_CFG
 	, hls::stream<cfg_t> &cfg,

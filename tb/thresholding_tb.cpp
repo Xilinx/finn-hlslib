@@ -10,6 +10,9 @@ namespace {
 
 	hls::stream<tensor<TI, PE>>  src("src");
 	hls::stream<tensor<TO, PE>>  dst("dst");
+#if THRESHOLDING_SEL
+	hls::stream<thresholding_set_t<SETS>>  sel("sel");
+#endif
 #if THRESHOLDING_CFG
 	hls::stream<cfg_t>  cfg("cfg");
 	hls::stream<TT>     rsp("rsp");
@@ -19,19 +22,28 @@ namespace {
 	unsigned  errors = 0;
 
 	void top() {
-#if THRESHOLDING_CFG
-		thresholding_top(src, dst, cfg, rsp);
-#else
-		thresholding_top(src, dst);
+		thresholding_top(
+			src,
+#if THRESHOLDING_SEL
+			sel,
 #endif
+			dst
+#if THRESHOLDING_CFG
+			, cfg, rsp
+#endif
+		);
 	}
 
-	/** Process NIN inputs against the thresholds of phase p. */
+	/** Process NIN inputs against the thresholds of phase p, each of a random set. */
 	void process(unsigned const  p) {
 		// Stimuli: random values, range edges, and thresholds with their neighbors
 		std::vector<std::array<TO, PE>>  expected(NIN);
 		for(unsigned  i = 0; i < NIN; i++) {
 			unsigned const  cf = i % CF;
+			unsigned const  set = SETS > 1? gen() % SETS : 0;
+#if THRESHOLDING_SEL
+			sel.write(set);
+#endif
 			tensor<TI, PE>  x;
 			for(unsigned  pe = 0; pe < PE; pe++) {
 				unsigned const  ch = cf*PE + pe;
@@ -46,13 +58,13 @@ namespace {
 					v = EDGES[gen() % (sizeof(EDGES)/sizeof(EDGES[0]))];
 					break;
 				default:
-					v = perturb(THRESHS[p][ch][gen() % N], int(gen() % 3) - 1);
+					v = perturb(THRESHS[p][set][ch][gen() % N], int(gen() % 3) - 1);
 					break;
 				}
 				x[pe] = v;
 
 				int  cnt = BIAS;
-				for(unsigned  t = 0; t < N; t++)  cnt += THRESHS[p][ch][t]*THRESH_SCALE <= to_double(v);
+				for(unsigned  t = 0; t < N; t++)  cnt += THRESHS[p][set][ch][t]*THRESH_SCALE <= to_double(v);
 				expected[i][pe] = TO(cnt);
 			}
 			src.write(x);
@@ -77,15 +89,20 @@ namespace {
 	}
 
 #if THRESHOLDING_CFG
-	/** Address of threshold n of channel ch, see thresholding.hpp. */
-	unsigned addr_of(unsigned const  ch, unsigned const  n) {
-		return  ((((ch/PE) << PB) + ch%PE) << NB) | n;
+	/** Address of threshold n of channel ch in set, see thresholding.hpp. */
+	unsigned addr_of(unsigned const  set, unsigned const  ch, unsigned const  n) {
+		return  ((((((set << FB) + ch/PE) << PB) + ch%PE) << NB) | n);
 	}
-	bool in_scope(unsigned const  a) {
-		unsigned const  n  = a & ((1u << NB) - 1);
-		unsigned const  pe = (a >> NB) & ((1u << PB) - 1);
-		unsigned const  cf = a >> (NB + PB);
-		return  (n < N) && (pe < PE) && (cf < CF);
+	struct field_t {
+		unsigned  set, ch, n;
+		bool      ok;
+	};
+	field_t decode(unsigned const  a) {
+		unsigned const  n   = a & ((1u << NB) - 1);
+		unsigned const  pe  = (a >> NB) & ((1u << PB) - 1);
+		unsigned const  cf  = (a >> (NB + PB)) & ((1u << FB) - 1);
+		unsigned const  set = a >> (NB + PB + FB);
+		return { set, cf*PE + pe, n, (n < N) && (pe < PE) && (cf < CF) && (set < SETS) };
 	}
 
 	/** Write the thresholds of phase p that differ from phase q (all if q == p). */
@@ -94,17 +111,19 @@ namespace {
 		if(p == q) {
 			// Out-of-scope writes, which must be ignored, before the full set
 			for(unsigned  a = 0; a < (1u << AW); a++) {
-				if(!in_scope(a)) {
-					cfg.write(cfg_t{ THRESHS_TT[p][0][0], a, true });
+				if(!decode(a).ok) {
+					cfg.write(cfg_t{ THRESHS_TT[p][0][0][0], a, true });
 					ops++;
 				}
 			}
 		}
-		for(unsigned  ch = 0; ch < C; ch++) {
-			for(unsigned  n = 0; n < N; n++) {
-				if((p == q) || (THRESHS[p][ch][n] != THRESHS[q][ch][n])) {
-					cfg.write(cfg_t{ THRESHS_TT[p][ch][n], addr_of(ch, n), true });
-					ops++;
+		for(unsigned  set = 0; set < SETS; set++) {
+			for(unsigned  ch = 0; ch < C; ch++) {
+				for(unsigned  n = 0; n < N; n++) {
+					if((p == q) || (THRESHS[p][set][ch][n] != THRESHS[q][set][ch][n])) {
+						cfg.write(cfg_t{ THRESHS_TT[p][set][ch][n], addr_of(set, ch, n), true });
+						ops++;
+					}
 				}
 			}
 		}
@@ -118,9 +137,8 @@ namespace {
 		for(unsigned  a = 0; a < (1u << AW); a++)  top();
 		for(unsigned  a = 0; a < (1u << AW); a++) {
 			TT const  got = rsp.read();
-			unsigned const  n  = a & ((1u << NB) - 1);
-			unsigned const  ch = (a >> (NB + PB))*PE + ((a >> NB) & ((1u << PB) - 1));
-			TT const  exp = in_scope(a)? THRESHS_TT[p][ch][n] : TT(0);
+			field_t const  f = decode(a);
+			TT const  exp = f.ok? THRESHS_TT[p][f.set][f.ch][f.n] : TT(0);
 			if(got != exp) {
 				if(errors++ < 10) {
 					std::cout << "ERROR readback phase " << p << " address " << a
@@ -149,6 +167,6 @@ int main() {
 		std::cout << errors << " errors detected." << std::endl;
 		return  1;
 	}
-	std::cout << "Test passed. " << PHASES << " phase(s) of " << NIN << " inputs verified (N=" << N << ", C=" << C << ", PE=" << PE << ")." << std::endl;
+	std::cout << "Test passed. " << PHASES << " phase(s) of " << NIN << " inputs verified (N=" << N << ", C=" << C << ", PE=" << PE << ", SETS=" << SETS << ")." << std::endl;
 	return  0;
 }

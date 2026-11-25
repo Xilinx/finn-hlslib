@@ -47,6 +47,14 @@
  *  without replication. Separators beyond N (if N+1 is not a power of two)
  *  are masked by a scope check rather than stored as saturated values.
  *
+ *  Threshold sets: With SETS > 1 independent threshold sets (multi-layer
+ *  offload, SETS and iset of the RTL), each input comes with the index of
+ *  its set on a set selection stream. The set index extends the memory row
+ *  above the channel fold, which is padded to a power of two as in the RTL:
+ *  a stage memory then has ROWS = SETS*2^clog2(CF) rows, i.e. a depth of
+ *  ROWS*2^S, addressed by set | cf | resolved result bits. For SETS = 1,
+ *  ROWS = CF. A set index beyond SETS-1 is undefined.
+ *
  *  Thresholds and inputs may have different types TT and TI. The comparison
  *  T_i <= x relies on the exact mixed comparison of C++ between ap_[u]int and
  *  ap_[u]fixed types, which holds in simulation and synthesis alike. The
@@ -72,28 +80,30 @@
  *  one out-of-class definition, and constexpr is ruled out as the ap_* types
  *  are no literal types):
  *     template<> struct INIT<S> {
- *       static stage_rom<TT, PE, CF<<S> const &data() {
- *         static stage_rom<TT, PE, CF<<S> const  d = { ... };
+ *       static stage_rom<TT, PE, ROWS<<S> const &data() {
+ *         static stage_rom<TT, PE, ROWS<<S> const  d = { ... };
  *         return  d;
  *       }
  *     };
- *  with data().data[pe][cf*2^S + k] holding threshold (2k+1)*2^(M-1-S)-1 of
- *  channel cf*PE + pe (arbitrary values for out-of-scope separators).
+ *  with data().data[pe][row*2^S + k] holding threshold (2k+1)*2^(M-1-S)-1 of
+ *  channel cf*PE + pe in row = cf, or row = t*2^clog2(CF) + cf for set t if
+ *  SETS > 1 (arbitrary values for out-of-scope separators and padding rows).
  *
  *  Runtime-writable thresholds: A kernel variant with a configuration
  *  stream keeps the thresholds in writable stage memories (ram_1p) rather
  *  than ROMs. A configuration operation writes or reads back an individual
  *  threshold, takes precedence over data, as in the RTL, and is passed down
  *  the search pipeline in place of an input. It addresses threshold n of
- *  channel c by the AXI-Lite word address layout of the RTL:
- *     addr = ((c/PE)*2^clog2(PE) + c%PE)*2^clog2(N) + n
- *  i.e. the fields cf | pe | n from the MSB. The threshold n resides in
+ *  channel c in set t by the AXI-Lite word address layout of the RTL:
+ *     addr = ((t*2^clog2(CF) + c/PE)*2^clog2(PE) + c%PE)*2^clog2(N) + n
+ *  i.e. the fields t | cf | pe | n from the MSB, each clog2 of its count
+ *  wide (the set field is absent for SETS = 1). The threshold n resides in
  *  stage S = M-1-ctz(n+1) at in-row index k = (n+1) >> (M-S), i.e. in the
  *  stage whose result bit is the lowest zero bit of n. An INIT<S> without a
  *  data() accessor leaves writable memories uninitialized (zero); it still
  *  names the kernel instance owning the memories.
  *
- *  The storage of a stage memory is selected by its depth CF*2^S:
+ *  The storage of a stage memory is selected by its depth ROWS*2^S:
  *   - URAM   if DEPTH_TRIGGER_URAM != 0 and depth >= DEPTH_TRIGGER_URAM,
  *   - BRAM   if DEPTH_TRIGGER_BRAM != 0 and depth >= DEPTH_TRIGGER_BRAM,
  *   - LUTRAM if DEPTH_TRIGGER_BRAM != 0 below that,
@@ -128,7 +138,7 @@
 #include "tensor.hpp"
 
 /**
- * Contents of one stage memory: data[pe][cf*2^S + k].
+ * Contents of one stage memory: data[pe][row*2^S + k].
  * Wrapped in a struct so that a stage memory can be copy-initialized.
  */
 template<typename  T, unsigned  PE, unsigned  D>
@@ -236,7 +246,7 @@ namespace thresholding_detail {
 	struct stage_init {
 		static constexpr bool  HAS_DATA = true;
 		static_assert(std::is_same<typename std::decay<decltype(INIT::data())>::type, stage_rom<TT, PE, D>>::value,
-			"INIT<S>::data() must return a stage_rom<TT, PE, CF<<S>.");
+			"INIT<S>::data() must return a stage_rom<TT, PE, ROWS<<S>.");
 		static stage_rom<TT, PE, D> const &data() {
 			return  INIT::data();
 		}
@@ -367,7 +377,7 @@ namespace thresholding_detail {
 		bool      cfg;	// configuration (true) or thresholding (false)
 		bool      we;	// cfg: write (true) or readback (false)
 		bool      ok;	// cfg: address within scope
-		unsigned  row;	// memory row: channel fold
+		unsigned  row;	// memory row: set and channel fold
 		unsigned  pe;	// cfg: PE
 		unsigned  n;	// cfg: threshold index
 		TT        val;	// cfg: write value
@@ -489,11 +499,11 @@ namespace thresholding_detail {
 } // namespace thresholding_detail
 
 /**
- * Width of a threshold address: channel fold, PE and threshold index
+ * Width of a threshold address: set, channel fold, PE and threshold index
  * fields, see file description.
  */
-constexpr unsigned thresholding_addr_bits(unsigned const  n, unsigned const  c, unsigned const  pe) {
-	return  clog2(c/pe) + clog2(pe) + clog2(n);
+constexpr unsigned thresholding_addr_bits(unsigned const  n, unsigned const  c, unsigned const  pe, unsigned const  sets = 1) {
+	return  clog2(sets) + clog2(c/pe) + clog2(pe) + clog2(n);
 }
 
 /**
@@ -507,19 +517,91 @@ struct thresholding_cfg_t {
 	ap_uint<AW>  addr;
 	bool         we;
 };
-template<unsigned  N, unsigned  C, unsigned  PE, typename  TT>
-using thresholding_cfg = thresholding_cfg_t<TT, thresholding_addr_bits(N, C, PE) < 1? 1 : thresholding_addr_bits(N, C, PE)>;
+template<unsigned  N, unsigned  C, unsigned  PE, typename  TT, unsigned  SETS = 1>
+using thresholding_cfg = thresholding_cfg_t<TT, thresholding_addr_bits(N, C, PE, SETS) < 1? 1 : thresholding_addr_bits(N, C, PE, SETS)>;
+
+/** Set selection: an index < SETS, at least one bit wide (S_BITS of the RTL). */
+template<unsigned  SETS>
+using thresholding_set_t = ap_uint<(SETS > 2? clog2(SETS) : 1)>;
+
+namespace thresholding_detail {
+
+	/** Number of memory rows per stage and threshold: SETS*2^clog2(CF) or CF. */
+	constexpr unsigned rows(unsigned const  cf, unsigned const  sets) {
+		return  sets > 1? sets << clog2(cf) : cf;
+	}
+
+	/** Memory row of set and channel fold cf: set | cf. */
+	template<unsigned  CF, unsigned  SETS>
+	unsigned row(unsigned const  set, unsigned const  cf) {
+#pragma HLS inline
+		constexpr unsigned  FB = clog2(CF);
+		return  SETS > 1? (set << FB) | cf : cf;
+	}
+
+	/**
+	 * Thresholding step of the writable kernel variants: performs the
+	 * configuration operation c if cfg_vld, otherwise thresholds x of set if
+	 * dat_vld.
+	 */
+	template<
+		unsigned  N, unsigned  CF, unsigned  SETS, typename  TT, template<unsigned> class  INIT, int  BIAS,
+		unsigned  DEPTH_TRIGGER_BRAM, unsigned  DEPTH_TRIGGER_URAM,
+		typename  TO, unsigned  PE, typename  TI, unsigned  AW, int  WC
+	>
+	void step(
+		bool const  cfg_vld, thresholding_cfg_t<TT, AW> const &c,
+		bool const  dat_vld, tensor<TI, PE> const &x, unsigned const  set,
+		ap_uint<WC> &cnl,
+		hls::stream<tensor<TO, PE>> &dst,
+		hls::stream<TT> &rsp
+	) {
+#pragma HLS inline
+		static_assert(thresholding_addr_bits(N, CF*PE, PE, SETS) <= 32, "Threshold address too wide.");
+		constexpr unsigned  NB = clog2(N);
+		constexpr unsigned  PB = clog2(PE);
+		constexpr unsigned  FB = clog2(CF);
+
+		op_t<TT>  op;
+		{ // decode configuration address: set | cf | pe | n
+			unsigned const  a = c.addr;
+			unsigned const  n  = a & ((1u << NB) - 1);
+			unsigned const  pe = (a >> NB) & ((1u << PB) - 1);
+			unsigned const  cf = (a >> (NB + PB)) & ((1u << FB) - 1);
+			unsigned const  s  = a >> (NB + PB + FB);
+			op.cfg = cfg_vld;
+			op.we  = c.we;
+			op.ok  = (n < N) && (pe < PE) && (cf < CF) && (s < SETS);
+			op.row = cfg_vld? row<CF, SETS>(s, cf) : row<CF, SETS>(set, cnl);
+			op.pe  = pe;
+			op.n   = n;
+			op.val = c.val;
+		}
+		TT  q;
+		auto const  y = search<N, rows(CF, SETS), TT, INIT, BIAS, true, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, TO>(x, op, q);
+
+		if(dat_vld) {
+			dst.write(y);
+			cnl = (cnl == CF-1)? ap_uint<WC>(0) : ap_uint<WC>(cnl+1);
+		}
+		if(cfg_vld && !c.we)  rsp.write(q);
+	}
+
+} // namespace thresholding_detail
 
 /**
  * Thresholding by binary search with fixed thresholds in ROMs.
  *
  * Reads one input from src and writes its result to dst per invocation.
+ * The variant with a set selection stream sel additionally reads the index
+ * of the threshold set to apply to the input.
  *
  * @tparam N	number of thresholds per channel
  * @tparam C	number of channels
  * @tparam TT	threshold type, see file description for its relation to TI
  * @tparam INIT	per-stage memory contents, see file description
  * @tparam BIAS	output offset: [0, N] -> [BIAS, N+BIAS]
+ * @tparam SETS	number of threshold sets, more than one requires sel
  * @tparam DEPTH_TRIGGER_BRAM	if non-zero, stage memories of this depth or more go into BRAM, smaller ones into LUTRAM
  * @tparam DEPTH_TRIGGER_URAM	must be zero as URAM cannot be initialized
  * @tparam PE	[inferred] parallel processing elements, must divide C
@@ -532,6 +614,52 @@ template<
 	typename  TT,
 	template<unsigned> class  INIT,
 	int       BIAS = 0,
+	unsigned  SETS = 1,
+	unsigned  DEPTH_TRIGGER_BRAM = 512,
+	unsigned  DEPTH_TRIGGER_URAM = 0,
+	unsigned  PE,	// [inferred]
+	typename  TI,	// [inferred]
+	unsigned  WO = BIAS >= 0?
+		/* unsigned */ clog2(N+BIAS+1) :
+		/* signed */ 1+clog2(-BIAS >= int(N)+BIAS+1? -BIAS : int(N)+BIAS+1),
+	typename  TO = typename std::conditional<BIAS >= 0, ap_uint<WO>, ap_int<WO>>::type
+>
+void thresholding(
+	hls::stream<tensor<TI, PE>> &src,
+	hls::stream<thresholding_set_t<SETS>> &sel,
+	hls::stream<tensor<TO, PE>> &dst
+) {
+#pragma HLS pipeline II=1 style=flp
+	static_assert(N > 0, "Need at least one threshold.");
+	static_assert(C%PE == 0, "PE must divide channel count.");
+	static_assert(SETS > 0, "Need at least one threshold set.");
+	static_assert(DEPTH_TRIGGER_URAM == 0, "URAM cannot hold initialized ROM contents.");
+	static_assert(thresholding_detail::has_data<INIT<0>>::value, "ROM thresholds need initial contents INIT<S>::data().");
+	constexpr unsigned  CF = C/PE;
+
+	// Channel Fold Rotation
+	static ap_uint<CF < 2? 1 : clog2(CF)>  cnl = 0;
+#pragma HLS reset variable=cnl
+
+	auto const  x = src.read();
+	thresholding_detail::op_t<TT>  op = {};
+	op.row = thresholding_detail::row<CF, SETS>(sel.read(), cnl);
+	TT  q;
+	dst.write(thresholding_detail::search<
+		N, thresholding_detail::rows(CF, SETS), TT, INIT, BIAS, false, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, TO
+	>(x, op, q));
+	cnl = (cnl == CF-1)? decltype(cnl)(0) : decltype(cnl)(cnl+1);
+
+} // thresholding()
+
+/** Thresholding with fixed thresholds of a single set, see above. */
+template<
+	unsigned  N,
+	unsigned  C,
+	typename  TT,
+	template<unsigned> class  INIT,
+	int       BIAS = 0,
+	unsigned  SETS = 1,
 	unsigned  DEPTH_TRIGGER_BRAM = 512,
 	unsigned  DEPTH_TRIGGER_URAM = 0,
 	unsigned  PE,	// [inferred]
@@ -548,6 +676,7 @@ void thresholding(
 #pragma HLS pipeline II=1 style=flp
 	static_assert(N > 0, "Need at least one threshold.");
 	static_assert(C%PE == 0, "PE must divide channel count.");
+	static_assert(SETS == 1, "Multiple threshold sets require a set selection stream.");
 	static_assert(DEPTH_TRIGGER_URAM == 0, "URAM cannot hold initialized ROM contents.");
 	static_assert(thresholding_detail::has_data<INIT<0>>::value, "ROM thresholds need initial contents INIT<S>::data().");
 	constexpr unsigned  CF = C/PE;
@@ -568,11 +697,12 @@ void thresholding(
  * Thresholding by binary search with runtime-writable thresholds.
  *
  * Per invocation, either performs one configuration operation from cfg if
- * available, which takes precedence, or reads one input from src and writes
- * its result to dst. A readback writes the addressed threshold to rsp, zero
- * if the address is out of scope (threshold index n >= N, PE or channel fold
- * beyond their counts). Writes out of scope are ignored. A threshold write
- * applies to all subsequent inputs.
+ * available, which takes precedence, or reads one input from src (and its
+ * set index from sel in the variant with set selection) and writes its
+ * result to dst. A readback writes the addressed threshold to rsp, zero if
+ * the address is out of scope (threshold index n >= N, PE, channel fold or
+ * set beyond their counts). Writes out of scope are ignored. A threshold
+ * write applies to all subsequent inputs.
  *
  * Template parameters as for the ROM variant, except:
  * @tparam INIT	per-stage initial memory contents, see file description;
@@ -586,6 +716,57 @@ template<
 	typename  TT,
 	template<unsigned> class  INIT,
 	int       BIAS = 0,
+	unsigned  SETS = 1,
+	unsigned  DEPTH_TRIGGER_BRAM = 512,
+	unsigned  DEPTH_TRIGGER_URAM = 0,
+	unsigned  PE,	// [inferred]
+	typename  TI,	// [inferred]
+	unsigned  WO = BIAS >= 0?
+		/* unsigned */ clog2(N+BIAS+1) :
+		/* signed */ 1+clog2(-BIAS >= int(N)+BIAS+1? -BIAS : int(N)+BIAS+1),
+	typename  TO = typename std::conditional<BIAS >= 0, ap_uint<WO>, ap_int<WO>>::type
+>
+void thresholding(
+	hls::stream<tensor<TI, PE>> &src,
+	hls::stream<thresholding_set_t<SETS>> &sel,
+	hls::stream<tensor<TO, PE>> &dst,
+	hls::stream<thresholding_cfg<N, C, PE, TT, SETS>> &cfg,
+	hls::stream<TT> &rsp
+) {
+#pragma HLS pipeline II=1 style=flp
+	static_assert(N > 0, "Need at least one threshold.");
+	static_assert(C%PE == 0, "PE must divide channel count.");
+	static_assert(SETS > 0, "Need at least one threshold set.");
+	constexpr unsigned  CF = C/PE;
+
+	// Channel Fold Rotation
+	static ap_uint<CF < 2? 1 : clog2(CF)>  cnl = 0;
+#pragma HLS reset variable=cnl
+
+	// Configuration takes precedence over data
+	thresholding_cfg<N, C, PE, TT, SETS>  c;
+	tensor<TI, PE>  x;
+	thresholding_set_t<SETS>  set = 0;
+	bool const  cfg_vld = cfg.read_nb(c);
+	bool const  dat_vld = !cfg_vld && !src.empty() && !sel.empty();
+	if(dat_vld) {
+		x = src.read();
+		set = sel.read();
+	}
+	thresholding_detail::step<N, CF, SETS, TT, INIT, BIAS, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM>(
+		cfg_vld, c, dat_vld, x, set, cnl, dst, rsp
+	);
+
+} // thresholding()
+
+/** Thresholding with runtime-writable thresholds of a single set, see above. */
+template<
+	unsigned  N,
+	unsigned  C,
+	typename  TT,
+	template<unsigned> class  INIT,
+	int       BIAS = 0,
+	unsigned  SETS = 1,
 	unsigned  DEPTH_TRIGGER_BRAM = 512,
 	unsigned  DEPTH_TRIGGER_URAM = 0,
 	unsigned  PE,	// [inferred]
@@ -604,10 +785,8 @@ void thresholding(
 #pragma HLS pipeline II=1 style=flp
 	static_assert(N > 0, "Need at least one threshold.");
 	static_assert(C%PE == 0, "PE must divide channel count.");
-	static_assert(thresholding_addr_bits(N, C, PE) <= 32, "Threshold address too wide.");
+	static_assert(SETS == 1, "Multiple threshold sets require a set selection stream.");
 	constexpr unsigned  CF = C/PE;
-	constexpr unsigned  NB = clog2(N);
-	constexpr unsigned  PB = clog2(PE);
 
 	// Channel Fold Rotation
 	static ap_uint<CF < 2? 1 : clog2(CF)>  cnl = 0;
@@ -618,29 +797,9 @@ void thresholding(
 	tensor<TI, PE>  x;
 	bool const  cfg_vld = cfg.read_nb(c);
 	bool const  dat_vld = !cfg_vld && src.read_nb(x);
-
-	thresholding_detail::op_t<TT>  op;
-	{ // decode configuration address: cf | pe | n
-		unsigned const  a = c.addr;
-		unsigned const  n  = a & ((1u << NB) - 1);
-		unsigned const  pe = (a >> NB) & ((1u << PB) - 1);
-		unsigned const  cf = a >> (NB + PB);
-		op.cfg = cfg_vld;
-		op.we  = c.we;
-		op.ok  = (n < N) && (pe < PE) && (cf < CF);
-		op.row = cfg_vld? cf : unsigned(cnl);
-		op.pe  = pe;
-		op.n   = n;
-		op.val = c.val;
-	}
-	TT  q;
-	auto const  y = thresholding_detail::search<N, CF, TT, INIT, BIAS, true, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, TO>(x, op, q);
-
-	if(dat_vld) {
-		dst.write(y);
-		cnl = (cnl == CF-1)? decltype(cnl)(0) : decltype(cnl)(cnl+1);
-	}
-	if(cfg_vld && !c.we)  rsp.write(q);
+	thresholding_detail::step<N, CF, 1, TT, INIT, BIAS, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM>(
+		cfg_vld, c, dat_vld, x, 0, cnl, dst, rsp
+	);
 
 } // thresholding()
 
