@@ -8,5 +8,5 @@ void thresholding_top(
 #pragma HLS interface axis port=dst
 #pragma HLS interface ap_ctrl_none port=return
 #pragma HLS dataflow disable_start_propagation
-	thresholding<N, C, thresh_init, BIAS, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM>(src, dst);
+	thresholding<N, C, TT, thresh_init, BIAS, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM>(src, dst);
 }

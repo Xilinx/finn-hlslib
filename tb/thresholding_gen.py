@@ -26,22 +26,32 @@ def out_bits(n, bias):
     return 1 + clog2(-bias if -bias >= n + bias + 1 else n + bias + 1)
 
 
-def gen_thresholds(rng, kind, w, i, c, n, dup=True):
-    """Return sorted thresholds as floats (exactly representable) and C literal strings."""
-    if kind == "float":
+def raw_range(kind, w):
+    """Range of the raw (integer) representation of a type."""
+    return (0, 2**w - 1) if kind in ("uint", "ufixed") else (-(2 ** (w - 1)), 2 ** (w - 1) - 1)
+
+
+def gen_thresholds(rng, ti, tt, c, n, dup=True):
+    """Return sorted thresholds as raw TT integers (floats for float types).
+
+    Thresholds are drawn from the intersection of the TI and the TT range. If
+    TT can represent max(TI)+1, some channels get never-met thresholds of this
+    value at their top end.
+    """
+    if tt[0] == "float":
         th = np.sort(rng.normal(0.0, 10.0, size=(c, n)).astype(np.float32), axis=-1)
         # Provoke duplicates
         if n > 1:
             th[0, n // 2] = th[0, n // 2 - 1]
-        return th, lambda v: "%.9ef" % float(v)
-    lo, hi = (-(2 ** (w - 1)), 2 ** (w - 1) - 1) if kind != "uint" else (0, 2**w - 1)
-    th = np.sort(rng.integers(lo, hi + 1, size=(c, n)), axis=-1)
+        return th
+    (ilo, ihi), (tlo, thi) = raw_range(ti[0], ti[1]), raw_range(tt[0], tt[1])
+    th = np.sort(rng.integers(max(ilo, tlo), min(ihi, thi) + 1, size=(c, n)), axis=-1)
     if dup and n > 1:
         th[0, n // 2] = th[0, n // 2 - 1]  # duplicate
-    if kind == "fixed":
-        scale = 2.0 ** (w - i)
-        return th / scale, lambda v: "%.17g" % float(v)
-    return th, lambda v: "%d" % int(v)
+    if ihi + 1 <= thi:
+        for ch in range(1, c, 3):
+            th[ch, max(0, n - 1 - ch % 4) :] = ihi + 1  # never met
+    return th
 
 
 def c_list(a, fmt):
@@ -55,9 +65,12 @@ def main():
     ap.add_argument("--n", type=int, required=True)
     ap.add_argument("--c", type=int, required=True)
     ap.add_argument("--pe", type=int, required=True)
-    ap.add_argument("--type", default="int", choices=("int", "uint", "fixed", "float"))
-    ap.add_argument("--w", type=int, default=8, help="input/threshold width")
-    ap.add_argument("--i", type=int, default=4, help="integer bits of ap_fixed")
+    kinds = ("int", "uint", "fixed", "ufixed", "float")
+    ap.add_argument("--type", default="int", choices=kinds, help="input type TI")
+    ap.add_argument("--w", type=int, default=8, help="input width")
+    ap.add_argument("--i", type=int, default=4, help="integer bits of an ap_[u]fixed input")
+    ap.add_argument("--tt", default="", choices=("",) + kinds, help="threshold type TT (default: TI)")
+    ap.add_argument("--wt", type=int, default=0, help="threshold width (default: input width), same scale as TI")
     ap.add_argument("--bias", type=int, default=0)
     ap.add_argument("--to", default="", help="explicit output type (default: O_BITS formula)")
     ap.add_argument("--trigger-bram", type=int, default=512)
@@ -72,14 +85,34 @@ def main():
     assert c % pe == 0
     cf = c // pe
     m = clog2(n + 1)
-    rng = np.random.default_rng(zlib.crc32((a.seed or "n%d_c%d_pe%d_%s%d" % (n, c, pe, a.type, a.w)).encode()))
-    th, fmt = gen_thresholds(rng, a.type, a.w, a.i, c, n, not a.no_dup)
-    t_t = {
-        "int": "ap_int<%d>" % a.w,
-        "uint": "ap_uint<%d>" % a.w,
-        "fixed": "ap_fixed<%d, %d>" % (a.w, a.i),
-        "float": "float",
-    }[a.type]
+    tt_kind, wt = a.tt or a.type, a.wt or a.w
+    assert ("float" not in (a.type, tt_kind)) or (a.type == tt_kind and wt == a.w), "floats cannot be mixed"
+    frac = a.w - a.i if a.type in ("fixed", "ufixed") else 0  # common scale of TI and TT
+    seed = a.seed or "n%d_c%d_pe%d_%s%d" % (n, c, pe, a.type, a.w)
+    if (tt_kind, wt) != (a.type, a.w):
+        seed += "_%s%d" % (tt_kind, wt)
+    rng = np.random.default_rng(zlib.crc32(seed.encode()))
+    th = gen_thresholds(rng, (a.type, a.w), (tt_kind, wt), c, n, not a.no_dup)
+
+    def c_type(kind, w):
+        return {
+            "int": "ap_int<%d>" % w,
+            "uint": "ap_uint<%d>" % w,
+            "fixed": "ap_fixed<%d, %d>" % (w, w - frac),
+            "ufixed": "ap_ufixed<%d, %d>" % (w, w - frac),
+            "float": "float",
+        }[kind]
+
+    def value(kind):
+        """Format a raw value as C literal of the represented value."""
+        if kind == "float":
+            return lambda v: "%.9ef" % float(v)
+        if kind in ("fixed", "ufixed"):
+            return lambda v: "%.17g" % (float(v) / 2.0**frac)
+        return lambda v: "%d" % int(v)
+
+    ti_t, tt_t = c_type(a.type, a.w), c_type(tt_kind, wt)
+    fmt = value(tt_kind)
     wo = out_bits(n, bias)
     to_t = a.to or ("ap_uint<%d>" % wo if bias >= 0 else "ap_int<%d>" % wo)
     frames = a.frames or max(3, -(-256 // cf))
@@ -100,8 +133,8 @@ def main():
                     data[p, (f_ << s) + k] = th[f_ * pe + p, idx] if idx < n else zero
         inits.append(
             "template<> struct thresh_init<%d> {\n"
-            "\tstatic stage_rom<TI, PE, %d> const &data() {\n"
-            "\t\tstatic stage_rom<TI, PE, %d> const  d = {%s};\n"
+            "\tstatic stage_rom<TT, PE, %d> const &data() {\n"
+            "\t\tstatic stage_rom<TT, PE, %d> const  d = {%s};\n"
             "\t\treturn  d;\n"
             "\t}\n"
             "};\n" % (s, d, d, c_list(data, fmt))
@@ -124,6 +157,7 @@ constexpr int       BIAS = %d;
 constexpr unsigned  DEPTH_TRIGGER_BRAM = %d, DEPTH_TRIGGER_URAM = %d;
 constexpr unsigned  NIN = %d;
 using TI = %s;
+using TT = %s;
 using TO = %s;
 
 // Per-stage memory initializers: inline accessors returning a function-local
@@ -138,29 +172,52 @@ void thresholding_top(
 
 #endif
 """
-            % (n, c, pe, m, bias, a.trigger_bram, a.trigger_uram, frames * cf, t_t, to_t, "".join(inits))
+            % (n, c, pe, m, bias, a.trigger_bram, a.trigger_uram, frames * cf, ti_t, tt_t, to_t, "".join(inits))
         )
 
+    # Reference: thresholds and inputs compared as doubles (exact for the tested widths)
     with open(os.path.join(a.out, "thresholding_ref.h"), "w") as f:
-        f.write("// Generated by thresholding_gen.py\n#include \"thresholding_top.hpp\"\n#include <random>\n")
-        f.write("static TI const  THRESHS[C][N] = %s;\n" % c_list(th, fmt))
+        f.write("// Generated by thresholding_gen.py\n#include \"thresholding_top.hpp\"\n#include <cmath>\n#include <random>\n")
+        f.write("static double const  THRESHS[C][N] = %s;\n" % c_list(th, value("int" if tt_kind != "float" else "float")))
+        if tt_kind in ("fixed", "ufixed"):
+            f.write("static double const  THRESH_SCALE = %.17g;\n" % 2.0**-frac)
+        else:
+            f.write("static double const  THRESH_SCALE = 1.0;\n")
         if a.type == "float":
             f.write(
+                "inline double to_double(TI const &v) { return  v; }\n"
                 "inline TI rand_input(std::mt19937 &g) { return  TI(std::uniform_real_distribution<float>(-40.f, 40.f)(g)); }\n"
-                "inline TI perturb(TI const &v, int d) { return  d == 0? v : std::nextafter(v, d < 0? -1e30f : 1e30f); }\n"
-            )
-        elif a.type == "fixed":
-            f.write(
-                "inline TI rand_input(std::mt19937 &g) { TI  v; v.range() = ap_uint<%d>(g()); return  v; }\n"
-                "inline TI perturb(TI const &v, int d) { TI  r; r.range() = ap_uint<%d>(v.range()) + d; return  r; }\n"
-                % (a.w, a.w)
+                "inline TI perturb(double v, int d) { return  d == 0? TI(v) : std::nextafter(TI(v), d < 0? -1e30f : 1e30f); }\n"
+                "static TI const  EDGES[] = { -3.4e38f, -0.0f, 0.0f, 3.4e38f };\n"
             )
         else:
+            lo, hi = raw_range(a.type, a.w)
+            tlo, thi = raw_range(tt_kind, wt)
+            edges = sorted({max(lo, min(hi, e)) for e in (lo, hi, 0, tlo - 1, tlo, thi, thi + 1)})
+            sgn = a.type in ("int", "fixed")
             f.write(
-                "inline TI rand_input(std::mt19937 &g) { return  TI(g()); }\n"
-                "inline TI perturb(TI const &v, int d) { return  TI(v + d); }\n"
+                "inline TI from_raw(long long r) { TI  v; v.range() = ap_uint<%d>(r); return  v; }\n"
+                "inline double to_double(TI const &v) { return  double(ap_%sint<%d>(v.range()).%s()) * %.17g; }\n"
+                "inline TI rand_input(std::mt19937 &g) { return  from_raw(uint64_t(g()) << 32 | g()); }\n"
+                "inline TI perturb(double v, int d) {\n"
+                "\tlong long const  r = std::llround(v) + d;\n"
+                "\treturn  from_raw(r < %dLL? %dLL : r > %dLL? %dLL : r);\n"
+                "}\n"
+                "static TI const  EDGES[] = { %s };\n"
+                % (
+                    a.w,
+                    "" if sgn else "u",
+                    a.w,
+                    "to_int64" if sgn else "to_uint64",
+                    2.0**-frac,
+                    lo,
+                    lo,
+                    hi,
+                    hi,
+                    ", ".join("from_raw(%dLL)" % e for e in edges),
+                )
             )
-    print("N=%d C=%d PE=%d CF=%d M=%d TI=%s TO=%s NIN=%d" % (n, c, pe, cf, m, t_t, to_t, frames * cf))
+    print("N=%d C=%d PE=%d CF=%d M=%d TI=%s TT=%s TO=%s NIN=%d" % (n, c, pe, cf, m, ti_t, tt_t, to_t, frames * cf))
 
 
 if __name__ == "__main__":

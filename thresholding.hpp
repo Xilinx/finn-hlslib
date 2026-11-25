@@ -47,6 +47,23 @@
  *  without replication. Separators beyond N (if N+1 is not a power of two)
  *  are masked by a scope check rather than stored as saturated values.
  *
+ *  Thresholds and inputs may have different types TT and TI. The comparison
+ *  T_i <= x relies on the exact mixed comparison of C++ between ap_[u]int and
+ *  ap_[u]fixed types, which holds in simulation and synthesis alike. The
+ *  compiler is expected to choose TT such that every TT value is
+ *  representable in TI (TT ⊆ TI), except that TT may be one bit wider than TI
+ *  to represent never-met thresholds by the value max(TI)+1. The kernel is
+ *  exact in both cases. Floating-point (float, half) types cannot be mixed:
+ *  either type being one implies TT == TI.
+ *
+ *  Narrow thresholds: if TT is narrower than TI, the input is clamped once
+ *  before the first stage to the integer bits of TT plus the sign bit of TI,
+ *  the counterpart of the KI precision of the RTL. This preserves every
+ *  comparison: an input above this range is clamped to its upper end, which
+ *  is not below any threshold, and a signed input below it to its lower end,
+ *  min(TT)-1 or below, which is below all thresholds. The search pipeline
+ *  then compares and registers the narrower clamped value.
+ *
  *  The initial memory contents are supplied already split by stage through
  *  a class template INIT<S> specialized for every stage S < M with an inline
  *  accessor returning a function-local static. Unlike a static data member,
@@ -55,8 +72,8 @@
  *  one out-of-class definition, and constexpr is ruled out as the ap_* types
  *  are no literal types):
  *     template<> struct INIT<S> {
- *       static stage_rom<TI, PE, CF<<S> const &data() {
- *         static stage_rom<TI, PE, CF<<S> const  d = { ... };
+ *       static stage_rom<TT, PE, CF<<S> const &data() {
+ *         static stage_rom<TT, PE, CF<<S> const  d = { ... };
  *         return  d;
  *       }
  *     };
@@ -85,10 +102,12 @@
 #ifndef THRESHOLDING_HPP
 #define THRESHOLDING_HPP
 
-#include <hls_stream.h>
-#include <ap_int.h>
 #include <cstddef>
 #include <type_traits>
+
+#include <hls_stream.h>
+#include <ap_int.h>
+#include <ap_fixed.h>
 
 #include "utils.hpp"
 #include "tensor.hpp"
@@ -112,6 +131,80 @@ namespace thresholding_detail {
 			(trigger_uram != 0) && (depth >= trigger_uram)? mem_e::URAM :
 			(trigger_bram != 0) && (depth >= trigger_bram)? mem_e::BRAM :
 			(trigger_bram != 0)? mem_e::LUTRAM : mem_e::AUTO;
+	}
+
+	/** Floating-point types, which only compare with their own type. */
+	template<typename  T>
+	struct is_float : std::integral_constant<bool, std::is_floating_point<T>::value || std::is_same<T, half>::value> {};
+
+	/**
+	 * Number format of the ap_[u]int and ap_[u]fixed types: W bits, of which
+	 * I are integer bits (including the sign), signedness S.
+	 */
+	template<typename  T> struct num_fmt { static constexpr bool  KNOWN = false; };
+	template<int  W_> struct num_fmt<ap_int<W_>> {
+		static constexpr bool  KNOWN = true, FIXED = false, S = true;
+		static constexpr int   W = W_, I = W_;
+	};
+	template<int  W_> struct num_fmt<ap_uint<W_>> {
+		static constexpr bool  KNOWN = true, FIXED = false, S = false;
+		static constexpr int   W = W_, I = W_;
+	};
+	template<int  W_, int  I_, ap_q_mode  Q, ap_o_mode  O, int  NS> struct num_fmt<ap_fixed<W_, I_, Q, O, NS>> {
+		static constexpr bool  KNOWN = true, FIXED = true, S = true;
+		static constexpr int   W = W_, I = I_;
+	};
+	template<int  W_, int  I_, ap_q_mode  Q, ap_o_mode  O, int  NS> struct num_fmt<ap_ufixed<W_, I_, Q, O, NS>> {
+		static constexpr bool  KNOWN = true, FIXED = true, S = false;
+		static constexpr int   W = W_, I = I_;
+	};
+
+	template<bool  FIXED, bool  S, int  W, int  I> struct make_num;
+	template<int  W, int  I> struct make_num<false, true,  W, I> { using  type = ap_int<W>; };
+	template<int  W, int  I> struct make_num<false, false, W, I> { using  type = ap_uint<W>; };
+	template<int  W, int  I> struct make_num<true,  true,  W, I> { using  type = ap_fixed<W, I>; };
+	template<int  W, int  I> struct make_num<true,  false, W, I> { using  type = ap_ufixed<W, I>; };
+
+	/**
+	 * Comparison type: TI narrowed to the integer bits of TT plus the sign
+	 * bit of TI, keeping the fractional bits of TI. TI itself if this is not
+	 * narrower or if either type is no ap_[u]int or ap_[u]fixed.
+	 */
+	template<typename  TI, typename  TT, bool = num_fmt<TI>::KNOWN && num_fmt<TT>::KNOWN>
+	struct cmp_type {
+		using  type = TI;
+	};
+	template<typename  TI, typename  TT>
+	struct cmp_type<TI, TT, true> {
+		using  fi = num_fmt<TI>;
+		static constexpr int  I = num_fmt<TT>::I + fi::S;
+		static constexpr int  W = I + (fi::W - fi::I);
+		using  type = typename std::conditional<(W < fi::W), typename make_num<fi::FIXED, fi::S, W, I>::type, TI>::type;
+	};
+
+	/**
+	 * Clamp an input to the comparison type TC (see file description), the
+	 * counterpart of the input clamp of the RTL.
+	 */
+	template<typename  TC, typename  TI>
+	TC clamp(TI const &x, std::true_type /* TC == TI */) {
+#pragma HLS inline
+		return  x;
+	}
+	template<typename  TC, typename  TI>
+	TC clamp(TI const &x, std::false_type /* TC narrower than TI */) {
+#pragma HLS inline
+		constexpr int   WI = num_fmt<TI>::W;
+		constexpr int   WC = num_fmt<TC>::W;
+		constexpr bool  S  = num_fmt<TI>::S;
+
+		ap_uint<WI> const  raw = x.range(WI-1, 0);
+		ap_uint<WI-WC+S> const  top = raw(WI-1, WC-S);	// incl. the sign bit of TC if signed
+		bool const  in_range = top.and_reduce()? S : !top.or_reduce();	// sign extension or all zeros
+		ap_uint<WC> const  max = S? ap_uint<WC>(ap_uint<WC>(-1) >> 1) : ap_uint<WC>(-1);
+		TC  y;
+		y.range() = in_range? ap_uint<WC>(raw(WC-1, 0)) : S && raw[WI-1]? ap_uint<WC>(~max) : max;
+		return  y;
 	}
 
 	/**
@@ -179,12 +272,12 @@ namespace thresholding_detail {
 		static constexpr unsigned  D  = CF << S;   // Memory depth
 		static constexpr unsigned  K  = ((N >> SN) + 1) / 2;	// In-scope separators per channel: k < K
 
-		template<typename  TI, typename  R>
-		static void run(R (&res)[PE], tensor<TI, PE> const &x, unsigned const  cnl) {
+		template<typename  TT, typename  TC, typename  R>
+		static void run(R (&res)[PE], TC const (&x)[PE], unsigned const  cnl) {
 #pragma HLS inline
 			using  init = INIT<S>;
-			static_assert(std::is_same<typename std::decay<decltype(init::data())>::type, stage_rom<TI, PE, D>>::value,
-				"INIT<S>::data() must return a stage_rom<TI, PE, CF<<S>.");
+			static_assert(std::is_same<typename std::decay<decltype(init::data())>::type, stage_rom<TT, PE, D>>::value,
+				"INIT<S>::data() must return a stage_rom<TT, PE, CF<<S>.");
 
 			unsigned  k[PE];
 			unsigned  addr[PE];
@@ -196,17 +289,17 @@ namespace thresholding_detail {
 				addr[pe] = (cnl << S) | k[pe];
 			}
 
-			TI  thr[PE];
+			TT  thr[PE];
 #pragma HLS array_partition variable=thr complete
 			stage_mem<select_mem(D, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM)>::template read<init, PE, D>(thr, addr);
 
 			for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS unroll
 				bool const  scope = (K == (1u << S)) || (k[pe] < K);
-				res[pe][SN] = scope && (thr[pe] <= TI(x[pe]));
+				res[pe][SN] = scope && (thr[pe] <= x[pe]);
 			}
 
-			stage<INIT, N, CF, PE, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, S+1>::run(res, x, cnl);
+			stage<INIT, N, CF, PE, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, S+1>::template run<TT>(res, x, cnl);
 		}
 	};
 	template<
@@ -216,8 +309,8 @@ namespace thresholding_detail {
 		unsigned  S
 	>
 	struct stage<INIT, N, CF, PE, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, S, false> {
-		template<typename  TI, typename  R>
-		static void run(R (&)[PE], tensor<TI, PE> const&, unsigned) {
+		template<typename  TT, typename  TC, typename  R>
+		static void run(R (&)[PE], TC const (&)[PE], unsigned) {
 #pragma HLS inline
 		}
 	};
@@ -229,17 +322,19 @@ namespace thresholding_detail {
  *
  * @tparam N	number of thresholds per channel
  * @tparam C	number of channels
+ * @tparam TT	threshold type, see file description for its relation to TI
  * @tparam INIT	per-stage initial memory contents, see file description
  * @tparam BIAS	output offset: [0, N] -> [BIAS, N+BIAS]
  * @tparam DEPTH_TRIGGER_BRAM	if non-zero, stage memories of this depth or more go into BRAM, smaller ones into LUTRAM
  * @tparam DEPTH_TRIGGER_URAM	if non-zero, stage memories of this depth or more go into URAM (priority)
  * @tparam PE	[inferred] parallel processing elements, must divide C
- * @tparam TI	[inferred] input and threshold type, needs to be <= comparable
+ * @tparam TI	[inferred] input type
  * @tparam TO	[inferred] output type, default as O_BITS of the RTL
  */
 template<
 	unsigned  N,
 	unsigned  C,
+	typename  TT,
 	template<unsigned> class  INIT,
 	int       BIAS = 0,
 	unsigned  DEPTH_TRIGGER_BRAM = 512,
@@ -259,6 +354,11 @@ void thresholding(
 	static_assert(N > 0, "Need at least one threshold.");
 	static_assert(C%PE == 0, "PE must divide channel count.");
 	static_assert(DEPTH_TRIGGER_URAM == 0, "URAM cannot hold initialized ROM contents.");
+	static_assert(
+		!(thresholding_detail::is_float<TI>::value || thresholding_detail::is_float<TT>::value) || std::is_same<TI, TT>::value,
+		"Floating-point inputs and thresholds must have the same type."
+	);
+	using  TC = typename thresholding_detail::cmp_type<TI, TT>::type;
 
 	constexpr unsigned  CF = C/PE;
 	constexpr unsigned  M  = clog2(N+1);
@@ -267,7 +367,15 @@ void thresholding(
 	static ap_uint<CF < 2? 1 : clog2(CF)>  cnl = 0;
 #pragma HLS reset variable=cnl
 
-	auto const  x = src.read();
+	TC  x[PE];
+#pragma HLS array_partition variable=x complete
+	{ // clamp input to comparison type
+		auto const  xi = src.read();
+		for(unsigned  pe = 0; pe < PE; pe++) {
+#pragma HLS unroll
+			x[pe] = thresholding_detail::clamp<TC>(TI(xi[pe]), std::is_same<TC, TI>());
+		}
+	}
 
 	ap_uint<M>  res[PE];
 #pragma HLS array_partition variable=res complete
@@ -275,7 +383,7 @@ void thresholding(
 #pragma HLS unroll
 		res[pe] = 0;
 	}
-	thresholding_detail::stage<INIT, N, CF, PE, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, 0>::run(res, x, unsigned(cnl));
+	thresholding_detail::stage<INIT, N, CF, PE, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, 0>::template run<TT>(res, x, unsigned(cnl));
 	cnl = (cnl == CF-1)? decltype(cnl)(0) : decltype(cnl)(cnl+1);
 
 	tensor<TO, PE>  y;
