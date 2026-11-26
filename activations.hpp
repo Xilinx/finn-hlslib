@@ -231,12 +231,14 @@ public:
 public:
   TR activate(unsigned const  nf, unsigned const  pe,  TA const &accu) const {
 #pragma HLS inline
-    ap_uint<clog2(NumTH+1)> result = ActVal;
+    // Count the met thresholds unbiased: the count needs clog2(NumTH+1) bits,
+    // the biased result may not fit them (ActVal < 0 or a wider output).
+    ap_uint<clog2(NumTH+1)> count = 0;
 	for(unsigned int i=0; i< NumTH; i++){
 #pragma HLS unroll
-      result+=Compare()(m_thresholds[pe][nf][i], accu);
+      count+=Compare()(m_thresholds[pe][nf][i], accu);
     }
-    return TR(result);
+    return TR(ActVal + count);
   }
 };
 
