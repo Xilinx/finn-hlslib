@@ -55,6 +55,7 @@
 #include "tensor.hpp"
 #include <hls_stream.h>
 #include <functional>
+#include <type_traits>
 
 namespace comp{
   template<typename input_type_1 = void, typename input_type_2 = void>
@@ -228,17 +229,30 @@ public:
     return  TA(0);
   }
 
+private:
+  // Exact type of the biased result in [ActVal, NumTH+ActVal]: unsigned for
+  // ActVal >= 0 (ap_uint<1> for one unbiased threshold, as Bipolar takes it),
+  // signed otherwise.
+  static constexpr int  RESULT_MAX = int(NumTH) + ActVal;
+  static constexpr unsigned  RESULT_BITS = ActVal >= 0?
+    clog2(unsigned(RESULT_MAX) + 1) :
+    1 + clog2(unsigned(-ActVal >= RESULT_MAX+1? -ActVal : RESULT_MAX+1));
+  using  result_t = typename std::conditional<(ActVal >= 0), ap_uint<RESULT_BITS>, ap_int<RESULT_BITS>>::type;
+
 public:
   TR activate(unsigned const  nf, unsigned const  pe,  TA const &accu) const {
 #pragma HLS inline
-    // Count the met thresholds unbiased: the count needs clog2(NumTH+1) bits,
-    // the biased result may not fit them (ActVal < 0 or a wider output).
+    // Count the met thresholds unbiased, then add the bias in the exact
+    // result type: the count's clog2(NumTH+1) bits may not hold the biased
+    // result (ActVal < 0 or a wider output).
     ap_uint<clog2(NumTH+1)> count = 0;
 	for(unsigned int i=0; i< NumTH; i++){
 #pragma HLS unroll
       count+=Compare()(m_thresholds[pe][nf][i], accu);
     }
-    return TR(ActVal + count);
+    result_t  result = ActVal;
+    result += count;
+    return TR(result);
   }
 };
 
