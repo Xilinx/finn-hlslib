@@ -592,7 +592,8 @@ namespace thresholding_detail {
 /**
  * Thresholding by binary search with fixed thresholds in ROMs.
  *
- * Reads one input from src and writes its result to dst per invocation.
+ * Reads one input from src, if available, and writes its result to dst per
+ * invocation.
  * The variant with a set selection stream sel additionally reads the index
  * of the threshold set to apply to the input.
  *
@@ -641,14 +642,17 @@ void thresholding(
 	static ap_uint<CF < 2? 1 : clog2(CF)>  cnl = 0;
 #pragma HLS reset variable=cnl
 
-	auto const  x = src.read();
-	thresholding_detail::op_t<TT>  op = {};
-	op.row = thresholding_detail::row<CF, SETS>(sel.read(), cnl);
-	TT  q;
-	dst.write(thresholding_detail::search<
-		N, thresholding_detail::rows(CF, SETS), TT, INIT, BIAS, false, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, TO
-	>(x, op, q));
-	cnl = (cnl == CF-1)? decltype(cnl)(0) : decltype(cnl)(cnl+1);
+	// Non-blocking input, so that a free-running caller may poll
+	if(!src.empty() && !sel.empty()) {
+		auto const  x = src.read();
+		thresholding_detail::op_t<TT>  op = {};
+		op.row = thresholding_detail::row<CF, SETS>(sel.read(), cnl);
+		TT  q;
+		dst.write(thresholding_detail::search<
+			N, thresholding_detail::rows(CF, SETS), TT, INIT, BIAS, false, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, TO
+		>(x, op, q));
+		cnl = (cnl == CF-1)? decltype(cnl)(0) : decltype(cnl)(cnl+1);
+	}
 
 } // thresholding()
 
@@ -685,11 +689,15 @@ void thresholding(
 	static ap_uint<CF < 2? 1 : clog2(CF)>  cnl = 0;
 #pragma HLS reset variable=cnl
 
-	thresholding_detail::op_t<TT>  op = {};
-	op.row = cnl;
-	TT  q;
-	dst.write(thresholding_detail::search<N, CF, TT, INIT, BIAS, false, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, TO>(src.read(), op, q));
-	cnl = (cnl == CF-1)? decltype(cnl)(0) : decltype(cnl)(cnl+1);
+	// Non-blocking input, so that a free-running caller may poll
+	tensor<TI, PE>  x;
+	if(src.read_nb(x)) {
+		thresholding_detail::op_t<TT>  op = {};
+		op.row = cnl;
+		TT  q;
+		dst.write(thresholding_detail::search<N, CF, TT, INIT, BIAS, false, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, TO>(x, op, q));
+		cnl = (cnl == CF-1)? decltype(cnl)(0) : decltype(cnl)(cnl+1);
+	}
 
 } // thresholding()
 
