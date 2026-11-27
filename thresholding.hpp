@@ -62,7 +62,11 @@
  *  representable in TI (TT ⊆ TI), except that TT may be one bit wider than TI
  *  to represent never-met thresholds by the value max(TI)+1. The kernel is
  *  exact in both cases. Floating-point (float, half) types cannot be mixed:
- *  either type being one implies TT == TI.
+ *  either type being one implies TT == TI. They are compared by an order
+ *  key of their bit image (float_key), as in the RTL: one unsigned compare
+ *  per stage instead of a floating-point comparator, with -0 equal to +0
+ *  through the key of the input.
+ *  NaNs are outside the order of thresholds and inputs.
  *
  *  Narrow thresholds: if TT is narrower than TI, the input is clamped once
  *  before the first stage to the integer bits of TT plus the sign bit of TI,
@@ -134,6 +138,7 @@
 #include <ap_int.h>
 #include <ap_fixed.h>
 
+#include "bitimage.hpp"
 #include "utils.hpp"
 #include "tensor.hpp"
 
@@ -231,6 +236,59 @@ namespace thresholding_detail {
 		y.range() = in_range? ap_uint<WC>(raw(WC-1, 0)) : S && raw[WI-1]? ap_uint<WC>(~max) : max;
 		return  y;
 	}
+
+	/**
+	 * Order key {!neg, neg? ~m : m} of the bit image b of a floating-point
+	 * value with magnitude bits m, compared unsigned. With neg the sign bit,
+	 * it is monotone in the represented value but orders -0 below +0; with
+	 * neg = sign && m != 0, -0 takes the key of +0.
+	 */
+	template<int  W>
+	ap_uint<W> float_key(bool const  neg, ap_uint<W> const &b) {
+#pragma HLS inline
+		ap_uint<W>  k = b ^ (neg? ap_uint<W>(ap_uint<W>(-1) >> 1) : ap_uint<W>(0));
+		k[W-1] = !neg;
+		return  k;
+	}
+
+	/**
+	 * Comparison policy of input type TI and threshold type TT, the
+	 * counterpart of the CMP classes of the RTL: prep() prepares an input
+	 * once before the first stage, le() compares a threshold with it.
+	 * ap_[u]int and ap_[u]fixed inputs are clamped to the comparison type
+	 * and compared natively; floating-point types are compared by their
+	 * order key (float_key), which takes one unsigned compare rather than a
+	 * floating-point comparator per stage, and folds for constant thresholds.
+	 * Only the input is keyed with -0 taken as +0, once before the first
+	 * stage, which suffices for exactness: the key of a threshold of -0 then
+	 * lies just below every non-negative input.
+	 */
+	template<typename  TI, typename  TT, bool = is_float<TI>::value>
+	struct cmp {
+		using  type = typename cmp_type<TI, TT>::type;
+		static type prep(TI const &x) {
+#pragma HLS inline
+			return  clamp<type>(x, std::is_same<type, TI>());
+		}
+		static bool le(TT const &thr, type const &x) {
+#pragma HLS inline
+			return  thr <= x;
+		}
+	};
+	template<typename  TI, typename  TT>
+	struct cmp<TI, TT, true> {
+		using  type = ap_uint<width_v<TI>>;
+		static type prep(TI const &x) {
+#pragma HLS inline
+			type const  b = to_bitimage(x);
+			return  float_key(b[width_v<TI>-1] && (b(width_v<TI>-2, 0) != 0), b);	// -0 as +0
+		}
+		static bool le(TT const &thr, type const &x) {
+#pragma HLS inline
+			type const  b = to_bitimage(thr);
+			return  float_key(b[width_v<TT>-1], b) <= x;
+		}
+	};
 
 	/** Whether INIT provides initial contents through a data() accessor. */
 	template<typename  INIT, typename = void>
@@ -401,7 +459,7 @@ namespace thresholding_detail {
 		static constexpr unsigned  D  = ROWS << S;  // Memory depth
 		static constexpr unsigned  K  = ((N >> SN) + 1) / 2;	// In-scope separators per channel: k < K
 
-		template<typename  TT, typename  TC, typename  R>
+		template<typename  CMP, typename  TT, typename  TC, typename  R>
 		static void run(R (&res)[PE], TC const (&x)[PE], op_t<TT> const &op, TT &q) {
 #pragma HLS inline
 			bool const  hit = op.cfg && op.ok && (((op.n+1) & ((2u << SN) - 1)) == (1u << SN));
@@ -426,14 +484,14 @@ namespace thresholding_detail {
 			for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS unroll
 				bool const  scope = (K == (1u << S)) || (k[pe] < K);
-				res[pe][SN] = op.cfg? bool(res[pe][SN]) : scope && (thr[pe] <= x[pe]);
+				res[pe][SN] = op.cfg? bool(res[pe][SN]) : scope && CMP::le(thr[pe], x[pe]);
 			}
 			// Readback by indexed selection: a conditional assignment per PE
 			// is scheduled into an extra pipeline stage after each memory
 			// read (pipeline depth 11 rather than 7 for N=15, C=64, PE=4).
 			if(WR && hit)  q = thr[op.pe];
 
-			stage<INIT, N, ROWS, PE, WR, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, S+1>::run(res, x, op, q);
+			stage<INIT, N, ROWS, PE, WR, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, S+1>::template run<CMP>(res, x, op, q);
 		}
 	};
 	template<
@@ -443,7 +501,7 @@ namespace thresholding_detail {
 		unsigned  S
 	>
 	struct stage<INIT, N, ROWS, PE, WR, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, S, false> {
-		template<typename  TT, typename  TC, typename  R>
+		template<typename  CMP, typename  TT, typename  TC, typename  R>
 		static void run(R (&)[PE], TC const (&)[PE], op_t<TT> const&, TT&) {
 #pragma HLS inline
 		}
@@ -466,14 +524,15 @@ namespace thresholding_detail {
 			!(is_float<TI>::value || is_float<TT>::value) || std::is_same<TI, TT>::value,
 			"Floating-point inputs and thresholds must have the same type."
 		);
-		using  TC = typename cmp_type<TI, TT>::type;
+		using  CMP = cmp<TI, TT>;
+		using  TC = typename CMP::type;
 		constexpr unsigned  M = clog2(N+1);
 
 		TC  x[PE];
 #pragma HLS array_partition variable=x complete
 		for(unsigned  pe = 0; pe < PE; pe++) {
 #pragma HLS unroll
-			x[pe] = clamp<TC>(TI(xi[pe]), std::is_same<TC, TI>());
+			x[pe] = CMP::prep(TI(xi[pe]));
 		}
 
 		// Result bits, or the threshold index of a configuration operation,
@@ -486,7 +545,7 @@ namespace thresholding_detail {
 			res[pe] = op.cfg? op.n : 0;
 		}
 		q = TT(0);
-		stage<INIT, N, ROWS, PE, WR, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, 0>::run(res, x, op, q);
+		stage<INIT, N, ROWS, PE, WR, DEPTH_TRIGGER_BRAM, DEPTH_TRIGGER_URAM, 0>::template run<CMP>(res, x, op, q);
 
 		tensor<TO, PE>  y;
 		for(unsigned  pe = 0; pe < PE; pe++) {
