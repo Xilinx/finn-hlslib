@@ -39,10 +39,10 @@ node('finn-build || built-in') {
         'LC_ALL=C',
         'LANG=C',
         "FINN_HLS_ROOT=${env.WORKSPACE}",
-        "HLS_ENV_SRC=/proj/xbuilds/2022.1_released/installs/lin64/Vitis/2022.1/settings64.sh",
+        "HLS_ENV_SRC=/proj/xbuilds/2026.1_released/installs/lin64/2026.1/Vitis/settings64.sh",
         "HOME=${env.WORKSPACE}"
     ]){
-        def run = { tcl -> sh("source ${env.HLS_ENV_SRC}; cd tb; vitis-run --tcl ${tcl}") }
+        def run = { tcl -> sh("source ${env.HLS_ENV_SRC}; cd tb; vitis-run --mode hls --tcl ${tcl}") }
         parallel firstBranch: {
             stage('MVAU')               { run 'mvau.tcl' }
             stage('VVAU')               { run 'vvau.tcl' }
@@ -63,6 +63,7 @@ node('finn-build || built-in') {
             stage('BIPOLAR')            { run 'bipolar.tcl' }
             stage('REQUANT')            { run 'requant.tcl' }
             stage('TOPK')               { run 'topk.tcl' }
+            stage('THRESHOLDING')       { run 'thresholding.tcl' }
         }, sixthBranch: {
             stage('PAD')                { run 'pad.tcl' }
             stage('DECONV')             { run 'deconv.tcl' }
