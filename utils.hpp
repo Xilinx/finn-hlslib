@@ -59,6 +59,8 @@
 #  include <ap_float.h>
 #endif
 
+#include "bitimage.hpp"
+
 //- Compile-Time Functions --------------------------------------------------
 
 // ceil(log2(x))
@@ -133,23 +135,6 @@ struct is_ap_float<ap_float<W,I>> : std::true_type {};
 template<typename T>
 struct is_floating_point_or_ap_float
     : std::integral_constant<bool, std::is_floating_point<T>::value || is_ap_float<T>::value> {};
-
-// Determine bit width of types
-//  Primary template dispatches via SFINAE: prefers T::width if available,
-//  else falls back to 8*sizeof(T).  Specialize width_trait<T> directly
-//  for types that need a custom width (e.g. Bipolar).
-template<typename  T, typename = void>
-struct width_trait : std::integral_constant<size_t, 8*sizeof(T)> {};
-
-template<typename  T>
-struct width_trait<T, typename std::enable_if<(T::width, true)>::type>
-	: std::integral_constant<size_t, T::width> {};
-
-template<typename  T> constexpr size_t  width_v = width_trait<T>::value;
-
-// Bipolar forward declaration — width is 1 bit
-class Bipolar;
-template<> struct width_trait<Bipolar> : std::integral_constant<size_t, 1> {};
 
 //- Custom std::numeric_limits<ap_(u)int<W>> for releases prior to 2025.2.
 #if XILINX_HLS_VERSION_RELEASE < 20252
